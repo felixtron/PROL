@@ -1,0 +1,85 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PROL - Production deployment (Traefik + Dokploy)
+# Deploys the web app and a dedicated PostgreSQL instance on the VPS.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-prol}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-prol}
+    volumes:
+      - prol_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-prol} -d ${DB_NAME:-prol}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prol-internal
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-prol}:${DB_PASSWORD}@db:5432/${DB_NAME:-prol}?schema=public
+
+      # App URL & Auth
+      NEXT_PUBLIC_APP_URL: ${APP_URL}
+      NEXT_PUBLIC_DOMAIN: ${APP_DOMAIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${APP_URL}
+
+      # Stripe
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+
+      # Cloudflare Stream
+      CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
+      CLOUDFLARE_STREAM_API_TOKEN: ${CLOUDFLARE_STREAM_API_TOKEN:-}
+
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_DOMAIN: ${RESEND_DOMAIN:-}
+
+      # Optional: AI (module 6 - opcional)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY:-}
+      TRIGGER_SECRET_KEY: ${TRIGGER_SECRET_KEY:-}
+    networks:
+      - prol-internal
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      # Main domain + wildcard subdomains for tenants
+      - "traefik.http.routers.prol.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`{subdomain:[a-z0-9-]+}.${APP_DOMAIN}`)"
+      - "traefik.http.routers.prol.entrypoints=websecure"
+      - "traefik.http.routers.prol.tls=true"
+      - "traefik.http.routers.prol.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prol.loadbalancer.server.port=3000"
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.prol-http.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`{subdomain:[a-z0-9-]+}.${APP_DOMAIN}`)"
+      - "traefik.http.routers.prol-http.entrypoints=web"
+      - "traefik.http.routers.prol-http.middlewares=prol-redirect@docker"
+      - "traefik.http.middlewares.prol-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.prol-redirect.redirectscheme.permanent=true"
+
+volumes:
+  prol_db_data:
+
+networks:
+  prol-internal:
+    driver: bridge
+  dokploy-network:
+    external: true
