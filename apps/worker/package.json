@@ -1,0 +1,24 @@
+{
+  "name": "@prol/worker",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prol/ai": "workspace:*",
+    "@prol/content-factory": "workspace:*",
+    "@prol/db": "workspace:*",
+    "@prol/email": "workspace:*",
+    "@prol/shared": "workspace:*",
+    "@trigger.dev/sdk": "^3.3.0"
+  },
+  "devDependencies": {
+    "@prol/typescript-config": "workspace:*",
+    "tsx": "^4.19.0",
+    "typescript": "5.9.2"
+  }
+}

@@ -36,3 +36,10 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Claude Code / AI tooling
+.claude/scheduled_tasks.lock
+.claude/sessions/
+
+# Uploads (local dev)
+apps/web/public/uploads/

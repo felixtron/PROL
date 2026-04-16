@@ -1,0 +1,24 @@
+# PROL - Local Development
+# Usage: docker compose up -d
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: prol-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: prol
+      POSTGRES_PASSWORD: prol_dev_2026
+      POSTGRES_DB: prol
+    ports:
+      - "5432:5432"
+    volumes:
+      - prol_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prol"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  prol_pgdata:

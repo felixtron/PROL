@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "@prol/web",
   "version": "0.1.0",
   "type": "module",
   "private": true,
@@ -11,18 +11,31 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@repo/ui": "workspace:*",
+    "@prol/db": "workspace:*",
+    "@prol/email": "workspace:*",
+    "@prol/shared": "workspace:*",
+    "@prol/ui": "workspace:*",
+    "@react-pdf/renderer": "^4.3.2",
+    "better-auth": "^1.2.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
     "next": "16.2.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "resend": "^6.9.4",
+    "stripe": "^20.4.1",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@prol/eslint-config": "workspace:*",
+    "@prol/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "eslint": "^9.39.1",
+    "tailwindcss": "^4.1.0",
     "typescript": "5.9.2"
   }
 }

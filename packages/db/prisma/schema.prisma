@@ -1,0 +1,762 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PROL — White-label SaaS LMS Platform
+// Prisma Schema (PostgreSQL)
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAUSED
+  CHURNED
+}
+
+enum UserRole {
+  STUDENT
+  PROFESSOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+  QUIZ
+  ASSIGNMENT
+}
+
+enum VideoProvider {
+  CLOUDFLARE
+  VIMEO_URL
+  VIMEO_UPLOAD
+}
+
+enum InteractiveStopType {
+  QUESTION
+  REFLECTION
+  EXERCISE
+  POLL
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  REFUNDED
+}
+
+enum LessonProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum PaymentMethod {
+  CARD
+  OXXO
+  SPEI
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum WorkshopType {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
+enum WorkshopPrerequisite {
+  NONE
+  MODULE_STARTED
+  MODULE_COMPLETED
+}
+
+enum WorkshopStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  NO_SHOW
+}
+
+enum NotificationType {
+  ENROLLMENT
+  PAYMENT
+  COURSE_UPDATE
+  WORKSHOP
+  CERTIFICATE
+  SYSTEM
+}
+
+enum AIJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AIJobType {
+  COURSE_OUTLINE
+  VIDEO_TRANSCRIPTION
+  LESSON_CONTENT
+  COURSE_ENRICHMENT
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The creator's branded academy — top-level tenant in the multi-tenant model.
+/// Resolved via subdomain: {slug}.prol.prosuite.pro or via customDomain.
+model Tenant {
+  id               String       @id @default(cuid())
+  name             String
+  slug             String       @unique
+  customDomain     String?      @unique @map("custom_domain")
+
+  // Revenue & billing
+  revenueShareRate Float        @default(0.30) @map("revenue_share_rate")
+  trialEndsAt      DateTime?    @map("trial_ends_at")
+  status           TenantStatus @default(TRIAL)
+  stripeAccountId  String?      @map("stripe_account_id")
+
+  // Branding
+  logo             String?
+  primaryColor     String       @default("#6366f1") @map("primary_color")
+  accentColor      String       @default("#f59e0b") @map("accent_color")
+  favicon          String?
+  customCss        String?      @map("custom_css")
+
+  // Contact
+  contactEmail     String?      @map("contact_email")
+  phone            String?
+  socialLinks      Json?        @map("social_links")
+
+  // Feature flags
+  workshopsEnabled Boolean      @default(false) @map("workshops_enabled")
+  aiEnabled        Boolean      @default(false) @map("ai_enabled")
+
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  users            User[]
+  courses          Course[]
+  enrollments      Enrollment[]
+  payments         CoursePayment[]
+  workshops        Workshop[]
+  certificates     Certificate[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  aiGenerationJobs AIGenerationJob[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([customDomain])
+  @@map("tenants")
+}
+
+/// All platform users: students, professors, tenant admins, and super admins.
+/// Authenticated via Better Auth. SUPER_ADMIN users have tenantId = null.
+model User {
+  id                    String   @id @default(cuid())
+  email                 String   @unique
+  emailVerified         Boolean  @default(false) @map("email_verified")
+  name                  String?
+  image                 String?
+  avatar                String?
+  role                  UserRole @default(STUDENT)
+
+  tenantId              String?  @map("tenant_id")
+  tenant                Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  onboardingCompleted   Boolean  @default(false) @map("onboarding_completed")
+  lastLoginAt           DateTime? @map("last_login_at")
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  sessions              Session[]
+  accounts              Account[]
+  taughtCourses         Course[]              @relation("CourseProfessor")
+  enrollments           Enrollment[]
+  payments              CoursePayment[]
+  workshops             Workshop[]            @relation("WorkshopProfessor")
+  workshopBookings      WorkshopBooking[]
+  workshopAttendances   WorkshopAttendance[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  aiGenerationJobs      AIGenerationJob[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+/// Better Auth session — tracks active login sessions per user.
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+/// Better Auth account — links OAuth providers and credentials to a user.
+model Account {
+  id                    String    @id
+  userId                String    @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  idToken               String?   @map("id_token")
+  password              String?
+
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+/// Better Auth verification — stores email verification and password reset tokens.
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("verifications")
+}
+
+/// A course offered within a tenant's academy.
+/// Scoped by tenantId + slug for clean URLs.
+model Course {
+  id                   String       @id @default(cuid())
+  tenantId             String       @map("tenant_id")
+  tenant               Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  professorId          String       @map("professor_id")
+  professor            User         @relation("CourseProfessor", fields: [professorId], references: [id], onDelete: Restrict)
+
+  title                String
+  slug                 String
+  description          String?
+  thumbnail            String?
+  previewVideoUrl      String?      @map("preview_video_url")
+
+  priceInCents         Int          @map("price_in_cents")
+  currency             String       @default("MXN")
+
+  status               CourseStatus @default(DRAFT)
+  publishedAt          DateTime?    @map("published_at")
+
+  category             String?
+  tags                 Json?
+
+  totalDurationMinutes Int          @default(0) @map("total_duration_minutes")
+  totalLessons         Int          @default(0) @map("total_lessons")
+
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  modules              Module[]
+  enrollments          Enrollment[]
+  payments             CoursePayment[]
+  workshops            Workshop[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([professorId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@map("courses")
+}
+
+/// A section/module within a course, used to group lessons.
+model Module {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  position    Int
+  isPublished Boolean  @default(false) @map("is_published")
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  lessons     Lesson[]
+  workshops   Workshop[]
+
+  @@index([courseId])
+  @@index([courseId, position])
+  @@map("modules")
+}
+
+/// An individual lesson within a module. Can be video, text, quiz, or assignment.
+model Lesson {
+  id                   String     @id @default(cuid())
+  moduleId             String     @map("module_id")
+  module               Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  title                String
+  description          String?
+  position             Int
+  type                 LessonType @default(VIDEO)
+
+  videoUrl             String?    @map("video_url")
+  videoProvider        VideoProvider? @default(CLOUDFLARE) @map("video_provider")
+  videoRawUrl          String?    @map("video_raw_url")
+  videoHash            String?    @map("video_hash")
+  videoDurationSeconds Int?       @map("video_duration_seconds")
+  content              Json?
+
+  // AI-generated content
+  transcript           Json?      @map("transcript")
+  summary              String?    @map("summary")
+  aiGenerated          Boolean    @default(false) @map("ai_generated")
+  aiStatus             String?    @map("ai_status")
+
+  isPublished          Boolean    @default(false) @map("is_published")
+  isFree               Boolean    @default(false) @map("is_free")
+
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  interactiveStops     InteractiveStop[]
+  quizzes              Quiz[]
+  lessonProgresses     LessonProgress[]
+
+  @@index([moduleId])
+  @@index([moduleId, position])
+  @@map("lessons")
+}
+
+/// A pause point during video playback that presents an interactive element.
+model InteractiveStop {
+  id               String              @id @default(cuid())
+  lessonId         String              @map("lesson_id")
+  lesson           Lesson              @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  timestampSeconds Int                 @map("timestamp_seconds")
+  type             InteractiveStopType
+  content          Json
+  isRequired       Boolean             @default(true) @map("is_required")
+
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  responses        InteractiveStopResponse[]
+
+  @@index([lessonId])
+  @@index([lessonId, timestampSeconds])
+  @@map("interactive_stops")
+}
+
+/// A quiz attached to a lesson.
+model Quiz {
+  id           String   @id @default(cuid())
+  lessonId     String   @map("lesson_id")
+  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  title        String
+  passingScore Int      @default(70) @map("passing_score")
+  questions    Json
+  timeLimit    Int?     @map("time_limit")
+  maxAttempts  Int      @default(3) @map("max_attempts")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  attempts     QuizAttempt[]
+
+  @@index([lessonId])
+  @@map("quizzes")
+}
+
+/// Represents a student's enrollment in a course. Tracks overall progress.
+model Enrollment {
+  id          String           @id @default(cuid())
+  studentId   String           @map("student_id")
+  student     User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  courseId    String           @map("course_id")
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  tenantId   String           @map("tenant_id")
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  status      EnrollmentStatus @default(ACTIVE)
+  progress    Float            @default(0)
+
+  enrolledAt  DateTime         @default(now()) @map("enrolled_at")
+  completedAt DateTime?        @map("completed_at")
+
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  lessonProgresses LessonProgress[]
+  quizAttempts     QuizAttempt[]
+  certificate      Certificate?
+
+  @@unique([studentId, courseId])
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([courseId])
+  @@index([status])
+  @@map("enrollments")
+}
+
+/// Tracks a student's progress through an individual lesson.
+model LessonProgress {
+  id                   String               @id @default(cuid())
+  enrollmentId         String               @map("enrollment_id")
+  enrollment           Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  lessonId             String               @map("lesson_id")
+  lesson               Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  status               LessonProgressStatus @default(NOT_STARTED)
+  videoPositionSeconds Int                  @default(0) @map("video_position_seconds")
+  completedAt          DateTime?            @map("completed_at")
+
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  interactiveStopResponses InteractiveStopResponse[]
+
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
+  @@index([lessonId])
+  @@map("lesson_progresses")
+}
+
+/// A student's response to an interactive stop during video playback.
+model InteractiveStopResponse {
+  id                String         @id @default(cuid())
+  lessonProgressId  String         @map("lesson_progress_id")
+  lessonProgress    LessonProgress @relation(fields: [lessonProgressId], references: [id], onDelete: Cascade)
+
+  interactiveStopId String         @map("interactive_stop_id")
+  interactiveStop   InteractiveStop @relation(fields: [interactiveStopId], references: [id], onDelete: Cascade)
+
+  response          Json
+  isCorrect         Boolean?       @map("is_correct")
+  respondedAt       DateTime       @default(now()) @map("responded_at")
+
+  @@index([lessonProgressId])
+  @@index([interactiveStopId])
+  @@map("interactive_stop_responses")
+}
+
+/// A student's attempt at a quiz, storing answers and score.
+model QuizAttempt {
+  id           String     @id @default(cuid())
+  enrollmentId String     @map("enrollment_id")
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  quizId       String     @map("quiz_id")
+  quiz         Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  answers      Json
+  score        Int
+  passed       Boolean
+
+  startedAt    DateTime   @default(now()) @map("started_at")
+  completedAt  DateTime?  @map("completed_at")
+
+  @@index([enrollmentId])
+  @@index([quizId])
+  @@map("quiz_attempts")
+}
+
+/// Payment record for a course purchase via Stripe Connect.
+/// Stores revenue share snapshot at the time of payment.
+model CoursePayment {
+  id               String        @id @default(cuid())
+  tenantId         String        @map("tenant_id")
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  studentId        String        @map("student_id")
+  student          User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  courseId          String        @map("course_id")
+  course           Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  amount           Int
+  currency         String        @default("MXN")
+
+  revenueShareRate Float         @map("revenue_share_rate")
+  prolFee          Int           @map("prol_fee")
+  creatorReceives  Int           @map("creator_receives")
+  stripeFee        Int           @map("stripe_fee")
+
+  stripePaymentId  String        @unique @map("stripe_payment_id")
+  paymentMethod    PaymentMethod @map("payment_method")
+  status           PaymentStatus @default(PENDING)
+
+  paidAt           DateTime?     @map("paid_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([courseId])
+  @@index([status])
+  @@index([stripePaymentId])
+  @@map("course_payments")
+}
+
+/// A scheduled workshop session (in-person, virtual, or hybrid).
+model Workshop {
+  id              String               @id @default(cuid())
+  tenantId        String               @map("tenant_id")
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  courseId         String               @map("course_id")
+  course          Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  moduleId        String?              @map("module_id")
+  module          Module?              @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
+  professorId     String               @map("professor_id")
+  professor       User                 @relation("WorkshopProfessor", fields: [professorId], references: [id], onDelete: Restrict)
+
+  title           String
+  description     String?
+  type            WorkshopType         @default(IN_PERSON)
+
+  locationName    String?              @map("location_name")
+  locationAddress String?              @map("location_address")
+  locationMapUrl  String?              @map("location_map_url")
+  meetingUrl      String?              @map("meeting_url")
+
+  startTime       DateTime             @map("start_time")
+  endTime         DateTime             @map("end_time")
+
+  maxAttendees    Int                  @map("max_attendees")
+  minAttendees    Int                  @default(3) @map("min_attendees")
+
+  isRequired      Boolean              @default(false) @map("is_required")
+  prerequisite    WorkshopPrerequisite @default(NONE)
+  cancellationHrs Int                  @default(24) @map("cancellation_hrs")
+  recurringRule   String?              @map("recurring_rule")
+
+  status          WorkshopStatus       @default(SCHEDULED)
+
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  bookings        WorkshopBooking[]
+  attendances     WorkshopAttendance[]
+
+  @@index([tenantId])
+  @@index([courseId])
+  @@index([professorId])
+  @@index([status])
+  @@index([startTime])
+  @@index([tenantId, status])
+  @@map("workshops")
+}
+
+/// A student's booking/reservation for a workshop.
+model WorkshopBooking {
+  id               String        @id @default(cuid())
+  workshopId       String        @map("workshop_id")
+  workshop         Workshop      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  studentId        String        @map("student_id")
+  student          User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  status           BookingStatus @default(CONFIRMED)
+  waitlistPosition Int?          @map("waitlist_position")
+
+  bookedAt         DateTime      @default(now()) @map("booked_at")
+  cancelledAt      DateTime?     @map("cancelled_at")
+
+  @@unique([workshopId, studentId])
+  @@index([workshopId])
+  @@index([studentId])
+  @@index([status])
+  @@map("workshop_bookings")
+}
+
+/// Attendance record for a workshop session (check-in/check-out + feedback).
+model WorkshopAttendance {
+  id           String    @id @default(cuid())
+  workshopId   String    @map("workshop_id")
+  workshop     Workshop  @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+
+  studentId    String    @map("student_id")
+  student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  checkedInAt  DateTime  @map("checked_in_at")
+  checkedInBy  String    @map("checked_in_by")
+  checkedOutAt DateTime? @map("checked_out_at")
+
+  feedback     String?
+  rating       Int?
+
+  @@unique([workshopId, studentId])
+  @@index([workshopId])
+  @@index([studentId])
+  @@map("workshop_attendances")
+}
+
+/// Certificate issued upon course completion.
+model Certificate {
+  id            String     @id @default(cuid())
+  enrollmentId  String     @unique @map("enrollment_id")
+  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  tenantId      String     @map("tenant_id")
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  studentName   String     @map("student_name")
+  courseName    String     @map("course_name")
+  professorName String     @map("professor_name")
+
+  hash          String     @unique
+  issuedAt      DateTime   @default(now()) @map("issued_at")
+  pdfUrl        String?    @map("pdf_url")
+  metadata      Json?
+
+  @@index([tenantId])
+  @@index([hash])
+  @@map("certificates")
+}
+
+/// Immutable audit trail for compliance and debugging.
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String?  @map("tenant_id")
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  metadata  Json?
+  ipAddress String?  @map("ip_address")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+/// In-app notification for users.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tenantId  String           @map("tenant_id")
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+/// Tracks async AI generation jobs for content creation.
+model AIGenerationJob {
+  id          String      @id @default(cuid())
+  tenantId    String      @map("tenant_id")
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AIJobType
+  status      AIJobStatus @default(PENDING)
+  input       Json
+  output      Json?
+  error       String?
+  entityType  String?     @map("entity_type")
+  entityId    String?     @map("entity_id")
+  startedAt   DateTime?   @map("started_at")
+  completedAt DateTime?   @map("completed_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@map("ai_generation_jobs")
+}
