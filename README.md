@@ -1,159 +1,127 @@
-# Turborepo starter
+# PROL
 
-This Turborepo starter is maintained by the Turborepo core team.
+White-label SaaS LMS (Learning Management System) platform for course creators and educators.
 
-## Using this example
+**Production**: https://prol.prosuite.pro
 
-Run the following command:
+---
 
-```sh
-npx create-turbo@latest
+## Documentacion
+
+| Archivo | Contenido |
+|---------|-----------|
+| [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) | Proposito, stack tecnologico, arquitectura completa del monorepo |
+| [LAUNCH_PLAN.md](./LAUNCH_PLAN.md) | Plan de lanzamiento por modulos y estado de cada uno |
+| [DEPLOY.md](./DEPLOY.md) | Guia paso a paso de deploy al VPS |
+| [CREDENTIALS.md](./CREDENTIALS.md) | Usuarios seed, acceso a servicios, procedimientos admin |
+
+---
+
+## Quick Start (desarrollo local)
+
+```bash
+# 1. Instalar dependencias
+pnpm install
+
+# 2. Configurar .env (copiar de .env.example)
+cp .env.example .env
+# Generar BETTER_AUTH_SECRET: openssl rand -hex 32
+
+# 3. Tunelar PostgreSQL del VPS (o levantar local con Docker)
+ssh -f -N -L 5433:localhost:5433 panel-prosuite
+
+# 4. Preparar DB + seed
+DATABASE_URL="postgresql://prol:prol_dev_2026@localhost:5433/prol?schema=public" \
+  pnpm --filter @prol/db exec prisma db push
+
+DATABASE_URL="postgresql://prol:prol_dev_2026@localhost:5433/prol?schema=public" \
+  pnpm --filter @prol/db exec prisma db seed
+
+# 5. Arrancar dev server
+pnpm dev
 ```
 
-## What's inside?
+Abrir http://localhost:3000 y usar credenciales del seed (ver [CREDENTIALS.md](./CREDENTIALS.md)).
 
-This Turborepo includes the following packages/apps:
+---
 
-### Apps and Packages
+## Stack principal
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- **Next.js 16** + React 19 + TypeScript
+- **Prisma** ORM + PostgreSQL 16 + pgvector
+- **Better Auth** (email/password)
+- **Stripe Connect** (revenue sharing)
+- **Cloudflare Stream** + **Vimeo URL** (video hosting)
+- **Resend** (emails transaccionales)
+- **Trigger.dev** (background jobs, opcional)
+- **Claude API** + **AssemblyAI** (modulo AI opcional)
+- **Turborepo** + **pnpm** (monorepo)
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+---
 
-### Utilities
+## Estructura del monorepo
 
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```
+PROL/
+├── apps/
+│   ├── web/          # Next.js app principal
+│   └── worker/       # Background jobs (Trigger.dev)
+├── packages/
+│   ├── db/           # Prisma schema + client
+│   ├── ai/           # Claude + AssemblyAI wrappers
+│   ├── content-factory/  # Pipelines de generacion IA
+│   ├── email/        # Templates transaccionales (Resend)
+│   ├── shared/       # Types, schemas Zod, utilidades
+│   ├── ui/           # Component library compartido
+│   ├── eslint-config/
+│   └── typescript-config/
+├── Dockerfile        # Multi-stage build para produccion
+├── docker-compose.prod.yml
+└── docker-compose.yml    # Dev local (PostgreSQL + pgvector)
 ```
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+## Modulos del producto
+
+| # | Modulo | Estado |
+|---|--------|--------|
+| 0 | Infraestructura (DB, build, seed) | LISTO |
+| 1 | Auth + Onboarding | LISTO |
+| 2 | Catalogo + Inscripcion | LISTO |
+| 3 | Profesor: gestion de cursos | LISTO |
+| 4 | Pagos con Stripe | LISTO (requiere API keys) |
+| 5 | Video (Cloudflare Stream + Vimeo URL) | LISTO |
+| 6 | Certificados + Notificaciones + Emails | LISTO |
+| 7 | Multi-Tenancy + Admin | LISTO |
+| 8 | Workshops | LISTO |
+| 9 | Deploy a produccion | LISTO (https://prol.prosuite.pro) |
+| AI | Generacion de contenido con IA | ADICIONAL (gated por tenant.aiEnabled) |
+
+---
+
+## Scripts disponibles
+
+```bash
+pnpm dev            # Arrancar dev servers (web + worker)
+pnpm build          # Build de todos los packages
+pnpm check-types    # TypeScript check en todo el monorepo
+pnpm lint           # ESLint
+pnpm format         # Prettier
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Deploy
 
-```sh
-turbo build --filter=docs
+Ver [DEPLOY.md](./DEPLOY.md) para el procedimiento completo.
+
+Para actualizar produccion despues de un push a GitHub:
+
+```bash
+ssh panel-prosuite
+cd /opt/prol
+git pull
+docker compose -f docker-compose.prod.yml build web
+docker compose -f docker-compose.prod.yml up -d web
 ```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)

@@ -1,155 +1,96 @@
 # PROL - Plan de Lanzamiento (Reformulado)
 
-## Estado del Proyecto
+## Estado: DESPLEGADO EN PRODUCCION
 
-**Build**: OK (0 errores en 10 packages)
-**Base de datos**: PostgreSQL+pgvector corriendo en VPS (panel-prosuite, puerto 5433)
-**Seed**: Ejecutado (1 tenant, 5 users, 3 cursos, 50 lecciones, 4 pagos, 1 certificado)
+**URL**: https://prol.prosuite.pro
+**Repo**: https://github.com/felixtron/PROL
+**VPS**: panel-prosuite (66.29.152.229, Debian 12)
+**Build**: 0 errores en los 10 packages del monorepo
+**Seed aplicado**: si (5 usuarios, 3 cursos, 50 lecciones, 4 pagos, 1 certificado)
 
 ---
 
-## Correcciones Aplicadas
+## Resumen de modulos
+
+| # | Modulo | Estado | Notas |
+|---|--------|--------|-------|
+| 0 | Infraestructura | COMPLETO | Docker + Traefik v3 + PostgreSQL+pgvector |
+| 1 | Auth + Onboarding | COMPLETO | Better Auth, middleware, role enforcement |
+| 2 | Catalogo + Inscripcion | COMPLETO | Busqueda, filtros, inscripcion gratis/pago |
+| 3 | Profesor: Gestion de Cursos | COMPLETO | CRUD cursos/modulos/lecciones, quiz builder |
+| 4 | Pagos con Stripe | COMPLETO | Codigo listo, requiere llenar API keys |
+| 5 | Video + Contenido Interactivo | COMPLETO | Cloudflare Stream + Vimeo URL + interactive stops |
+| 6 | Certificados + Notificaciones + Emails | COMPLETO | PDF certs, bell notifications, Resend |
+| 7 | Multi-Tenancy + Admin | COMPLETO | Tenant CRUD, user management, revenue |
+| 8 | Workshops | COMPLETO | Booking con transaccion anti race-condition |
+| 9 | Deploy a Produccion | COMPLETO | HTTPS, SSL Let's Encrypt, wildcard subdomain ready |
+| AI | Generacion con IA | ADICIONAL | Gated por `tenant.aiEnabled`, requiere API keys |
+
+---
+
+## Correcciones aplicadas durante el desarrollo
 
 ### M1: Auth + Onboarding
-- [x] Middleware redirige usuarios autenticados fuera de sign-in/sign-up
-- [x] Sign-in redirige segun rol + estado de onboarding
-- [x] Sign-up redirige siempre a /dashboard (flujo simple)
-- [x] Professor layout valida onboarding completado y tenant existente
-- [x] API check-role devuelve onboardingCompleted y tenantId
+- Middleware redirige usuarios autenticados fuera de sign-in/sign-up
+- Sign-in redirige segun rol + estado de onboarding
+- Professor layout valida onboarding completado y tenant existente
+- API check-role devuelve onboardingCompleted y tenantId
 
 ### M2-M4: Stripe + Enrollment + Course CRUD
-- [x] Stripe client se cachea tambien en produccion (fix singleton)
-- [x] Stripe webhook valida payment_intent no null (previene duplicados)
-- [x] Notifications API: PATCH endpoint para mark-as-read
-- [x] Admin queries: N+1 eliminado en getAdminProfessors (groupBy)
-- [x] Lesson CRUD: updateLesson action implementado
-- [x] createLesson/deleteLesson sincronizan totalLessons del curso
-- [x] publishCourse actualiza totalLessons y valida titulo
+- Stripe client singleton tambien en produccion (fix cache)
+- Stripe webhook valida payment_intent no null (previene duplicados)
+- Notifications API: PATCH endpoint para mark-as-read
+- Admin queries: N+1 eliminado en getAdminProfessors (groupBy)
+- Lesson CRUD: updateLesson action implementado
+- createLesson/deleteLesson sincronizan totalLessons del curso
+- publishCourse actualiza totalLessons y valida titulo
+
+### M5: Video
+- Integracion de Vimeo (Fases 1-3): schema + parser de URLs + UI con tabs + player unificado
+- parseVimeoUrl() soporta todos los formatos de Vimeo
+- setVideoFromVimeoUrl() valida via oEmbed publico (sin API key)
+- VideoPlayer component decide el iframe segun proveedor
 
 ### M7: Admin
-- [x] createTenantAdmin action para crear tenants desde panel admin
-- [x] updateTenant action para editar nombre, email, dominio custom
+- createTenantAdmin action para crear tenants desde panel admin
+- updateTenant action para editar nombre, email, dominio custom
 
 ### M8: Workshops
-- [x] bookWorkshop usa transaccion para prevenir race condition en ultimo spot
+- bookWorkshop usa transaccion para prevenir race condition en ultimo spot
 
 ---
 
-## Modulos Listos para Operar
+## Pendientes para operar 100%
 
-| # | Modulo | Estado | Requiere |
-|---|--------|--------|----------|
-| 0 | Infraestructura | LISTO | SSH tunnel a VPS |
-| 1 | Auth + Onboarding | LISTO | BETTER_AUTH_SECRET (ya configurado) |
-| 2 | Catalogo + Inscripcion | LISTO | - |
-| 3 | Profesor: Gestion cursos | LISTO | - |
-| 4 | Pagos Stripe | LISTO | STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET |
-| 5 | Video + Interactivo | LISTO | CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_STREAM_API_TOKEN |
-| 6 | Certificados + Notificaciones | LISTO | RESEND_API_KEY (para emails) |
-| 7 | Multi-Tenancy + Admin | LISTO | DNS wildcard para subdominios |
-| 8 | Workshops | LISTO | - |
-| AI | Generacion de contenido | ADICIONAL | ANTHROPIC_API_KEY, ASSEMBLYAI_API_KEY, TRIGGER_SECRET_KEY |
+### Alta prioridad
 
----
+1. **Llenar API keys reales** en `/opt/prol/.env`:
+   - `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+   - `RESEND_API_KEY`
+   - `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN` (si usas upload de video; con Vimeo URL funciona sin esto)
 
-## Para Lanzar: Checklist de Configuracion
+2. **Configurar webhook de Stripe** apuntando a `https://prol.prosuite.pro/api/webhooks/stripe`
 
-### 1. Variables de entorno (produccion)
+3. **Cambiar passwords de seed** o crear tu propio super admin (ver [CREDENTIALS.md](./CREDENTIALS.md))
 
-```bash
-# Ya configuradas
-DATABASE_URL="postgresql://prol:prol_dev_2026@<VPS_IP>:5433/prol?schema=public"
-BETTER_AUTH_SECRET="<ya generado>"
-BETTER_AUTH_URL="https://prol.prosuite.pro"
-NEXT_PUBLIC_APP_URL="https://prol.prosuite.pro"
-NEXT_PUBLIC_DOMAIN="prol.prosuite.pro"
+### Media prioridad
 
-# Necesitan configurarse
-STRIPE_SECRET_KEY=""            # https://dashboard.stripe.com/apikeys
-STRIPE_WEBHOOK_SECRET=""        # Crear endpoint en Stripe Dashboard
-CLOUDFLARE_ACCOUNT_ID=""        # https://dash.cloudflare.com → Stream
-CLOUDFLARE_STREAM_API_TOKEN=""  # API Tokens → Stream:Edit
-RESEND_API_KEY=""               # https://resend.com/api-keys
+4. **DNS wildcard**: anadir `*.prol.prosuite.pro -> 66.29.152.229` si quieres usar subdominios por tenant
 
-# Opcionales (modulo AI - adicional)
-ANTHROPIC_API_KEY=""
-ASSEMBLYAI_API_KEY=""
-TRIGGER_SECRET_KEY=""
-```
+5. **Backups automaticos de DB** (cron job + rotacion)
 
-### 2. Stripe Setup
-1. Crear cuenta en stripe.com (o usar existente)
-2. Obtener STRIPE_SECRET_KEY del dashboard
-3. Configurar webhook endpoint: `https://prol.prosuite.pro/api/webhooks/stripe`
-   - Eventos: `checkout.session.completed`, `checkout.session.expired`
-4. Copiar STRIPE_WEBHOOK_SECRET del webhook creado
-5. Para testing: usar tarjetas de test (4242 4242 4242 4242)
+### Baja prioridad (modulo AI - opcional)
 
-### 3. Cloudflare Stream Setup
-1. Ir a dash.cloudflare.com → Stream
-2. Copiar Account ID
-3. Crear API Token con permisos Stream:Edit
-4. Los videos se suben via Direct Creator Upload
+6. **API keys para modulo AI**: `ANTHROPIC_API_KEY`, `ASSEMBLYAI_API_KEY`, `TRIGGER_SECRET_KEY`
 
-### 4. Resend Setup
-1. Crear cuenta en resend.com
-2. Verificar dominio de envio (prosuite.pro)
-3. Obtener API key
-
-### 5. DNS
-1. Configurar wildcard DNS: `*.prol.prosuite.pro` → VPS IP
-2. Configurar SSL con Traefik (ya instalado en VPS)
+7. **Habilitar AI por tenant**: `UPDATE tenants SET "aiEnabled"=true WHERE id='...';`
 
 ---
 
-## Deploy (Opciones)
+## Credenciales para testing inmediato
 
-### Opcion A: Docker en VPS (Recomendada - ya tienes Dokploy)
-```bash
-# Crear Dockerfile para la app
-docker build -t prol-web .
-# Desplegar via Dokploy con variables de entorno
-```
+Ver [CREDENTIALS.md](./CREDENTIALS.md) para la lista completa. Login en https://prol.prosuite.pro/sign-in con:
 
-### Opcion B: Vercel
-```bash
-# Conectar repo a Vercel
-# Configurar env vars en Vercel Dashboard
-# DB se mantiene en VPS con conexion directa
-```
-
----
-
-## Flujos E2E Verificados (con datos del seed)
-
-### Estudiante
-1. Sign-up → Dashboard
-2. Ver catalogo → Detalle de curso → Inscribirse (gratis/pago)
-3. Course player → Ver lecciones → Marcar completadas
-4. Quiz → Contestar → Ver resultado
-5. Completar curso → Certificado automatico → Notificacion
-
-### Profesor
-1. Sign-up → Onboarding (crear academia) → Dashboard profesor
-2. Crear curso → Agregar modulos/lecciones → Publicar
-3. Subir video → Check status → Listo para estudiantes
-4. Ver dashboard revenue → Configurar Stripe Connect
-5. Crear workshop → Ver reservas
-
-### Admin
-1. Login → Dashboard con stats globales
-2. Crear tenant → Configurar features → Revenue share
-3. Ver usuarios → Cambiar roles
-4. Ver revenue global por tenant
-
----
-
-## Credenciales del Seed (para testing)
-
-| Usuario | Email | Password | Rol |
-|---------|-------|----------|-----|
-| Maria Garcia | maria.garcia@academiadigitalmx.com | password123 | PROFESSOR |
-| Carlos Mendoza | carlos.mendoza@gmail.com | password123 | STUDENT |
-| Ana Rodriguez | ana.rodriguez@outlook.com | password123 | STUDENT |
-| Admin PROL | admin@prol.prosuite.pro | password123 | ADMIN |
-| Super Admin | super@prol.prosuite.pro | password123 | SUPER_ADMIN |
+- `super@prol.prosuite.pro` / `password123` → `/admin` (SUPER_ADMIN)
+- `maria.garcia@academiadigitalmx.com` / `password123` → `/professor`
+- `carlos.mendoza@gmail.com` / `password123` → `/dashboard`

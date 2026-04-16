@@ -1,5 +1,7 @@
 # PROL - Project Overview
 
+**Estado**: En produccion en https://prol.prosuite.pro
+
 ## Proposito
 
 **PROL** es una **plataforma SaaS LMS (Learning Management System) white-label** disenada para creadores de cursos y educadores. Permite:
@@ -47,7 +49,8 @@
 | Stripe | 20.4.1 | Pagos + Stripe Connect (revenue sharing) |
 | Resend | 4.1.2 | Emails transaccionales |
 | Trigger.dev | 3.3.0 | Background jobs |
-| Cloudflare Stream | - | Video hosting + CDN |
+| Cloudflare Stream | - | Video hosting + CDN (opcion A, requiere API key) |
+| Vimeo oEmbed | - | Video hosting via URL pegada (opcion B, sin API key) |
 
 ### Monorepo & Tooling
 | Tecnologia | Version | Uso |
@@ -176,6 +179,7 @@ PROL/
   - Sugerencias de interactive stops
   - Enriquecimiento de cursos
 - Upload de videos a Cloudflare Stream + transcripcion con AssemblyAI
+- Alternativa: pegar URL de Vimeo (publico/unlisted) — validacion automatica via oEmbed, sin API keys
 - Constructor de quizzes
 - Gestion de workshops
 - Gestion de estudiantes y progreso
@@ -333,7 +337,8 @@ pnpm dev
 | Better Auth | Autenticacion y sesiones |
 | Prisma + PostgreSQL | ORM y base de datos |
 | Stripe Connect | Pagos y revenue sharing |
-| Cloudflare Stream | Video hosting y CDN |
+| Cloudflare Stream | Video hosting y CDN (con upload directo) |
+| Vimeo (URL) | Video hosting via link pegado (oEmbed, sin API key) |
 | AssemblyAI | Transcripcion de video/audio |
 | Claude API (Anthropic) | Generacion de contenido IA |
 | Resend | Emails transaccionales |
