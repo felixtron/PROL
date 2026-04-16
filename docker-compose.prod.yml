@@ -62,16 +62,16 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=dokploy-network"
-      # Main domain + wildcard subdomains for tenants
-      - "traefik.http.routers.prol.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`{subdomain:[a-z0-9-]+}.${APP_DOMAIN}`)"
+      # HTTPS router: main domain + wildcard subdomains for tenants (Traefik v3 regex)
+      - "traefik.http.routers.prol.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+\\.${APP_DOMAIN_REGEX}$`)"
       - "traefik.http.routers.prol.entrypoints=websecure"
       - "traefik.http.routers.prol.tls=true"
       - "traefik.http.routers.prol.tls.certresolver=letsencrypt"
       - "traefik.http.services.prol.loadbalancer.server.port=3000"
-      # Redirect HTTP to HTTPS
-      - "traefik.http.routers.prol-http.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`{subdomain:[a-z0-9-]+}.${APP_DOMAIN}`)"
+      # HTTP -> HTTPS redirect
+      - "traefik.http.routers.prol-http.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+\\.${APP_DOMAIN_REGEX}$`)"
       - "traefik.http.routers.prol-http.entrypoints=web"
-      - "traefik.http.routers.prol-http.middlewares=prol-redirect@docker"
+      - "traefik.http.routers.prol-http.middlewares=prol-redirect"
       - "traefik.http.middlewares.prol-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.prol-redirect.redirectscheme.permanent=true"
 
