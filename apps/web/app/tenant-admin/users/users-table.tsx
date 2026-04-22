@@ -159,7 +159,7 @@ export function UsersTable({
               <Th>Rol</Th>
               <Th>Empresa</Th>
               <Th>Inscripciones</Th>
-              <Th>Ultimo login</Th>
+              <Th>Último login</Th>
               <Th>Estado</Th>
               <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-text-tertiary">
                 Acciones
@@ -264,12 +264,12 @@ export function UsersTable({
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <IconButton
-                          title={isEditing ? "Terminar edicion" : "Editar"}
+                          title={isEditing ? "Terminar edición" : "Editar"}
                           onClick={() => setEditingId(isEditing ? null : u.id)}
                           icon={isEditing ? X : Pencil}
                         />
                         <IconButton
-                          title="Reenviar invitacion"
+                          title="Reenviar invitación"
                           onClick={() =>
                             startTransition(async () => {
                               try {

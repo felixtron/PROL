@@ -21,7 +21,7 @@ export default async function NewWorkshopPage() {
           Nuevo Workshop
         </h1>
         <p className="mt-1 text-text-secondary">
-          Crea una sesion presencial, virtual o hibrida para tus alumnos.
+          Crea una sesión presencial, virtual o híbrida para tus alumnos.
         </p>
       </div>
 

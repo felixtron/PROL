@@ -247,7 +247,7 @@ export async function cancelBooking(workshopId: string) {
 
   if (hoursUntilStart < booking.workshop.cancellationHrs) {
     throw new Error(
-      `No puedes cancelar con menos de ${booking.workshop.cancellationHrs} horas de anticipacion`,
+      `No puedes cancelar con menos de ${booking.workshop.cancellationHrs} horas de anticipación`,
     );
   }
 

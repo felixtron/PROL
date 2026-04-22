@@ -71,18 +71,18 @@ export function ImportForm() {
           const companyName = (r.companyname ?? r["company name"] ?? "").trim();
 
           if (!email || !EMAIL_RE.test(email)) {
-            errors.push({ row: rowNum, email, reason: "Email invalido" });
+            errors.push({ row: rowNum, email, reason: "Email inválido" });
             return;
           }
           if (!name || name.length < 2) {
-            errors.push({ row: rowNum, email, reason: "Nombre invalido" });
+            errors.push({ row: rowNum, email, reason: "Nombre inválido" });
             return;
           }
           if (role && !VALID_ROLES.has(role)) {
             errors.push({
               row: rowNum,
               email,
-              reason: `Rol invalido: ${role}`,
+              reason: `Rol inválido: ${role}`,
             });
             return;
           }
@@ -96,7 +96,7 @@ export function ImportForm() {
         });
 
         if (results.data.length > MAX_ROWS) {
-          setError(`El archivo tiene ${results.data.length} filas. Limite: ${MAX_ROWS}. Divide el archivo.`);
+          setError(`El archivo tiene ${results.data.length} filas. Límite: ${MAX_ROWS}. Divide el archivo.`);
           setRows([]);
           setPreviewErrors([]);
           return;
@@ -125,7 +125,7 @@ export function ImportForm() {
 
   function handleImport() {
     if (rows.length === 0) {
-      setError("No hay filas validas para importar.");
+      setError("No hay filas válidas para importar.");
       return;
     }
     setError("");
@@ -137,7 +137,7 @@ export function ImportForm() {
           router.refresh();
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error durante la importacion");
+        setError(err instanceof Error ? err.message : "Error durante la importación");
       }
     });
   }
@@ -181,9 +181,9 @@ export function ImportForm() {
                 Vista previa
               </h3>
               <p className="text-xs text-text-tertiary">
-                {rows.length} filas validas
+                {rows.length} filas válidas
                 {previewErrors.length > 0 &&
-                  ` · ${previewErrors.length} filas con errores (se omitiran)`}
+                  ` · ${previewErrors.length} filas con errores (se omitirán)`}
               </p>
             </div>
             <button
@@ -242,7 +242,7 @@ export function ImportForm() {
         <div className="rounded-xl border border-amber-200 bg-amber-50">
           <div className="border-b border-amber-200 px-5 py-3">
             <h3 className="font-heading text-sm font-semibold text-amber-900">
-              Filas que se omitiran ({previewErrors.length})
+              Filas que se omitirán ({previewErrors.length})
             </h3>
           </div>
           <div className="max-h-48 overflow-auto">
@@ -273,7 +273,7 @@ export function ImportForm() {
             )}
             <div>
               <h3 className="font-heading text-base font-semibold text-text-primary">
-                Importacion completada
+                Importación completada
               </h3>
               <p className="text-sm text-text-secondary">
                 {result.created} creados · {result.skipped} omitidos · {result.errors.length} errores

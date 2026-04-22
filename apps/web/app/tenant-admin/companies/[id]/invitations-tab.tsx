@@ -45,7 +45,7 @@ export function InvitationsTab({
     startTransition(async () => {
       try {
         await inviteToCompany(companyId, email);
-        setSuccess(`Invitacion enviada a ${email}`);
+        setSuccess(`Invitación enviada a ${email}`);
         setEmail("");
         router.refresh();
       } catch (err) {
@@ -55,7 +55,7 @@ export function InvitationsTab({
   }
 
   function handleRevoke(invitationId: string) {
-    if (!confirm("Revocar esta invitacion?")) return;
+    if (!confirm("Revocar esta invitación?")) return;
     setError("");
     setRevokingId(invitationId);
     startTransition(async () => {
@@ -89,7 +89,7 @@ export function InvitationsTab({
           Invitar nuevo miembro
         </h3>
         <p className="mt-1 text-xs text-text-tertiary">
-          Se enviara un email con un link unico para que se una a la empresa.
+          Se enviará un email con un link unico para que se una a la empresa.
         </p>
         <div className="mt-3 flex gap-2">
           <div className="relative flex-1">
@@ -119,8 +119,8 @@ export function InvitationsTab({
         {!allowMemberInvitations && (
           <p className="mt-3 text-xs text-amber-700">
             Solo los administradores pueden invitar a esta empresa. Activa
-            &quot;auto-invitaciones&quot; en la configuracion para que los miembros
-            tambien puedan invitar.
+            &quot;auto-invitaciones&quot; en la configuración para que los miembros
+            también puedan invitar.
           </p>
         )}
       </form>
@@ -153,7 +153,7 @@ export function InvitationsTab({
                   onClick={() => handleRevoke(i.id)}
                   disabled={pending && revokingId === i.id}
                   className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                  title="Revocar invitacion"
+                  title="Revocar invitación"
                 >
                   {pending && revokingId === i.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

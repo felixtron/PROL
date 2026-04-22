@@ -13,7 +13,7 @@ const navItems = [
   { href: "/dashboard/company", label: "Mi Empresa", icon: Building2 },
   { href: "/dashboard/workshops", label: "Workshops", icon: Calendar },
   { href: "/dashboard/certificates", label: "Certificados", icon: Award },
-  { href: "/dashboard/settings", label: "Configuracion", icon: Settings },
+  { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];
 
 export default async function DashboardLayout({

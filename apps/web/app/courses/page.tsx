@@ -165,7 +165,7 @@ function EmptyState() {
   );
 }
 
-function Pagination({
+function Págination({
   currentPage,
   totalPages,
   searchParams,
@@ -314,7 +314,7 @@ export default async function CourseCatalogPage({
 
   const { courses, total, page, totalPages } = catalogData;
 
-  // Create URLSearchParams for pagination
+  // Create URLSearchParams for págination
   const urlSearchParams = new URLSearchParams();
   if (filters.search) urlSearchParams.set("search", filters.search);
   if (filters.category) urlSearchParams.set("category", filters.category);
@@ -397,8 +397,8 @@ export default async function CourseCatalogPage({
             ))}
           </div>
 
-          {/* Pagination */}
-          <Pagination
+          {/* Págination */}
+          <Págination
             currentPage={page}
             totalPages={totalPages}
             searchParams={urlSearchParams}

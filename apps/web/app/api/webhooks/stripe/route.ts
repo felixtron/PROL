@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Error de verificacion de firma";
+      err instanceof Error ? err.message : "Error de verificación de firma";
     console.error(`Webhook signature verification failed: ${message}`);
     return NextResponse.json(
       { error: "Firma de webhook invalida" },

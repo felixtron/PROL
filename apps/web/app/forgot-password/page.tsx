@@ -64,14 +64,14 @@ export default function ForgotPasswordPage() {
                 Revisa tu correo
               </h2>
               <p className="mb-6 text-sm text-text-secondary">
-                Si existe una cuenta con ese email, recibiras un enlace para
-                restablecer tu contrasena.
+                Si existe una cuenta con ese email, recibirás un enlace para
+                restablecer tu contraseña.
               </p>
               <Link
                 href="/sign-in"
                 className="text-sm font-medium text-primary-600 hover:text-primary-700"
               >
-                Volver a iniciar sesion
+                Volver a iniciar sesión
               </Link>
             </div>
           ) : (
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
                   href="/sign-in"
                   className="font-medium text-primary-600 hover:text-primary-700"
                 >
-                  Volver a iniciar sesion
+                  Volver a iniciar sesión
                 </Link>
               </p>
             </>

@@ -23,7 +23,7 @@ export async function updateProfile(data: {
     const ok =
       data.avatar.startsWith("/uploads/") ||
       data.avatar.startsWith("https://");
-    if (!ok) throw new Error("URL de avatar invalida");
+    if (!ok) throw new Error("URL de avatar inválida");
   }
 
   await db.user.update({

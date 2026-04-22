@@ -40,7 +40,7 @@ export async function issueCertificate(enrollmentId: string) {
   });
 
   if (!enrollment) {
-    throw new Error("Inscripcion no encontrada o no completada");
+    throw new Error("Inscripción no encontrada o no completada");
   }
 
   const existing = await db.certificate.findUnique({ where: { enrollmentId } });
@@ -77,7 +77,7 @@ export async function issueCertificateForEnrollment(
   });
 
   if (!enrollment) {
-    throw new Error("Inscripcion no encontrada");
+    throw new Error("Inscripción no encontrada");
   }
 
   // Idempotent
@@ -186,7 +186,7 @@ export async function revokeCertificate(
   // Basic input validation on the audit-visible reason string.
   const trimmedReason = reason.trim();
   if (trimmedReason.length < 3 || trimmedReason.length > 500) {
-    throw new Error("La razon debe tener entre 3 y 500 caracteres");
+    throw new Error("La razón debe tener entre 3 y 500 caracteres");
   }
 
   await db.certificate.update({

@@ -113,7 +113,7 @@ export function UserMenu({
               className="flex items-center gap-2.5 px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-secondary"
             >
               <Settings className="h-4 w-4 text-text-tertiary" />
-              Configuracion
+              Configuración
             </Link>
             <button
               type="button"
@@ -126,7 +126,7 @@ export function UserMenu({
               ) : (
                 <LogOut className="h-4 w-4" />
               )}
-              Cerrar sesion
+              Cerrar sesión
             </button>
           </div>
         </div>

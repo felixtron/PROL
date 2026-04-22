@@ -70,7 +70,7 @@ export default async function TenantAdminDashboard() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-text-primary">
-            Dashboard del Lider
+            Dashboard del Líder
           </h1>
           <p className="mt-1 text-text-secondary">
             Resumen de tu academia. Gestiona usuarios y empresas sin depender de soporte.

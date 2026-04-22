@@ -173,7 +173,7 @@ export function InteractiveStopOverlay({
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h3 className="font-heading text-lg font-semibold text-text-primary">
               {activeStop.type === "QUESTION" && "Pregunta"}
-              {activeStop.type === "REFLECTION" && "Reflexion"}
+              {activeStop.type === "REFLECTION" && "Reflexión"}
               {activeStop.type === "EXERCISE" && "Ejercicio"}
               {activeStop.type === "POLL" && "Encuesta"}
             </h3>
@@ -398,7 +398,7 @@ function QuestionContent({
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
             <div className="flex-1">
-              <p className="text-xs font-medium text-primary-800">Explicacion</p>
+              <p className="text-xs font-medium text-primary-800">Explicación</p>
               <p className="mt-1 text-xs text-primary-700">{content.explanation}</p>
             </div>
           </div>
@@ -505,7 +505,7 @@ function ReflectionContent({
         value={text}
         onChange={(e) => !submitted && setText(e.target.value)}
         disabled={submitted}
-        placeholder="Escribe tu reflexion aqui..."
+        placeholder="Escribe tu reflexión aquí..."
         rows={5}
         className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-surface-secondary disabled:text-text-secondary"
       />
@@ -518,7 +518,7 @@ function ReflectionContent({
             className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
           >
             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Guardar reflexion
+            Guardar reflexión
           </button>
         ) : (
           <button

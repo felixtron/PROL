@@ -47,7 +47,7 @@ export function StripeConnectSection({ status }: { status: ConnectStatus }) {
               </p>
               <p className="mt-1 text-sm text-text-secondary">
                 Para vender cursos de pago, necesitas conectar una cuenta de
-                Stripe donde recibiras tus ganancias.
+                Stripe donde recibirás tus ganancias.
               </p>
               <button
                 type="button"
@@ -76,11 +76,11 @@ export function StripeConnectSection({ status }: { status: ConnectStatus }) {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-text-primary">
-                Completa tu configuracion de Stripe
+                Completa tu configuración de Stripe
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Tu cuenta de Stripe esta conectada pero faltan datos por
-                completar. Termina la configuracion para poder recibir pagos.
+                Tu cuenta de Stripe está conectada pero faltan datos por
+                completar. Termina la configuración para poder recibir pagos.
               </p>
               <button
                 type="button"
@@ -92,7 +92,7 @@ export function StripeConnectSection({ status }: { status: ConnectStatus }) {
                   "Redirigiendo..."
                 ) : (
                   <>
-                    Completar configuracion
+                    Completar configuración
                     <ExternalLink className="h-4 w-4" />
                   </>
                 )}
@@ -109,11 +109,11 @@ export function StripeConnectSection({ status }: { status: ConnectStatus }) {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-text-primary">
-                Cuenta en revision
+                Cuenta en revisión
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Tu informacion ha sido enviada y Stripe esta verificando tu
-                cuenta. Recibiras una notificacion cuando los pagos esten
+                Tu información ha sido enviada y Stripe está verificando tu
+                cuenta. Recibirás una notificación cuando los pagos estén
                 habilitados.
               </p>
             </div>
@@ -131,7 +131,7 @@ export function StripeConnectSection({ status }: { status: ConnectStatus }) {
                 Cuenta de Stripe conectada
               </p>
               <p className="mt-1 text-sm text-emerald-600">
-                Tu cuenta esta activa y lista para recibir pagos por tus cursos.
+                Tu cuenta está activa y lista para recibir pagos por tus cursos.
               </p>
             </div>
           </div>

@@ -89,9 +89,9 @@ const lessonTypeIcon: Record<LessonType, typeof Video> = {
 const lessonTypeLabel: Record<LessonType, string> = {
   VIDEO: "Video",
   TEXT: "Lectura",
-  QUIZ: "Evaluacion",
+  QUIZ: "Evaluación",
   ASSIGNMENT: "Actividad",
-  MULTI: "Leccion",
+  MULTI: "Lección",
 };
 
 function formatDuration(seconds: number | null): string | null {
@@ -226,7 +226,7 @@ export function CoursePlayer({
           <div key={mod.id}>
             <div className="px-4 py-3">
               <h3 className="font-heading text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                Modulo {mod.position} — {mod.title}
+                Módulo {mod.position} — {mod.title}
               </h3>
             </div>
             <ul>
@@ -651,7 +651,7 @@ function LessonView({
               if (!parsed.success || parsed.data.blocks.length === 0) {
                 return (
                   <div className="rounded-xl bg-surface p-8 text-center text-sm text-text-tertiary">
-                    El profesor aun no ha agregado bloques a esta leccion.
+                    El profesor aún no ha agregado bloques a esta lección.
                   </div>
                 );
               }
@@ -685,7 +685,7 @@ function LessonView({
                 </p>
               ) : (
                 <p className="text-text-tertiary italic">
-                  El contenido de esta leccion aun no esta disponible.
+                  El contenido de esta lección aún no está disponible.
                 </p>
               )}
             </div>
@@ -720,7 +720,7 @@ function LessonView({
               <div className="text-center">
                 <ClipboardList className="mx-auto h-10 w-10 text-text-tertiary md:h-12 md:w-12" />
                 <p className="mt-2 text-sm text-text-secondary">
-                  Modulo de actividades proximamente
+                  Módulo de actividades próximamente
                 </p>
               </div>
             </div>
@@ -743,7 +743,7 @@ function LessonView({
             ) : (
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
                 <CheckCircle className="h-4 w-4" />
-                Leccion completada
+                Lección completada
               </span>
             )}
           </div>

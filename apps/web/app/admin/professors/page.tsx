@@ -88,7 +88,7 @@ export default async function AdminProfessorsPage() {
                     Ingresos
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Ultimo Acceso
+                    Último Acceso
                   </th>
                 </tr>
               </thead>

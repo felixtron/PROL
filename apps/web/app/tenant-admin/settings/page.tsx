@@ -29,11 +29,11 @@ export default async function TenantAdminSettingsPage() {
 
       <section>
         <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-          Sesion
+          Sesión
         </h2>
         <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
           <p className="text-sm text-text-secondary">
-            Cierra tu sesion en este dispositivo.
+            Cierra tu sesión en este dispositivo.
           </p>
           <div className="mt-3">
             <TenantAdminSignOutButton />

@@ -150,7 +150,7 @@ export function LessonBlocksEditor({
                         ? availableQuizzes.find((q) => q.id === block.quizId)?.title ?? "—"
                         : block.type === "pdf"
                           ? block.filename ?? "Archivo PDF"
-                          : "(sin titulo)"}
+                          : "(sin título)"}
                   </p>
                   {block.type === "text" && (
                     <p className="truncate text-xs text-text-tertiary">
@@ -285,7 +285,7 @@ function AddVideoBlock({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Titulo (opcional)"
+          placeholder="Título (opcional)"
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
         />
         <div className="relative">
@@ -367,7 +367,7 @@ function AddPdfBlock({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Titulo del documento"
+          placeholder="Título del documento"
           required
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
         />
@@ -443,7 +443,7 @@ function AddTextBlock({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Titulo (opcional)"
+          placeholder="Título (opcional)"
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
         />
         <textarea
@@ -491,7 +491,7 @@ function AddQuizBlock({
       {quizzes.length === 0 ? (
         <p className="text-xs text-text-tertiary">
           Primero crea un quiz en otra leccion tipo QUIZ del mismo curso, y
-          luego podras referenciarlo aqui.
+          luego podras referenciarlo aquí.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-2">

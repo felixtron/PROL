@@ -31,7 +31,7 @@ const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 // Find or create a fresh slug within a tenant.
 async function uniqueCompanySlug(tenantId: string, name: string): Promise<string> {
   const base = slugify(name);
-  if (!base) throw new Error("Nombre invalido");
+  if (!base) throw new Error("Nombre inválido");
 
   const existing = await db.company.findUnique({
     where: { tenantId_slug: { tenantId, slug: base } },
@@ -55,7 +55,7 @@ export async function createCompany(formData: FormData) {
     throw new Error("Nombre requerido (2-80 caracteres)");
   }
   if (contactEmail && !/^\S+@\S+\.\S+$/.test(contactEmail)) {
-    throw new Error("Email de contacto invalido");
+    throw new Error("Email de contacto inválido");
   }
   const seatsLimit = seatsLimitRaw ? Math.max(1, parseInt(seatsLimitRaw, 10)) : null;
 
@@ -97,10 +97,10 @@ export async function updateCompany(
   assertSameTenant(admin, company.tenantId);
 
   if (data.name !== undefined && (data.name.length < 2 || data.name.length > 80)) {
-    throw new Error("Nombre invalido");
+    throw new Error("Nombre inválido");
   }
   if (data.contactEmail && !/^\S+@\S+\.\S+$/.test(data.contactEmail)) {
-    throw new Error("Email invalido");
+    throw new Error("Email inválido");
   }
 
   await db.company.update({
@@ -160,7 +160,7 @@ export async function addMemberToCompany(companyId: string, userId: string) {
     company.seatsLimit !== null &&
     company._count.members >= company.seatsLimit
   ) {
-    throw new Error("La empresa alcanzo su limite de miembros");
+    throw new Error("La empresa alcanzó su límite de miembros");
   }
 
   await db.user.update({
@@ -202,7 +202,7 @@ export async function inviteToCompany(companyId: string, email: string) {
 
   const trimmedEmail = email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
-    throw new Error("Email invalido");
+    throw new Error("Email inválido");
   }
 
   const company = await db.company.findUnique({
@@ -241,7 +241,7 @@ export async function inviteToCompany(companyId: string, email: string) {
       where: { companyId, status: "PENDING" },
     });
     if (company._count.members + pending >= company.seatsLimit) {
-      throw new Error("La empresa alcanzo su limite (incluyendo invitaciones pendientes)");
+      throw new Error("La empresa alcanzó su límite (incluyendo invitaciones pendientes)");
     }
   }
 
@@ -285,7 +285,7 @@ export async function inviteToCompany(companyId: string, email: string) {
       html: tpl.html,
     });
   } catch (err) {
-    console.error("Error enviando email de invitacion:", err);
+    console.error("Error enviando email de invitación:", err);
   }
 
   revalidatePath(`/tenant-admin/companies/${companyId}`);
@@ -299,7 +299,7 @@ export async function revokeInvitation(invitationId: string) {
     where: { id: invitationId },
     include: { company: { select: { tenantId: true } } },
   });
-  if (!invitation) throw new Error("Invitacion no encontrada");
+  if (!invitation) throw new Error("Invitación no encontrada");
 
   // Same authorization as inviting.
   const isAdmin =
@@ -332,21 +332,21 @@ export async function acceptCompanyInvitation(token: string) {
     where: { token },
     include: { company: { include: { _count: { select: { members: true } } } } },
   });
-  if (!invitation) throw new Error("Invitacion no encontrada");
+  if (!invitation) throw new Error("Invitación no encontrada");
   if (invitation.status !== "PENDING") {
-    throw new Error("Esta invitacion ya no es valida");
+    throw new Error("Esta invitación ya no es válida");
   }
   if (invitation.expiresAt < new Date()) {
     await db.companyInvitation.update({
       where: { id: invitation.id },
       data: { status: "EXPIRED" },
     });
-    throw new Error("La invitacion ha expirado");
+    throw new Error("La invitación ha expirado");
   }
 
   // The accepting user's email must match the invited email.
   if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-    throw new Error("Esta invitacion fue enviada a otro email");
+    throw new Error("Esta invitación fue enviada a otro email");
   }
 
   // The user must belong to the company's tenant (or have no tenant yet,
@@ -359,7 +359,7 @@ export async function acceptCompanyInvitation(token: string) {
     invitation.company.seatsLimit !== null &&
     invitation.company._count.members >= invitation.company.seatsLimit
   ) {
-    throw new Error("La empresa alcanzo su limite de miembros");
+    throw new Error("La empresa alcanzó su límite de miembros");
   }
 
   // Atomically: assign user to tenant + company, mark invitation accepted.
@@ -383,8 +383,8 @@ export async function acceptCompanyInvitation(token: string) {
       userId: invitation.invitedBy,
       tenantId: invitation.company.tenantId,
       type: "SYSTEM",
-      title: "Invitacion aceptada",
-      message: `${user.name ?? user.email} se unio a ${invitation.company.name}.`,
+      title: "Invitación aceptada",
+      message: `${user.name ?? user.email} se unió a ${invitation.company.name}.`,
       link: `/tenant-admin/companies/${invitation.companyId}`,
     });
   } catch {
@@ -447,7 +447,7 @@ export async function revokeCourseFromCompany(
     where: { companyId_courseId: { companyId, courseId } },
     include: { company: { select: { tenantId: true } } },
   });
-  if (!assignment) throw new Error("Asignacion no encontrada");
+  if (!assignment) throw new Error("Asignación no encontrada");
   assertSameTenant(admin, assignment.company.tenantId);
 
   await db.companyCourseAssignment.update({

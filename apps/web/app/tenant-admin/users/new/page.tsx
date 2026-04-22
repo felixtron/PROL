@@ -20,8 +20,8 @@ export default async function NewUserPage() {
           Nuevo usuario
         </h1>
         <p className="mt-1 text-text-secondary">
-          Se enviara un email con una contrasena temporal. El usuario tendra que
-          cambiarla en su primer inicio de sesion.
+          Se enviará un email con una contraseña temporal. El usuario tendrá que
+          cambiarla en su primer inicio de sesión.
         </p>
       </div>
 

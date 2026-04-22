@@ -126,7 +126,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
 
     // Validate
     if (!title || title.trim().length < 3) {
-      setError("El titulo del quiz debe tener al menos 3 caracteres");
+      setError("El título del quiz debe tener al menos 3 caracteres");
       return;
     }
 
@@ -138,7 +138,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]!;
       if (!q.question || q.question.trim().length === 0) {
-        setError(`La pregunta ${i + 1} no puede estar vacia`);
+        setError(`La pregunta ${i + 1} no puede estar vacía`);
         return;
       }
       if (q.options.length < 2) {
@@ -147,7 +147,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
       }
       for (let j = 0; j < q.options.length; j++) {
         if (!q.options[j] || q.options[j]!.trim().length === 0) {
-          setError(`La opcion ${j + 1} de la pregunta ${i + 1} no puede estar vacia`);
+          setError(`La opción ${j + 1} de la pregunta ${i + 1} no puede estar vacía`);
           return;
         }
       }
@@ -181,7 +181,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
   function handleDelete() {
     if (!existingQuiz) return;
 
-    if (!confirm("¿Eliminar este quiz? Los intentos de los estudiantes tambien se eliminaran.")) {
+    if (!confirm("¿Eliminar este quiz? Los intentos de los estudiantes también se eliminarán.")) {
       return;
     }
 
@@ -242,13 +242,13 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
       <div className="mb-5 space-y-4">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-text-primary">
-            Titulo del Quiz
+            Título del Quiz
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ej: Evaluacion Modulo 1"
+            placeholder="Ej: Evaluación Módulo 1"
             className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
         </div>
@@ -256,7 +256,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-primary">
-              Puntaje Minimo (%)
+              Puntaje Mínimo (%)
             </label>
             <input
               type="number"
@@ -270,21 +270,21 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-primary">
-              Tiempo Limite (min)
+              Tiempo Límite (min)
             </label>
             <input
               type="number"
               min="1"
               value={timeLimit ?? ""}
               onChange={(e) => setTimeLimit(e.target.value ? parseInt(e.target.value) : null)}
-              placeholder="Sin limite"
+              placeholder="Sin límite"
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-text-primary">
-              Intentos Maximos
+              Intentos Máximos
             </label>
             <input
               type="number"
@@ -316,7 +316,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
             </span>
             <p className="mt-0.5 text-xs text-text-tertiary">
               Al aprobar este quiz con &ge; 80%, el alumno completa el curso y
-              recibe automaticamente su certificado con QR. Solo puede haber un
+              recibe automáticamente su certificado con QR. Solo puede haber un
               examen final por curso.
             </p>
           </label>
@@ -340,7 +340,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
         {questions.length === 0 && (
           <div className="rounded-lg border border-dashed border-border bg-surface p-6 text-center">
             <p className="text-sm text-text-tertiary">
-              No hay preguntas aun. Haz clic en "Agregar Pregunta" para comenzar.
+              No hay preguntas aún. Haz clic en "Agregar Pregunta" para comenzar.
             </p>
           </div>
         )}
@@ -428,7 +428,7 @@ function QuestionCard({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="block text-xs font-medium text-text-primary">
-                Opciones (selecciona la correcta)
+                Opciones (seleccióna la correcta)
               </label>
               <button
                 type="button"
@@ -436,7 +436,7 @@ function QuestionCard({
                 className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
               >
                 <Plus className="h-3 w-3" />
-                Opcion
+                Opción
               </button>
             </div>
             <div className="space-y-2">
@@ -453,7 +453,7 @@ function QuestionCard({
                     type="text"
                     value={opt}
                     onChange={(e) => onUpdateOption(index, optIndex, e.target.value)}
-                    placeholder={`Opcion ${optIndex + 1}`}
+                    placeholder={`Opción ${optIndex + 1}`}
                     className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
                   {question.options.length > 2 && (
@@ -461,7 +461,7 @@ function QuestionCard({
                       type="button"
                       onClick={() => onRemoveOption(index, optIndex)}
                       className="rounded-lg p-1 text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600"
-                      title="Eliminar opcion"
+                      title="Eliminar opción"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -474,13 +474,13 @@ function QuestionCard({
           {/* Explanation (optional) */}
           <div>
             <label className="mb-1 block text-xs font-medium text-text-primary">
-              Explicacion (opcional)
+              Explicación (opcional)
             </label>
             <textarea
               value={question.explanation ?? ""}
               onChange={(e) => onUpdate(index, "explanation", e.target.value)}
               rows={2}
-              placeholder="Explica por que esta es la respuesta correcta..."
+              placeholder="Explica por qué esta es la respuesta correcta..."
               className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>

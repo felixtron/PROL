@@ -39,7 +39,7 @@ export function ThumbnailUpload({
 
         // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
-          throw new Error("El archivo es demasiado grande. Max 5 MB.");
+          throw new Error("El archivo es demasiado grande. Máx 5 MB.");
         }
 
         // Upload to our API
@@ -63,7 +63,7 @@ export function ThumbnailUpload({
                   const data = JSON.parse(xhr.responseText);
                   resolve(data);
                 } catch {
-                  reject(new Error("Respuesta invalida del servidor"));
+                  reject(new Error("Respuesta inválida del servidor"));
                 }
               } else {
                 try {
@@ -74,7 +74,7 @@ export function ThumbnailUpload({
                 }
               }
             };
-            xhr.onerror = () => reject(new Error("Error de conexion"));
+            xhr.onerror = () => reject(new Error("Error de conexión"));
             xhr.send(formData);
           }
         );
@@ -148,7 +148,7 @@ export function ThumbnailUpload({
               Arrastra o haz clic para seleccionar
             </p>
             <p className="mt-1 text-xs text-text-tertiary">
-              JPG, PNG o WEBP. Max 5 MB.
+              JPG, PNG o WEBP. Máx 5 MB.
             </p>
           </div>
         </button>

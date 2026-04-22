@@ -67,7 +67,7 @@ export default function OnboardingPage() {
                 placeholder="Ej: Academia de Marketing Digital"
               />
               <p className="mt-1.5 text-xs text-text-tertiary">
-                Este sera el nombre visible para tus alumnos.
+                Este será el nombre visible para tus alumnos.
               </p>
             </div>
 
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
                 placeholder="contacto@tuacademia.com"
               />
               <p className="mt-1.5 text-xs text-text-tertiary">
-                Se usara para notificaciones y comunicacion con alumnos.
+                Se usara para notificaciones y comunicación con alumnos.
               </p>
             </div>
 

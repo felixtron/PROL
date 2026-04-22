@@ -65,7 +65,7 @@ interface InteractiveStopEditorProps {
 
 const STOP_TYPES = [
   { value: "QUESTION", label: "Pregunta", icon: HelpCircle, color: "primary" },
-  { value: "REFLECTION", label: "Reflexion", icon: MessageSquare, color: "purple" },
+  { value: "REFLECTION", label: "Reflexión", icon: MessageSquare, color: "purple" },
   { value: "EXERCISE", label: "Ejercicio", icon: CheckSquare, color: "emerald" },
   { value: "POLL", label: "Encuesta", icon: BarChart3, color: "amber" },
 ] as const;
@@ -547,7 +547,7 @@ function StopContentEditor({
               onChange={(e) =>
                 onChange({ ...questionContent, question: e.target.value })
               }
-              placeholder="¿Cual es la respuesta correcta?"
+              placeholder="¿Cuál es la respuesta correcta?"
               required
               className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
@@ -573,7 +573,7 @@ function StopContentEditor({
                     newOptions[idx] = e.target.value;
                     onChange({ ...questionContent, options: newOptions });
                   }}
-                  placeholder={`Opcion ${idx + 1}`}
+                  placeholder={`Opción ${idx + 1}`}
                   required
                   className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
@@ -608,20 +608,20 @@ function StopContentEditor({
                 }
                 className="mt-1 text-xs text-primary-600 hover:text-primary-700"
               >
-                + Agregar opcion
+                + Agregar opción
               </button>
             )}
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-text-primary">
-              Explicacion (opcional)
+              Explicación (opcional)
             </label>
             <textarea
               value={questionContent.explanation ?? ""}
               onChange={(e) =>
                 onChange({ ...questionContent, explanation: e.target.value })
               }
-              placeholder="Explica por que esta es la respuesta correcta..."
+              placeholder="Explica por qué esta es la respuesta correcta..."
               rows={2}
               className="w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
@@ -695,7 +695,7 @@ function StopContentEditor({
                     newOptions[idx] = e.target.value;
                     onChange({ ...pollContent, options: newOptions });
                   }}
-                  placeholder={`Opcion ${idx + 1}`}
+                  placeholder={`Opción ${idx + 1}`}
                   required
                   className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
@@ -721,7 +721,7 @@ function StopContentEditor({
                 }
                 className="mt-1 text-xs text-primary-600 hover:text-primary-700"
               >
-                + Agregar opcion
+                + Agregar opción
               </button>
             )}
           </div>

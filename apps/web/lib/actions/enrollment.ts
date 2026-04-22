@@ -15,7 +15,7 @@ export async function enrollInCourse(courseId: string) {
   const existing = await db.enrollment.findUnique({
     where: { studentId_courseId: { studentId: user.id, courseId } },
   });
-  if (existing) throw new Error("Ya estas inscrito en este curso");
+  if (existing) throw new Error("Ya estás inscrito en este curso");
 
   // Verify course exists and is published
   const course = await db.course.findFirst({
@@ -67,7 +67,7 @@ export async function enrollInCourse(courseId: string) {
       html: emailData.html,
     });
   } catch (emailError) {
-    console.error("Error enviando email de inscripcion:", emailError);
+    console.error("Error enviando email de inscripción:", emailError);
   }
 
   return { success: true, enrollmentId: enrollment.id };
@@ -85,7 +85,7 @@ export async function updateLessonProgress(
     where: { id: enrollmentId, studentId: user.id },
     include: { course: { select: { id: true, totalLessons: true } } },
   });
-  if (!enrollment) throw new Error("Inscripcion no encontrada");
+  if (!enrollment) throw new Error("Inscripción no encontrada");
 
   const progress = await db.lessonProgress.upsert({
     where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
@@ -144,11 +144,11 @@ export async function updateLessonProgress(
                 tenantId: enrollment.tenantId,
                 type: "CERTIFICATE",
                 title: "Certificado emitido",
-                message: `Has completado el curso y tu certificado esta listo.`,
+                message: `Has completado el curso y tu certificado está listo.`,
                 link: `/verify/${result.folio}`,
               });
             } catch (notifError) {
-              console.error("Error creando notificacion de certificado:", notifError);
+              console.error("Error creando notificación de certificado:", notifError);
             }
           }
         }

@@ -24,7 +24,7 @@ async function getOwnedLesson(lessonId: string, userId: string) {
     },
   });
 
-  if (!lesson) throw new Error("Leccion no encontrada");
+  if (!lesson) throw new Error("Lección no encontrada");
   if (lesson.module.course.professorId !== userId) {
     throw new Error("No autorizado");
   }
@@ -68,7 +68,7 @@ export async function setVideoFromVimeoUrl(lessonId: string, url: string) {
 
   const parsed = parseVimeoUrl(url);
   if (!parsed) {
-    throw new Error("URL de Vimeo invalida");
+    throw new Error("URL de Vimeo inválida");
   }
 
   // Validate the video exists + get duration via Vimeo's oEmbed endpoint
@@ -86,7 +86,7 @@ export async function setVideoFromVimeoUrl(lessonId: string, url: string) {
       }
     } else if (res.status === 403 || res.status === 404) {
       throw new Error(
-        "No se pudo acceder al video. Verifica que sea publico o 'unlisted'."
+        "No se pudo acceder al video. Verifica que sea público o 'unlisted'."
       );
     }
   } catch (err) {
@@ -131,7 +131,7 @@ export async function setVideoFromYouTubeUrl(lessonId: string, url: string) {
 
   const parsed = parseYouTubeUrl(url);
   if (!parsed) {
-    throw new Error("URL de YouTube invalida");
+    throw new Error("URL de YouTube inválida");
   }
 
   // Validate existence via YouTube oEmbed (no API key required, public only).
@@ -142,7 +142,7 @@ export async function setVideoFromYouTubeUrl(lessonId: string, url: string) {
     const res = await fetch(oembedUrl, { headers: { Accept: "application/json" } });
     if (res.status === 401 || res.status === 404) {
       throw new Error(
-        "No se pudo acceder al video. Verifica que sea publico o 'no listado'."
+        "No se pudo acceder al video. Verifica que sea público o 'no listado'."
       );
     }
   } catch (err) {
@@ -176,7 +176,7 @@ export async function setVideoFromUrl(lessonId: string, url: string) {
   const detected = detectVideoUrl(url);
   if (!detected) {
     throw new Error(
-      "URL no reconocida. Usa un link publico de Vimeo o YouTube."
+      "URL no reconocida. Usa un link público de Vimeo o YouTube."
     );
   }
   if (detected.provider === "VIMEO_URL") {

@@ -19,7 +19,7 @@ export function InviteMemberForm({ companyId }: { companyId: string }) {
     startTransition(async () => {
       try {
         await inviteToCompany(companyId, email);
-        setSuccess(`Invitacion enviada a ${email}`);
+        setSuccess(`Invitación enviada a ${email}`);
         setEmail("");
         router.refresh();
       } catch (err) {
@@ -34,7 +34,7 @@ export function InviteMemberForm({ companyId }: { companyId: string }) {
       className="rounded-xl border border-border bg-surface p-5"
     >
       <h3 className="font-heading text-base font-semibold text-text-primary">
-        Invitar a un companero
+        Invitar a un compañero
       </h3>
       <p className="mt-1 text-xs text-text-tertiary">
         Solo si tu empresa tiene activadas las auto-invitaciones.

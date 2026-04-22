@@ -12,7 +12,7 @@ export default async function ProfessorSettingsPage() {
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Configuracion
+          Configuración
         </h1>
         <p className="mt-1 text-text-secondary">
           Administra tu perfil, pagos y preferencias.
@@ -39,11 +39,11 @@ export default async function ProfessorSettingsPage() {
 
       <section>
         <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-          Sesion
+          Sesión
         </h2>
         <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
           <p className="text-sm text-text-secondary">
-            Cierra tu sesion en este dispositivo.
+            Cierra tu sesión en este dispositivo.
           </p>
           <div className="mt-3">
             <ProfessorSignOutButton />

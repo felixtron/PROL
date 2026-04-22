@@ -111,7 +111,7 @@ const bookingStatusConfig: Record<
   },
   CANCELLED: { label: "Cancelado", color: "text-red-600", icon: XCircle },
   NO_SHOW: {
-    label: "No asistio",
+    label: "No asistió",
     color: "text-red-600",
     icon: AlertTriangle,
   },
@@ -162,7 +162,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
     workshop.status === "IN_PROGRESS";
 
   function handleCancel() {
-    if (!confirm("¿Estas seguro de cancelar este workshop?")) return;
+    if (!confirm("¿Estás seguro de cancelar este workshop?")) return;
     startTransition(async () => {
       await cancelWorkshop(workshop.id);
       router.refresh();
@@ -210,7 +210,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
             <p className="text-sm text-text-tertiary">
               Curso: {workshop.course.title}
               {workshop.module &&
-                ` — Modulo ${workshop.module.position}: ${workshop.module.title}`}
+                ` — Módulo ${workshop.module.position}: ${workshop.module.title}`}
             </p>
           </div>
 
@@ -251,7 +251,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
             ) : (
               <MapPin className="h-4 w-4 text-primary-600" />
             )}
-            {workshop.type === "VIRTUAL" ? "Enlace virtual" : "Ubicacion"}
+            {workshop.type === "VIRTUAL" ? "Enlace virtual" : "Ubicación"}
           </h3>
           {workshop.locationName && (
             <p className="text-sm font-medium text-text-primary">
@@ -281,13 +281,13 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700"
             >
-              Abrir enlace de reunion
+              Abrir enlace de reunión
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
           {!workshop.locationName && !workshop.meetingUrl && (
             <p className="text-sm text-text-tertiary italic">
-              Sin ubicacion definida
+              Sin ubicación definida
             </p>
           )}
         </div>
@@ -297,7 +297,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
       {workshop.description && (
         <div className="rounded-lg border border-border bg-surface p-5">
           <h3 className="mb-2 text-sm font-semibold text-text-primary">
-            Descripcion
+            Descripción
           </h3>
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
             {workshop.description}
@@ -314,7 +314,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
           </h3>
           {confirmedBookings.length < workshop.minAttendees && (
             <span className="text-xs text-accent-600">
-              Minimo {workshop.minAttendees} asistentes
+              Mínimo {workshop.minAttendees} asistentes
             </span>
           )}
         </div>
@@ -323,7 +323,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
           <div className="p-8 text-center">
             <Users className="mx-auto h-8 w-8 text-text-tertiary" />
             <p className="mt-2 text-sm text-text-secondary">
-              Aun no hay reservaciones
+              Aún no hay reservaciones
             </p>
           </div>
         ) : (
@@ -367,7 +367,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
                     className={`inline-flex items-center gap-1 text-xs font-medium ${bStatus.color}`}
                   >
                     <StatusIcon className="h-3.5 w-3.5" />
-                    {isCheckedIn ? "Asistio" : bStatus.label}
+                    {isCheckedIn ? "Asistió" : bStatus.label}
                   </span>
 
                   {/* Actions */}
@@ -389,7 +389,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
                           onClick={() => handleNoShow(booking.student.id)}
                           disabled={isPending}
                           className="rounded-md p-1.5 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                          title="Marcar como no asistio"
+                          title="Marcar como no asistió"
                         >
                           <UserX className="h-4 w-4" />
                         </button>

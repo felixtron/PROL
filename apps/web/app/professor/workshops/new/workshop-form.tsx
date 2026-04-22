@@ -14,7 +14,7 @@ interface Course {
 const workshopTypes = [
   { value: "IN_PERSON", label: "Presencial", icon: MapPin },
   { value: "VIRTUAL", label: "Virtual", icon: Video },
-  { value: "HYBRID", label: "Hibrido", icon: Calendar },
+  { value: "HYBRID", label: "Híbrido", icon: Calendar },
 ];
 
 export function WorkshopForm({ courses }: { courses: Course[] }) {
@@ -51,7 +51,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
       {/* Workshop type */}
       <div>
         <label className="mb-2 block text-sm font-medium text-text-primary">
-          Tipo de sesion
+          Tipo de sesión
         </label>
         <div className="grid grid-cols-3 gap-3">
           {workshopTypes.map((type) => {
@@ -83,7 +83,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
           htmlFor="title"
           className="mb-1.5 block text-sm font-medium text-text-primary"
         >
-          Titulo del workshop
+          Título del workshop
         </label>
         <input
           type="text"
@@ -101,14 +101,14 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
           htmlFor="description"
           className="mb-1.5 block text-sm font-medium text-text-primary"
         >
-          Descripcion
+          Descripción
         </label>
         <textarea
           id="description"
           name="description"
           rows={3}
           className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-          placeholder="Describe de que trata el workshop y que necesitan traer los asistentes..."
+          placeholder="Describe de qué trata el workshop y qué necesitan traer los asistentes..."
         />
       </div>
 
@@ -143,7 +143,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
             htmlFor="moduleId"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Modulo (opcional)
+            Módulo (opcional)
           </label>
           <select
             id="moduleId"
@@ -151,10 +151,10 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
             disabled={!selectedCourse}
             className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
           >
-            <option value="">Sin modulo especifico</option>
+            <option value="">Sin módulo específico</option>
             {selectedCourse?.modules.map((m) => (
               <option key={m.id} value={m.id}>
-                Modulo {m.position}: {m.title}
+                Módulo {m.position}: {m.title}
               </option>
             ))}
           </select>
@@ -202,7 +202,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
             htmlFor="maxAttendees"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Cupo maximo
+            Cupo máximo
           </label>
           <input
             type="number"
@@ -218,7 +218,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
             htmlFor="minAttendees"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Minimo de asistentes
+            Mínimo de asistentes
           </label>
           <input
             type="number"
@@ -235,7 +235,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
       {(workshopType === "IN_PERSON" || workshopType === "HYBRID") && (
         <fieldset className="space-y-4 rounded-lg border border-border p-4">
           <legend className="px-2 text-sm font-medium text-text-primary">
-            Ubicacion presencial
+            Ubicación presencial
           </legend>
           <div>
             <label
@@ -257,7 +257,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
               htmlFor="locationAddress"
               className="mb-1.5 block text-sm font-medium text-text-secondary"
             >
-              Direccion
+              Dirección
             </label>
             <input
               type="text"
@@ -292,7 +292,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
             htmlFor="meetingUrl"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Enlace de reunion (Zoom, Meet, etc.)
+            Enlace de reunión (Zoom, Meet, etc.)
           </label>
           <input
             type="url"

@@ -37,7 +37,7 @@ export default async function CertificatesPage() {
         <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center md:p-12">
           <Award className="mx-auto h-8 w-8 text-text-tertiary md:h-10 md:w-10" />
           <p className="mt-2 text-sm font-medium text-text-secondary">
-            Aun no tienes certificados
+            Aún no tienes certificados
           </p>
           <p className="mt-1 text-xs text-text-tertiary">
             Completa un curso para obtener tu primer certificado.

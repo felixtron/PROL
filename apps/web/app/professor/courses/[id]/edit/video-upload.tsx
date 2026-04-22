@@ -86,7 +86,7 @@ export function VideoUpload({
         <button
           type="button"
           onClick={async () => {
-            if (!confirm("Quitar el video de esta leccion?")) return;
+            if (!confirm("¿Quitar el video de esta lección?")) return;
             await clearLessonVideo(lessonId);
           }}
           className="text-xs font-medium text-red-600 hover:text-red-700"
@@ -143,7 +143,7 @@ function CloudflareUploader({
             if (xhr.status >= 200 && xhr.status < 300) resolve();
             else reject(new Error(`Upload failed: ${xhr.status}`));
           };
-          xhr.onerror = () => reject(new Error("Error de conexion"));
+          xhr.onerror = () => reject(new Error("Error de conexión"));
           xhr.send(formData);
         });
 
@@ -191,7 +191,7 @@ function CloudflareUploader({
           <div>
             <p className="text-sm font-medium text-text-primary">Subir video</p>
             <p className="text-xs text-text-tertiary">
-              MP4, MOV o WEBM. Max 6 horas.
+              MP4, MOV o WEBM. Máx 6 horas.
             </p>
           </div>
         </button>
@@ -240,7 +240,7 @@ function CloudflareUploader({
                 Video listo
               </p>
               <p className="text-xs text-text-tertiary">
-                Disponible para reproduccion.
+                Disponible para reproducción.
               </p>
             </div>
           </div>
@@ -347,7 +347,7 @@ function UrlVideoInput({
           </button>
         </div>
         <p className="mt-1.5 text-xs text-text-tertiary">
-          Acepta links de Vimeo y YouTube. El video debe ser publico o &quot;no
+          Acepta links de Vimeo y YouTube. El video debe ser público o &quot;no
           listado&quot;. Ejemplos:{" "}
           <code className="rounded bg-surface-secondary px-1 py-0.5 text-[10px]">
             vimeo.com/123456789

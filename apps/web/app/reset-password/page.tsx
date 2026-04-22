@@ -21,12 +21,12 @@ function ResetPasswordForm() {
     setError("");
 
     if (newPassword !== confirmPassword) {
-      setError("Las contrasenas no coinciden");
+      setError("Las contraseñas no coinciden");
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("La contrasena debe tener al menos 8 caracteres");
+      setError("La contraseña debe tener al menos 8 caracteres");
       return;
     }
 
@@ -45,7 +45,7 @@ function ResetPasswordForm() {
     setLoading(false);
 
     if (authError) {
-      setError(authError.message ?? "Error al restablecer la contrasena");
+      setError(authError.message ?? "Error al restablecer la contraseña");
       return;
     }
 
@@ -77,7 +77,7 @@ function ResetPasswordForm() {
           Enlace no valido
         </h2>
         <p className="mb-6 text-sm text-text-secondary">
-          El enlace de restablecimiento no es valido o ha expirado. Solicita uno nuevo.
+          El enlace de restablecimiento no es válido o ha expirado. Solicita uno nuevo.
         </p>
         <Link
           href="/forgot-password"
@@ -108,16 +108,16 @@ function ResetPasswordForm() {
           </svg>
         </div>
         <h2 className="mb-2 text-lg font-semibold text-text-primary">
-          Contrasena restablecida
+          Contraseña restablecida
         </h2>
         <p className="mb-6 text-sm text-text-secondary">
-          Tu contrasena ha sido actualizada exitosamente. Seras redirigido a iniciar sesion...
+          Tu contraseña ha sido actualizada exitosamente. Serás redirigido a iniciar sesión...
         </p>
         <Link
           href="/sign-in"
           className="text-sm font-medium text-primary-600 hover:text-primary-700"
         >
-          Ir a iniciar sesion
+          Ir a iniciar sesión
         </Link>
       </div>
     );
@@ -136,7 +136,7 @@ function ResetPasswordForm() {
           htmlFor="newPassword"
           className="mb-1.5 block text-sm font-medium text-text-primary"
         >
-          Nueva contrasena
+          Nueva contraseña
         </label>
         <input
           id="newPassword"
@@ -155,7 +155,7 @@ function ResetPasswordForm() {
           htmlFor="confirmPassword"
           className="mb-1.5 block text-sm font-medium text-text-primary"
         >
-          Confirmar contrasena
+          Confirmar contraseña
         </label>
         <input
           id="confirmPassword"
@@ -165,7 +165,7 @@ function ResetPasswordForm() {
           required
           minLength={8}
           className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-          placeholder="Repite tu contrasena"
+          placeholder="Repite tu contraseña"
         />
       </div>
 
@@ -174,7 +174,7 @@ function ResetPasswordForm() {
         disabled={loading}
         className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
       >
-        {loading ? "Restableciendo..." : "Restablecer contrasena"}
+        {loading ? "Restableciendo..." : "Restablecer contraseña"}
       </button>
     </form>
   );
@@ -189,7 +189,7 @@ export default function ResetPasswordPage() {
             PROL
           </h1>
           <p className="mt-2 text-text-secondary">
-            Crea una nueva contrasena
+            Crea una nueva contraseña
           </p>
         </div>
 

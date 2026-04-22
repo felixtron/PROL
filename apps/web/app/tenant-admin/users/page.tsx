@@ -44,7 +44,7 @@ export default async function UsersListPage({
             Usuarios
           </h1>
           <p className="mt-1 text-text-secondary">
-            Gestiona los usuarios de tu academia: altas, bajas y edicion.
+            Gestiona los usuarios de tu academia: altas, bajas y edición.
           </p>
         </div>
         <div className="flex gap-2">

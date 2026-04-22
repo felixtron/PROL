@@ -57,7 +57,7 @@ export default async function DashboardPage() {
           Hola, {displayName}
         </h1>
         <p className="mt-0.5 text-sm text-text-secondary">
-          Continua donde lo dejaste.
+          Continúa donde lo dejaste.
         </p>
       </div>
 
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
           <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center md:p-12">
             <BookOpen className="mx-auto h-8 w-8 text-text-tertiary md:h-10 md:w-10" />
             <p className="mt-2 text-sm text-text-secondary">
-              Aun no tienes cursos inscritos.
+              Aún no tienes cursos inscritos.
             </p>
             <Link
               href="/courses"

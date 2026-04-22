@@ -13,7 +13,7 @@ async function requireAIEnabled() {
     select: { aiEnabled: true },
   });
 
-  if (!tenant?.aiEnabled) throw new Error("Modulo de AI no habilitado");
+  if (!tenant?.aiEnabled) throw new Error("Módulo de AI no habilitado");
   return user;
 }
 
@@ -62,7 +62,7 @@ export async function startVideoTranscription(lessonId: string) {
     },
   });
 
-  if (!lesson) throw new Error("Leccion no encontrada");
+  if (!lesson) throw new Error("Lección no encontrada");
   if (lesson.module.course.professorId !== user.id)
     throw new Error("No autorizado");
   if (!lesson.videoUrl) throw new Error("No hay video para transcribir");
@@ -105,11 +105,11 @@ export async function startLessonContentGeneration(lessonId: string) {
     },
   });
 
-  if (!lesson) throw new Error("Leccion no encontrada");
+  if (!lesson) throw new Error("Lección no encontrada");
   if (lesson.module.course.professorId !== user.id)
     throw new Error("No autorizado");
   if (lesson.type === "VIDEO")
-    throw new Error("Usa transcripcion para lecciones de video");
+    throw new Error("Usa transcripción para lecciones de video");
 
   const job = await db.aIGenerationJob.create({
     data: {

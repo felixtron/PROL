@@ -87,8 +87,8 @@ type CourseData = {
 const CATEGORIES = [
   "Desarrollo Personal",
   "Marketing Digital",
-  "Diseno",
-  "Programacion",
+  "Diseño",
+  "Programación",
   "Negocios",
   "Idiomas",
   "Otro",
@@ -119,7 +119,7 @@ const statusLabels: Record<string, string> = {
   PUBLISHED: "Publicado",
   DRAFT: "Borrador",
   ARCHIVED: "Archivado",
-  REVIEW: "En Revision",
+  REVIEW: "En Revisión",
 };
 
 // ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ function ModulesSection({
         await createModule(courseId, formData);
         setShowNewModule(false);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Error al crear modulo");
+        alert(err instanceof Error ? err.message : "Error al crear módulo");
       }
     });
   }
@@ -209,7 +209,7 @@ function ModulesSection({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700"
         >
           <Plus className="h-4 w-4" />
-          Agregar Modulo
+          Agregar Módulo
         </button>
       </div>
 
@@ -217,7 +217,7 @@ function ModulesSection({
         <div className="mt-6 rounded-lg border border-dashed border-border p-8 text-center">
           <GripVertical className="mx-auto h-8 w-8 text-text-tertiary" />
           <p className="mt-2 text-sm text-text-secondary">
-            Aun no tienes modulos. Agrega el primer modulo para comenzar.
+            Aún no tienes módulos. Agrega el primer módulo para comenzar.
           </p>
         </div>
       )}
@@ -239,14 +239,14 @@ function ModulesSection({
         <form action={handleCreateModule} className="mt-4">
           <div className="rounded-lg border border-primary-200 bg-primary-50/30 p-4">
             <label className="mb-1.5 block text-sm font-medium text-text-primary">
-              Titulo del Modulo
+              Título del Módulo
             </label>
             <input
               name="title"
               required
               minLength={2}
               autoFocus
-              placeholder="Ej: Introduccion"
+              placeholder="Ej: Introducción"
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             <div className="mt-3 flex items-center justify-end gap-2">
@@ -263,7 +263,7 @@ function ModulesSection({
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
               >
                 {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Crear Modulo
+                Crear Módulo
               </button>
             </div>
           </div>
@@ -301,7 +301,7 @@ function ModuleCard({
         setIsEditing(false);
       } catch (err) {
         alert(
-          err instanceof Error ? err.message : "Error al actualizar modulo"
+          err instanceof Error ? err.message : "Error al actualizar módulo"
         );
       }
     });
@@ -310,7 +310,7 @@ function ModuleCard({
   function handleDelete() {
     if (
       !confirm(
-        `¿Eliminar el modulo "${mod.title}" y todas sus lecciones? Esta accion no se puede deshacer.`
+        `¿Eliminar el módulo "${mod.title}" y todas sus lecciones? Esta acción no se puede deshacer.`
       )
     )
       return;
@@ -319,7 +319,7 @@ function ModuleCard({
       try {
         await deleteModule(mod.id);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Error al eliminar modulo");
+        alert(err instanceof Error ? err.message : "Error al eliminar módulo");
       }
     });
   }
@@ -383,7 +383,7 @@ function ModuleCard({
             </span>
             <span className="shrink-0 text-xs text-text-tertiary">
               {mod.lessons.length}{" "}
-              {mod.lessons.length === 1 ? "leccion" : "lecciones"}
+              {mod.lessons.length === 1 ? "lección" : "lecciones"}
             </span>
           </>
         )}
@@ -394,7 +394,7 @@ function ModuleCard({
               type="button"
               onClick={() => setIsEditing(true)}
               className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-surface hover:text-text-secondary"
-              title="Editar titulo"
+              title="Editar título"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -403,7 +403,7 @@ function ModuleCard({
               onClick={handleDelete}
               disabled={isDeleting}
               className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-              title="Eliminar modulo"
+              title="Eliminar módulo"
             >
               {isDeleting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -420,7 +420,7 @@ function ModuleCard({
         <div className="border-t border-border">
           {mod.lessons.length === 0 && !showNewLesson && (
             <p className="px-4 py-4 text-center text-xs text-text-tertiary">
-              Sin lecciones aun.
+              Sin lecciones aún.
             </p>
           )}
 
@@ -447,7 +447,7 @@ function ModuleCard({
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Agregar Leccion
+                Agregar Lección
               </button>
             </div>
           )}
@@ -478,13 +478,13 @@ function LessonRow({
   const Icon = lessonTypeIcons[lesson.type] ?? Video;
 
   function handleDelete() {
-    if (!confirm(`¿Eliminar la leccion "${lesson.title}"?`)) return;
+    if (!confirm(`¿Eliminar la lección "${lesson.title}"?`)) return;
     startTransition(async () => {
       try {
         await deleteLesson(lesson.id);
       } catch (err) {
         alert(
-          err instanceof Error ? err.message : "Error al eliminar leccion"
+          err instanceof Error ? err.message : "Error al eliminar lección"
         );
       }
     });
@@ -559,7 +559,7 @@ function LessonRow({
           onClick={handleDelete}
           disabled={isDeleting}
           className="rounded-lg p-1 text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-          title="Eliminar leccion"
+          title="Eliminar lección"
         >
           {isDeleting ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -629,7 +629,7 @@ function NewLessonForm({
         await createLesson(moduleId, formData);
         onClose();
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Error al crear leccion");
+        alert(err instanceof Error ? err.message : "Error al crear lección");
       }
     });
   }
@@ -639,7 +639,7 @@ function NewLessonForm({
       <div className="space-y-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-text-primary">
-            Titulo de la Leccion
+            Título de la Lección
           </label>
           <input
             name="title"
@@ -727,7 +727,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
   function handlePublish() {
     if (
       !confirm(
-        "¿Publicar este curso? Los estudiantes podran verlo e inscribirse."
+        "¿Publicar este curso? Los estudiantes podrán verlo e inscribirse."
       )
     )
       return;
@@ -746,7 +746,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
   return (
     <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
       <h2 className="font-heading text-lg font-semibold text-text-primary">
-        Configuracion del Curso
+        Configuración del Curso
       </h2>
 
       {error && (
@@ -769,7 +769,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
             htmlFor="edit-title"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Titulo
+            Título
           </label>
           <input
             id="edit-title"
@@ -787,7 +787,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
             htmlFor="edit-description"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Descripcion
+            Descripción
           </label>
           <textarea
             id="edit-description"
@@ -854,7 +854,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
             htmlFor="edit-category"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Categoria
+            Categoría
           </label>
           <select
             id="edit-category"
@@ -862,7 +862,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
             defaultValue={course.category ?? ""}
             className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
-            <option value="">Sin categoria</option>
+            <option value="">Sin categoría</option>
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -907,7 +907,7 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
             )}
           </button>
           <p className="mt-2 text-center text-xs text-text-tertiary">
-            Una vez publicado, los alumnos podran ver e inscribirse al curso.
+            Una vez publicado, los alumnos podrán ver e inscribirse al curso.
           </p>
         </div>
       )}
@@ -941,7 +941,7 @@ function CourseStatsCard({ course }: { course: CourseData }) {
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-sm text-text-secondary">Modulos</dt>
+          <dt className="text-sm text-text-secondary">Módulos</dt>
           <dd className="text-sm font-semibold text-text-primary">
             {course.modules.length}
           </dd>

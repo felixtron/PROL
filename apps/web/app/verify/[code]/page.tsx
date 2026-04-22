@@ -93,7 +93,7 @@ export default async function VerifyCertificatePage({ params }: PageProps) {
           </Link>
           <div className="mt-3 flex items-center justify-center gap-2 text-sm text-text-tertiary">
             <Shield className="h-4 w-4" />
-            Sistema de Verificacion de Certificados
+            Sistema de Verificación de Certificados
           </div>
         </div>
 
@@ -220,7 +220,7 @@ export default async function VerifyCertificatePage({ params }: PageProps) {
         </div>
 
         <p className="mt-6 text-center text-xs text-text-tertiary">
-          Verificacion realizada el{" "}
+          Verificación realizada el{" "}
           {formatDate(new Date())} a las{" "}
           {new Date().toLocaleTimeString("es-MX", {
             hour: "2-digit",

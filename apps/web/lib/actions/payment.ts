@@ -42,7 +42,7 @@ export async function createCheckoutSession(
   });
 
   if (existingEnrollment) {
-    throw new Error("Ya estas inscrito en este curso");
+    throw new Error("Ya estás inscrito en este curso");
   }
 
   // 3. Free course OR course assigned to the user's company — enroll directly
@@ -169,7 +169,7 @@ export async function createConnectOnboardingLink() {
   }
 
   if (!user.tenantId) {
-    throw new Error("No se encontro la academia asociada");
+    throw new Error("No se encontró la academia asociada");
   }
 
   const tenant = await db.tenant.findUnique({

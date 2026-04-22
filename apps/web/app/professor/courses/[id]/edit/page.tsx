@@ -15,7 +15,7 @@ const statusLabels: Record<string, string> = {
   PUBLISHED: "Publicado",
   DRAFT: "Borrador",
   ARCHIVED: "Archivado",
-  REVIEW: "En Revision",
+  REVIEW: "En Revisión",
 };
 
 export default async function CourseEditPage({
@@ -52,7 +52,7 @@ export default async function CourseEditPage({
               </span>
             </div>
             <p className="mt-0.5 text-sm text-text-tertiary">
-              Edita el contenido y la configuracion de tu curso
+              Edita el contenido y la configuración de tu curso
             </p>
           </div>
         </div>

@@ -38,10 +38,10 @@ export default async function StudentsPage() {
         <div className="rounded-lg border border-dashed border-border bg-surface p-12 text-center">
           <Users className="mx-auto h-10 w-10 text-text-tertiary" />
           <p className="mt-3 text-sm font-medium text-text-secondary">
-            Aun no tienes alumnos
+            Aún no tienes alumnos
           </p>
           <p className="mt-1 text-sm text-text-tertiary">
-            Los alumnos apareceran aqui cuando se inscriban a tus cursos.
+            Los alumnos aparecerán aquí cuando se inscriban a tus cursos.
           </p>
         </div>
       ) : (

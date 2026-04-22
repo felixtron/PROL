@@ -57,9 +57,9 @@ export async function createTenantUser(formData: FormData) {
   const role = (formData.get("role") as string | null) ?? "STUDENT";
   const companyId = (formData.get("companyId") as string | null) || null;
 
-  if (!email || !isValidEmail(email)) throw new Error("Email invalido");
-  if (!name || name.length < 2) throw new Error("Nombre requerido (min 2 caracteres)");
-  if (!isValidRole(role)) throw new Error("Rol invalido");
+  if (!email || !isValidEmail(email)) throw new Error("Email inválido");
+  if (!name || name.length < 2) throw new Error("Nombre requerido (mín 2 caracteres)");
+  if (!isValidRole(role)) throw new Error("Rol inválido");
   // Tenant admins cannot create other ADMINs (only SUPER_ADMIN can).
   if (role === "ADMIN" && admin.role !== "SUPER_ADMIN") {
     throw new Error("No autorizado para crear administradores");
@@ -69,13 +69,13 @@ export async function createTenantUser(formData: FormData) {
   if (companyId) {
     const company = await db.company.findUnique({ where: { id: companyId } });
     if (!company || company.tenantId !== admin.tenantId) {
-      throw new Error("Empresa invalida");
+      throw new Error("Empresa inválida");
     }
   }
 
   // Check for existing email
   const existing = await db.user.findUnique({ where: { email } });
-  if (existing) throw new Error("El email ya esta registrado");
+  if (existing) throw new Error("El email ya está registrado");
 
   // Use Better Auth API to create the user (handles password hashing + accounts row)
   const tempPassword = generateTempPassword();
@@ -161,7 +161,7 @@ export async function updateTenantUser(
       where: { id: data.companyId },
     });
     if (!company || company.tenantId !== user.tenantId) {
-      throw new Error("Empresa invalida");
+      throw new Error("Empresa inválida");
     }
   }
 
@@ -244,13 +244,13 @@ export async function bulkImportUsers(
 ): Promise<ImportResult> {
   const admin = await requireTenantAdmin();
   if (!admin.tenantId) {
-    throw new Error("SUPER_ADMIN debe seleccionar un tenant para esta operacion");
+    throw new Error("SUPER_ADMIN debe seleccionar un tenant para esta operación");
   }
   const tenantId = admin.tenantId;
 
   // Hard cap to prevent abuse
   if (rows.length > 500) {
-    throw new Error("Limite por importacion: 500 filas");
+    throw new Error("Límite por importación: 500 filas");
   }
 
   const result: ImportResult = {
@@ -322,12 +322,12 @@ export async function bulkImportUsers(
     const companyName = row.companyName?.trim();
 
     if (!email || !isValidEmail(email)) {
-      result.errors.push({ row: lineNum, email, reason: "Email invalido" });
+      result.errors.push({ row: lineNum, email, reason: "Email inválido" });
       result.skipped++;
       continue;
     }
     if (!name || name.length < 2) {
-      result.errors.push({ row: lineNum, email, reason: "Nombre invalido" });
+      result.errors.push({ row: lineNum, email, reason: "Nombre inválido" });
       result.skipped++;
       continue;
     }
@@ -335,7 +335,7 @@ export async function bulkImportUsers(
       result.errors.push({
         row: lineNum,
         email,
-        reason: `Rol invalido: ${roleRaw}`,
+        reason: `Rol inválido: ${roleRaw}`,
       });
       result.skipped++;
       continue;
@@ -365,7 +365,7 @@ export async function bulkImportUsers(
         asResponse: false,
       });
       const userId = created.user?.id;
-      if (!userId) throw new Error("Better Auth no devolvio userId");
+      if (!userId) throw new Error("Better Auth no devolvió userId");
 
       await db.user.update({
         where: { id: userId },
@@ -422,18 +422,18 @@ async function sendInvitationEmail(params: {
       <h1 style="color:#6366f1;margin:0 0 16px;">Bienvenido a ${escapeHtml(params.tenantName)}</h1>
       <p style="color:#374151;line-height:1.6;">
         Hola <strong>${escapeHtml(params.name)}</strong>,<br/><br/>
-        Se te ha creado una cuenta en la plataforma. Estas son tus credenciales de acceso:
+        Se te ha creado una cuenta en la plataforma. Éstas son tus credenciales de acceso:
       </p>
       <div style="background:#f9fafb;border-radius:8px;padding:16px;margin:16px 0;">
         <p style="margin:0;color:#374151;"><strong>Email:</strong> ${escapeHtml(params.email)}</p>
-        <p style="margin:8px 0 0;color:#374151;"><strong>Contrasena temporal:</strong> <code style="background:#e5e7eb;padding:2px 6px;border-radius:4px;">${escapeHtml(params.tempPassword)}</code></p>
+        <p style="margin:8px 0 0;color:#374151;"><strong>Contraseña temporal:</strong> <code style="background:#e5e7eb;padding:2px 6px;border-radius:4px;">${escapeHtml(params.tempPassword)}</code></p>
       </div>
       <p style="color:#374151;line-height:1.6;">
-        Por seguridad, tendras que cambiar tu contrasena al iniciar sesion por primera vez.
+        Por seguridad, tendrás que cambiar tu contraseña al iniciar sesión por primera vez.
       </p>
       <div style="text-align:center;margin:32px 0;">
         <a href="${appUrl}/sign-in" style="background:#6366f1;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;">
-          Iniciar sesion
+          Iniciar sesión
         </a>
       </div>
     </div>

@@ -22,8 +22,8 @@ export default async function InvitePage({
     return (
       <ErrorCard
         icon={AlertCircle}
-        title="Invitacion invalida"
-        message="Este link de invitacion no es valido o fue eliminado."
+        title="Invitación invalida"
+        message="Este link de invitación no es válido o fue eliminado."
       />
     );
   }
@@ -33,8 +33,8 @@ export default async function InvitePage({
     return (
       <ErrorCard
         icon={AlertCircle}
-        title="Invitacion revocada"
-        message="Esta invitacion fue revocada. Pide al administrador que te envie una nueva."
+        title="Invitación revocada"
+        message="Esta invitación fue revocada. Pide al administrador que te envíe una nueva."
       />
     );
   }
@@ -42,7 +42,7 @@ export default async function InvitePage({
     return (
       <ErrorCard
         icon={CheckCircle2}
-        title="Ya aceptaste esta invitacion"
+        title="Ya aceptaste esta invitación"
         message={`Ya eres miembro de ${invitation.company.name}.`}
         ok
       />
@@ -52,8 +52,8 @@ export default async function InvitePage({
     return (
       <ErrorCard
         icon={Clock}
-        title="Invitacion expirada"
-        message="Pide al administrador de la empresa que te envie una nueva invitacion."
+        title="Invitación expirada"
+        message="Pide al administrador de la empresa que te envíe una nueva invitación."
       />
     );
   }
@@ -70,7 +70,7 @@ export default async function InvitePage({
         />
         <div className="space-y-4 px-6 pb-6">
           <p className="text-sm text-text-secondary">
-            Para aceptar esta invitacion necesitas crear una cuenta o iniciar sesion
+            Para aceptar esta invitación necesitas crear una cuenta o iniciar sesión
             con el email <strong>{invitation.email}</strong>.
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -84,7 +84,7 @@ export default async function InvitePage({
               href={`/sign-in?callbackUrl=${encodeURIComponent(callback)}`}
               className="rounded-lg border border-border px-4 py-2.5 text-center text-sm font-semibold text-text-primary transition-colors hover:bg-surface-secondary"
             >
-              Iniciar sesion
+              Iniciar sesión
             </Link>
           </div>
         </div>
@@ -102,8 +102,8 @@ export default async function InvitePage({
         />
         <div className="space-y-4 px-6 pb-6">
           <p className="text-sm text-text-secondary">
-            Esta invitacion fue enviada a <strong>{invitation.email}</strong>, pero
-            iniciaste sesion como <strong>{user.email}</strong>. Cierra sesion y
+            Esta invitación fue enviada a <strong>{invitation.email}</strong>, pero
+            iniciaste sesión como <strong>{user.email}</strong>. Cierra sesión y
             entra con el email correcto.
           </p>
         </div>
@@ -120,8 +120,8 @@ export default async function InvitePage({
       />
       <div className="space-y-4 px-6 pb-6">
         <p className="text-sm text-text-secondary">
-          {invitation.inviter.name ?? "Un miembro"} te invito a unirte a{" "}
-          <strong>{invitation.company.name}</strong>. Al aceptar tendras acceso
+          {invitation.inviter.name ?? "Un miembro"} te invitó a unirte a{" "}
+          <strong>{invitation.company.name}</strong>. Al aceptar tendrás acceso
           a los cursos asignados a esta empresa sin costo.
         </p>
         <AcceptInvitationButton token={token} />

@@ -25,7 +25,7 @@ async function getOwnedMultiLesson(lessonId: string, userId: string) {
       },
     },
   });
-  if (!lesson) throw new Error("Leccion no encontrada");
+  if (!lesson) throw new Error("Lección no encontrada");
   if (lesson.module.course.professorId !== userId) {
     throw new Error("No autorizado");
   }
@@ -74,7 +74,7 @@ export async function addBlockToLesson(
   const user = await requireUser();
   const lesson = await getOwnedMultiLesson(lessonId, user.id);
   if (lesson.type !== "MULTI") {
-    throw new Error("Esta accion solo aplica a lecciones multiformato");
+    throw new Error("Esta acción solo aplica a lecciones multiformato");
   }
 
   const blockWithId = { ...input, id: genBlockId() } as LessonBlock;
@@ -82,7 +82,7 @@ export async function addBlockToLesson(
 
   const existing = readContent(lesson.content);
   if (existing.blocks.length >= 20) {
-    throw new Error("Una leccion no puede tener mas de 20 bloques");
+    throw new Error("Una lección no puede tener más de 20 bloques");
   }
 
   // Quiz blocks must reference a real quiz owned by the professor's course.
@@ -179,14 +179,14 @@ export async function markBlockComplete(
     where: { id: enrollmentId, studentId: user.id },
     select: { id: true, tenantId: true, courseId: true },
   });
-  if (!enrollment) throw new Error("Inscripcion no encontrada");
+  if (!enrollment) throw new Error("Inscripción no encontrada");
 
   const lesson = await db.lesson.findUnique({
     where: { id: lessonId },
     include: { module: { select: { courseId: true } } },
   });
   if (!lesson || lesson.module.courseId !== enrollment.courseId) {
-    throw new Error("Leccion invalida");
+    throw new Error("Lección inválida");
   }
 
   const content = readContent(lesson.content);

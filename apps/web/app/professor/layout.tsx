@@ -19,7 +19,7 @@ const navItems = [
   { label: "Alumnos", href: "/professor/students", icon: Users },
   { label: "Ingresos", href: "/professor/revenue", icon: DollarSign },
   { label: "Workshops", href: "/professor/workshops", icon: Calendar },
-  { label: "Configuracion", href: "/professor/settings", icon: Settings },
+  { label: "Configuración", href: "/professor/settings", icon: Settings },
 ];
 
 export default async function ProfessorLayout({

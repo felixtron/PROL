@@ -52,20 +52,20 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
     },
   });
 
-  if (!lesson) throw new Error("Leccion de tipo QUIZ no encontrada");
+  if (!lesson) throw new Error("Lección de tipo QUIZ no encontrada");
   if (lesson.module.course.professorId !== user.id) {
     throw new Error("No autorizado");
   }
 
   // Validate data
   if (!data.title || data.title.length < 3) {
-    throw new Error("El titulo del quiz es requerido");
+    throw new Error("El título del quiz es requerido");
   }
   if (!data.questions || data.questions.length === 0) {
     throw new Error("El quiz debe tener al menos una pregunta");
   }
   if (data.passingScore < 0 || data.passingScore > 100) {
-    throw new Error("El puntaje minimo debe estar entre 0 y 100");
+    throw new Error("El puntaje mínimo debe estar entre 0 y 100");
   }
   if (data.maxAttempts < 1) {
     throw new Error("Debe permitir al menos un intento");
@@ -80,7 +80,7 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
       throw new Error("Cada pregunta debe tener al menos 2 opciones");
     }
     if (q.correctIndex < 0 || q.correctIndex >= q.options.length) {
-      throw new Error("Indice de respuesta correcta invalido");
+      throw new Error("Índice de respuesta correcta inválido");
     }
   }
 
@@ -90,7 +90,7 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
   });
 
   if (existingQuiz) {
-    throw new Error("Ya existe un quiz para esta leccion. Usa updateQuiz para actualizarlo.");
+    throw new Error("Ya existe un quiz para esta lección. Usa updateQuiz para actualizarlo.");
   }
 
   // Final exam rules
@@ -159,13 +159,13 @@ export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) 
 
   // Validate data if provided
   if (data.title !== undefined && data.title.length < 3) {
-    throw new Error("El titulo del quiz es requerido");
+    throw new Error("El título del quiz es requerido");
   }
   if (data.questions !== undefined && data.questions.length === 0) {
     throw new Error("El quiz debe tener al menos una pregunta");
   }
   if (data.passingScore !== undefined && (data.passingScore < 0 || data.passingScore > 100)) {
-    throw new Error("El puntaje minimo debe estar entre 0 y 100");
+    throw new Error("El puntaje mínimo debe estar entre 0 y 100");
   }
   if (data.maxAttempts !== undefined && data.maxAttempts < 1) {
     throw new Error("Debe permitir al menos un intento");
@@ -181,7 +181,7 @@ export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) 
         throw new Error("Cada pregunta debe tener al menos 2 opciones");
       }
       if (q.correctIndex < 0 || q.correctIndex >= q.options.length) {
-        throw new Error("Indice de respuesta correcta invalido");
+        throw new Error("Índice de respuesta correcta inválido");
       }
     }
   }
@@ -276,7 +276,7 @@ export async function submitQuizAttempt(
       },
     },
   });
-  if (!enrollment) throw new Error("Inscripcion no encontrada");
+  if (!enrollment) throw new Error("Inscripción no encontrada");
 
   // Get quiz data
   const quiz = await db.quiz.findFirst({
@@ -289,7 +289,7 @@ export async function submitQuizAttempt(
 
   // Validate answers length
   if (answers.length !== questions.length) {
-    throw new Error("El numero de respuestas no coincide con el numero de preguntas");
+    throw new Error("El número de respuestas no coincide con el número de preguntas");
   }
 
   // Check max attempts
@@ -298,7 +298,7 @@ export async function submitQuizAttempt(
   });
 
   if (previousAttempts.length >= quiz.maxAttempts) {
-    throw new Error(`Has alcanzado el maximo de ${quiz.maxAttempts} intentos`);
+    throw new Error(`Has alcanzado el máximo de ${quiz.maxAttempts} intentos`);
   }
 
   // Calculate score
@@ -390,7 +390,7 @@ export async function submitQuizAttempt(
                 tenantId: enrollment.tenantId,
                 type: "CERTIFICATE",
                 title: "Certificado emitido",
-                message: `Aprobaste el examen final con ${score}%. Tu certificado esta listo.`,
+                message: `Aprobaste el examen final con ${score}%. Tu certificado está listo.`,
                 link: `/verify/${result.folio}`,
               });
             }

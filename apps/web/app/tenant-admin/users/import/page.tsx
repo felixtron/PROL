@@ -17,8 +17,8 @@ export default function ImportUsersPage() {
           Importar usuarios desde CSV
         </h1>
         <p className="mt-1 text-text-secondary">
-          Carga masiva hasta 500 usuarios por archivo. Cada usuario recibira un
-          email con contrasena temporal.
+          Carga masiva hasta 500 usuarios por archivo. Cada usuario recibirá un
+          email con contraseña temporal.
         </p>
       </div>
 

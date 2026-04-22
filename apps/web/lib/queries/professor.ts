@@ -167,7 +167,7 @@ export const getProfessorRecentActivity = cache(async (limit = 10) => {
       .filter((e) => e.completedAt)
       .map((e) => ({
         type: "completion" as const,
-        text: `${e.student.name ?? "Estudiante"} completo ${e.course.title}`,
+        text: `${e.student.name ?? "Estudiante"} completó ${e.course.title}`,
         time: e.completedAt!,
       })),
   ];

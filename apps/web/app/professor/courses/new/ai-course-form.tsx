@@ -128,7 +128,7 @@ export function AICourseForm({ onClose }: AICourseFormProps) {
               value={audience}
               onChange={(e) => setAudience(e.target.value)}
               required
-              placeholder="Ej: Emprendedores y duenos de pequenos negocios en Mexico"
+              placeholder="Ej: Emprendedores y dueños de pequeños negocios en México"
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
@@ -153,7 +153,7 @@ export function AICourseForm({ onClose }: AICourseFormProps) {
             <div>
               <label className="mb-1.5 block text-sm font-medium text-text-primary">
                 <Layers className="mr-1 inline h-3.5 w-3.5" />
-                Modulos
+                Módulos
               </label>
               <input
                 type="number"
@@ -166,7 +166,7 @@ export function AICourseForm({ onClose }: AICourseFormProps) {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-text-primary">
-                Lecciones/Modulo
+                Lecciones/Módulo
               </label>
               <input
                 type="number"

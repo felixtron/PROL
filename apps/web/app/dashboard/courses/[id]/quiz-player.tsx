@@ -205,16 +205,16 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
         {/* Quiz info */}
         <div className="mb-6 space-y-2 rounded-lg bg-surface-secondary p-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">Puntaje minimo para aprobar:</span>
+            <span className="text-text-secondary">Puntaje mínimo para aprobar:</span>
             <span className="font-semibold text-text-primary">{quiz.passingScore}%</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-text-secondary">Numero de preguntas:</span>
+            <span className="text-text-secondary">Número de preguntas:</span>
             <span className="font-semibold text-text-primary">{quiz.questions.length}</span>
           </div>
           {quiz.timeLimit && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-text-secondary">Tiempo limite:</span>
+              <span className="text-text-secondary">Tiempo límite:</span>
               <span className="font-semibold text-text-primary">
                 {Math.floor(quiz.timeLimit / 60)} minutos
               </span>
@@ -293,7 +293,7 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
               <div>
                 <p className="font-medium text-amber-900">Intentos agotados</p>
                 <p className="mt-1 text-sm text-amber-700">
-                  Has alcanzado el maximo de {quiz.maxAttempts} intentos.
+                  Has alcanzado el máximo de {quiz.maxAttempts} intentos.
                   {quiz.attempts.some((a) => a.passed) && (
                     <span className="ml-1">Has aprobado este quiz.</span>
                   )}
@@ -325,7 +325,7 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
           <p className="text-sm text-text-secondary">
             {passed
               ? "Has aprobado el quiz exitosamente"
-              : "No alcanzaste el puntaje minimo"}
+              : "No alcanzaste el puntaje mínimo"}
           </p>
         </div>
 
@@ -344,7 +344,7 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
             />
           </div>
           <div className="mt-2 text-xs text-text-tertiary">
-            Puntaje minimo: {quiz.passingScore}%
+            Puntaje mínimo: {quiz.passingScore}%
           </div>
         </div>
 
@@ -395,7 +395,7 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
 
               {result.explanation && (
                 <div className="mt-3 rounded-lg bg-primary-50 p-3">
-                  <p className="text-xs font-medium text-primary-900">Explicacion:</p>
+                  <p className="text-xs font-medium text-primary-900">Explicación:</p>
                   <p className="mt-1 text-xs text-primary-700">{result.explanation}</p>
                 </div>
               )}

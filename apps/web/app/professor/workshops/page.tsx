@@ -46,7 +46,7 @@ const typeIcon: Record<string, typeof MapPin> = {
 const typeLabel: Record<string, string> = {
   IN_PERSON: "Presencial",
   VIRTUAL: "Virtual",
-  HYBRID: "Hibrido",
+  HYBRID: "Híbrido",
 };
 
 function formatDate(date: Date): string {
@@ -87,7 +87,7 @@ export default async function WorkshopsPage() {
             Workshops
           </h1>
           <p className="mt-1 text-text-secondary">
-            Gestiona tus sesiones presenciales, virtuales e hibridas.
+            Gestiona tus sesiones presenciales, virtuales e híbridas.
           </p>
         </div>
         <Link
@@ -107,7 +107,7 @@ export default async function WorkshopsPage() {
             No tienes workshops creados
           </p>
           <p className="mt-1 text-sm text-text-tertiary">
-            Crea tu primer workshop presencial, virtual o hibrido.
+            Crea tu primer workshop presencial, virtual o híbrido.
           </p>
           <Link
             href="/professor/workshops/new"
@@ -123,7 +123,7 @@ export default async function WorkshopsPage() {
           {upcoming.length > 0 && (
             <section>
               <h2 className="mb-3 font-heading text-lg font-semibold text-text-primary">
-                Proximos ({upcoming.length})
+                Próximos ({upcoming.length})
               </h2>
               <div className="space-y-3">
                 {upcoming.map((w) => (

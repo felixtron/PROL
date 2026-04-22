@@ -17,10 +17,10 @@ export default async function ForceResetPasswordPage() {
             <Lock className="h-7 w-7 text-primary-700" />
           </div>
           <h1 className="font-heading text-2xl font-bold text-text-primary">
-            Cambia tu contrasena
+            Cambia tu contraseña
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Por seguridad, debes establecer una contrasena nueva antes de
+            Por seguridad, debes establecer una contraseña nueva antes de
             continuar.
           </p>
         </div>

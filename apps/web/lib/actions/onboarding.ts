@@ -27,7 +27,7 @@ export async function createTenant(formData: FormData) {
   const contactEmail = formData.get("contactEmail") as string;
 
   if (!name || name.length < 2) {
-    throw new Error("El nombre de la academia es requerido (minimo 2 caracteres)");
+    throw new Error("El nombre de la academia es requerido (mínimo 2 caracteres)");
   }
 
   if (!contactEmail) {

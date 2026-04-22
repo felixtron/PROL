@@ -57,7 +57,7 @@ export default async function ProfessorCoursesPage() {
         <div className="rounded-lg border border-dashed border-border bg-surface p-12 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-text-tertiary" />
           <p className="mt-3 text-sm text-text-secondary">
-            Aun no tienes cursos. Crea tu primer curso.
+            Aún no tienes cursos. Crea tu primer curso.
           </p>
           <Link
             href="/professor/courses/new"

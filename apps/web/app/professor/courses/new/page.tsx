@@ -33,18 +33,18 @@ export default function NewCoursePage() {
     const newErrors: Record<string, string> = {};
 
     if (!title.trim() || title.trim().length < 3) {
-      newErrors.title = "El titulo debe tener al menos 3 caracteres.";
+      newErrors.title = "El título debe tener al menos 3 caracteres.";
     }
 
     if (description.length > 5000) {
       newErrors.description =
-        "La descripcion no puede exceder 5000 caracteres.";
+        "La descripción no puede exceder 5000 caracteres.";
     }
 
     if (!isFree) {
       const priceNum = parseFloat(price);
       if (isNaN(priceNum) || priceNum < 0) {
-        newErrors.price = "Ingresa un precio valido.";
+        newErrors.price = "Ingresa un precio válido.";
       }
     }
 
@@ -78,7 +78,7 @@ export default function NewCoursePage() {
       }
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Ocurrio un error inesperado.";
+        err instanceof Error ? err.message : "Ocurrió un error inesperado.";
       setErrors({ form: message });
     } finally {
       setIsSubmitting(false);
@@ -145,7 +145,7 @@ export default function NewCoursePage() {
               htmlFor="title"
               className="mb-1.5 block text-sm font-medium text-text-primary"
             >
-              Titulo del Curso <span className="text-red-500">*</span>
+              Título del Curso <span className="text-red-500">*</span>
             </label>
             <input
               id="title"
@@ -154,7 +154,7 @@ export default function NewCoursePage() {
               minLength={3}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Introduccion al Marketing Digital"
+              placeholder="Ej: Introducción al Marketing Digital"
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             {errors.title && (
@@ -168,7 +168,7 @@ export default function NewCoursePage() {
               htmlFor="description"
               className="mb-1.5 block text-sm font-medium text-text-primary"
             >
-              Descripcion
+              Descripción
             </label>
             <textarea
               id="description"
@@ -176,7 +176,7 @@ export default function NewCoursePage() {
               maxLength={5000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe de que trata tu curso..."
+              placeholder="Describe de qué trata tu curso..."
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
             <div className="mt-1.5 flex justify-end">
@@ -195,7 +195,7 @@ export default function NewCoursePage() {
               htmlFor="category"
               className="mb-1.5 block text-sm font-medium text-text-primary"
             >
-              Categoria
+              Categoría
             </label>
             <select
               id="category"
@@ -203,7 +203,7 @@ export default function NewCoursePage() {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
-              <option value="">Selecciona una categoria</option>
+              <option value="">Selecciona una categoría</option>
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
@@ -269,7 +269,7 @@ export default function NewCoursePage() {
             </div>
             {isFree && (
               <p className="mt-1.5 text-xs text-text-tertiary">
-                El curso sera gratuito para todos los alumnos.
+                El curso será gratuito para todos los alumnos.
               </p>
             )}
             {errors.price && (

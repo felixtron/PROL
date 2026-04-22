@@ -35,7 +35,7 @@ export function AILessonActions({
         await startVideoTranscription(lessonId);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Error al iniciar transcripcion"
+          err instanceof Error ? err.message : "Error al iniciar transcripción"
         );
       }
     });

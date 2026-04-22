@@ -31,7 +31,7 @@ export function AcceptInvitationButton({ token }: { token: string }) {
     return (
       <div className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
         <CheckCircle2 className="h-4 w-4" />
-        Invitacion aceptada. Redirigiendo...
+        Invitación aceptada. Redirigiendo...
       </div>
     );
   }
@@ -48,7 +48,7 @@ export function AcceptInvitationButton({ token }: { token: string }) {
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" />}
-        {pending ? "Aceptando..." : "Aceptar invitacion"}
+        {pending ? "Aceptando..." : "Aceptar invitación"}
       </button>
     </div>
   );

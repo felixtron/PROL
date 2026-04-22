@@ -22,7 +22,7 @@ export default async function MyCompanyPage() {
             No perteneces a ninguna empresa
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Si recibiste una invitacion, abre el link que te enviaron por email.
+            Si recibiste una invitación, abre el link que te enviaron por email.
           </p>
         </div>
       </div>
@@ -62,12 +62,12 @@ export default async function MyCompanyPage() {
             Cursos disponibles para ti
           </h2>
           <p className="mt-0.5 text-xs text-text-tertiary">
-            Tu empresa ya pago por estos cursos. Inscribete sin costo.
+            Tu empresa ya pagó por estos cursos. Inscríbete sin costo.
           </p>
         </div>
         {company.courseAssignments.length === 0 ? (
           <p className="p-6 text-center text-sm text-text-tertiary">
-            Tu empresa aun no tiene cursos asignados.
+            Tu empresa aún no tiene cursos asignados.
           </p>
         ) : (
           <ul className="divide-y divide-border">
@@ -115,12 +115,12 @@ export default async function MyCompanyPage() {
         <div className="border-b border-border px-5 py-3">
           <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
             <Users className="h-4 w-4 text-primary-600" />
-            Companeros
+            Compañeros
           </h2>
         </div>
         {company.members.length === 0 ? (
           <p className="p-6 text-center text-sm text-text-tertiary">
-            Eres el unico miembro de esta empresa por ahora.
+            Eres el único miembro de esta empresa por ahora.
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-1 p-2 md:grid-cols-2">

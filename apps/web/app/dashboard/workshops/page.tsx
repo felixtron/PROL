@@ -39,7 +39,7 @@ export default async function StudentWorkshopsPage() {
             No hay workshops disponibles
           </p>
           <p className="mt-1 text-xs text-text-tertiary">
-            Cuando tus profesores programen sesiones, aparecerán aqui.
+            Cuando tus profesores programen sesiones, aparecerán aquí.
           </p>
         </div>
       ) : (

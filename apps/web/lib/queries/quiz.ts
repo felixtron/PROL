@@ -46,7 +46,7 @@ export const getQuizForLesson = cache(async (lessonId: string) => {
     },
   });
 
-  if (!lesson) throw new Error("Leccion no encontrada");
+  if (!lesson) throw new Error("Lección no encontrada");
   if (lesson.module.course.professorId !== user.id) {
     throw new Error("No autorizado");
   }
@@ -80,7 +80,7 @@ export const getQuizForStudent = cache(
     const enrollment = await db.enrollment.findFirst({
       where: { id: enrollmentId, studentId: user.id },
     });
-    if (!enrollment) throw new Error("Inscripcion no encontrada");
+    if (!enrollment) throw new Error("Inscripción no encontrada");
 
     // Get quiz
     const quiz = await db.quiz.findFirst({
@@ -164,7 +164,7 @@ export const getQuizAttempts = cache(
       },
     });
 
-    if (!enrollment) throw new Error("Inscripcion no encontrada");
+    if (!enrollment) throw new Error("Inscripción no encontrada");
 
     const isProfessor = quiz.lesson.module.course.professorId === user.id;
     const isStudent = enrollment.studentId === user.id;

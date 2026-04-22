@@ -143,10 +143,10 @@ export default async function RevenuePage() {
           <div className="p-12 text-center">
             <DollarSign className="mx-auto h-10 w-10 text-text-tertiary" />
             <p className="mt-3 text-sm text-text-secondary">
-              Aun no tienes pagos registrados.
+              Aún no tienes pagos registrados.
             </p>
             <p className="mt-1 text-sm text-text-tertiary">
-              Los pagos apareceran aqui cuando tus alumnos compren tus cursos.
+              Los pagos aparecerán aquí cuando tus alumnos compren tus cursos.
             </p>
           </div>
         ) : (
@@ -167,7 +167,7 @@ export default async function RevenuePage() {
                     Monto Total
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Tu Comision (70%)
+                    Tu Comisión (70%)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Estado

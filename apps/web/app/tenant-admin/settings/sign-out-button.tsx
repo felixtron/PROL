@@ -27,7 +27,7 @@ export function TenantAdminSignOutButton() {
       className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-      {loading ? "Cerrando sesion..." : "Cerrar Sesion"}
+      {loading ? "Cerrando sesión..." : "Cerrar Sesión"}
     </button>
   );
 }

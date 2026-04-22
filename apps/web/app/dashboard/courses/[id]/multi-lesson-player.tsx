@@ -59,7 +59,7 @@ export function MultiLessonPlayer({
       <div className="rounded-lg border border-border bg-surface p-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-text-primary">
-            Progreso de la leccion
+            Progreso de la lección
           </span>
           <span className="text-sm font-semibold text-primary-600">
             {completedCount}/{totalCount} ({percent}%)
@@ -204,7 +204,7 @@ function BlockContent({
               className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
             >
               {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Marcar como leido
+              Marcar como leído
             </button>
           )}
         </div>
@@ -276,8 +276,8 @@ function QuizBlockView({
   return (
     <div className="space-y-3">
       <p className="text-sm text-text-secondary">
-        Este bloque contiene un quiz. Ve a la leccion tipo QUIZ del mismo curso
-        para responderlo, o presiona el boton cuando lo hayas aprobado.
+        Este bloque contiene un quiz. Ve a la lección tipo QUIZ del mismo curso
+        para responderlo, o presiona el botón cuando lo hayas aprobado.
       </p>
       <button
         type="button"

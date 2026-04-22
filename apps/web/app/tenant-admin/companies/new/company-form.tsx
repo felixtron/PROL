@@ -65,7 +65,7 @@ export function CompanyForm() {
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-text-primary">
-          Limite de miembros <span className="text-text-tertiary">(opcional)</span>
+          Límite de miembros <span className="text-text-tertiary">(opcional)</span>
         </label>
         <input
           type="number"

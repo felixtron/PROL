@@ -19,15 +19,15 @@ export function ForceResetForm() {
     setError("");
 
     if (newPassword !== confirmPassword) {
-      setError("Las contrasenas no coinciden");
+      setError("Las contraseñas no coinciden");
       return;
     }
     if (newPassword.length < 8) {
-      setError("La contrasena debe tener al menos 8 caracteres");
+      setError("La contraseña debe tener al menos 8 caracteres");
       return;
     }
     if (newPassword === currentPassword) {
-      setError("La nueva contrasena debe ser distinta a la actual");
+      setError("La nueva contraseña debe ser distinta a la actual");
       return;
     }
 
@@ -39,7 +39,7 @@ export function ForceResetForm() {
         newPassword,
       });
       if (err) {
-        setError(err.message ?? "No se pudo cambiar la contrasena");
+        setError(err.message ?? "No se pudo cambiar la contraseña");
         setLoading(false);
         return;
       }
@@ -60,7 +60,7 @@ export function ForceResetForm() {
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-text-primary">
-          Contrasena temporal (la que te enviamos)
+          Contraseña temporal (la que te enviamos)
         </label>
         <input
           type="password"
@@ -73,7 +73,7 @@ export function ForceResetForm() {
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-text-primary">
-          Nueva contrasena
+          Nueva contraseña
         </label>
         <input
           type="password"
@@ -87,7 +87,7 @@ export function ForceResetForm() {
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-text-primary">
-          Confirmar nueva contrasena
+          Confirmar nueva contraseña
         </label>
         <input
           type="password"
@@ -105,7 +105,7 @@ export function ForceResetForm() {
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {loading ? "Guardando..." : "Cambiar contrasena"}
+        {loading ? "Guardando..." : "Cambiar contraseña"}
       </button>
     </form>
   );

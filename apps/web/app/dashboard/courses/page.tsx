@@ -47,7 +47,7 @@ export default async function CoursesPage() {
         <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center md:p-12">
           <BookOpen className="mx-auto h-8 w-8 text-text-tertiary" />
           <p className="mt-2 text-sm text-text-secondary">
-            No tienes cursos inscritos aun.
+            No tienes cursos inscritos aún.
           </p>
           <Link
             href="/courses"

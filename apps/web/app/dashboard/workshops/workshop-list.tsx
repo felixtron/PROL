@@ -53,7 +53,7 @@ const typeIcon: Record<string, typeof MapPin> = {
 const typeLabel: Record<string, string> = {
   IN_PERSON: "Presencial",
   VIRTUAL: "Virtual",
-  HYBRID: "Hibrido",
+  HYBRID: "Híbrido",
 };
 
 function formatDate(date: Date): string {
@@ -252,7 +252,7 @@ function BookedWorkshopCard({
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2.5 text-xs font-semibold text-white active:bg-primary-800 md:flex-none md:text-sm"
               >
                 <MapPin className="h-3.5 w-3.5" />
-                Ver ubicacion
+                Ver ubicación
               </a>
             )}
             {w.meetingUrl && (
