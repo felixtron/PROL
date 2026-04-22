@@ -41,28 +41,29 @@ export function middleware(req: NextRequest) {
   }
 
   // --- Auth protection ---
+  // Better Auth uses different cookie names depending on the environment:
+  //   HTTP (dev):   better-auth.session_token
+  //   HTTPS (prod): __Secure-better-auth.session_token
+  const hasSession =
+    req.cookies.has("better-auth.session_token") ||
+    req.cookies.has("__Secure-better-auth.session_token");
+
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/professor") ||
     pathname.startsWith("/admin");
 
-  if (isProtectedRoute) {
-    const sessionCookie = req.cookies.get("better-auth.session_token");
-    if (!sessionCookie) {
-      const signInUrl = new URL("/sign-in", url.origin);
-      signInUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(signInUrl);
-    }
+  if (isProtectedRoute && !hasSession) {
+    const signInUrl = new URL("/sign-in", url.origin);
+    signInUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   // Redirect authenticated users away from auth pages
   const isAuthPage =
     pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
-  if (isAuthPage) {
-    const sessionCookie = req.cookies.get("better-auth.session_token");
-    if (sessionCookie) {
-      return NextResponse.redirect(new URL("/dashboard", url.origin));
-    }
+  if (isAuthPage && hasSession) {
+    return NextResponse.redirect(new URL("/dashboard", url.origin));
   }
 
   // --- Tenant resolution ---
