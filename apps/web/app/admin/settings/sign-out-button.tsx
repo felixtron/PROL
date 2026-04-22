@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Loader2 } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
 
-export function ProfessorSignOutButton() {
+export function AdminSignOutButton() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 

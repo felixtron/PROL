@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Loader2 } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { signOut } from "@/lib/auth-client";
 
 export function SignOutButton() {
   const router = useRouter();
@@ -12,8 +12,9 @@ export function SignOutButton() {
   const handleSignOut = async () => {
     setLoading(true);
     try {
-      await authClient.signOut();
+      await signOut();
       router.push("/");
+      router.refresh();
     } catch {
       setLoading(false);
     }
