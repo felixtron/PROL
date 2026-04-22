@@ -9,6 +9,7 @@ import {
   Settings,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { UserMenu } from "@/components/user-menu";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -18,15 +19,6 @@ const navItems = [
   { label: "Profesores", href: "/admin/professors", icon: GraduationCap },
   { label: "Configuracion", href: "/admin/settings", icon: Settings },
 ];
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export default async function AdminLayout({
   children,
@@ -38,20 +30,28 @@ export default async function AdminLayout({
   if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
     redirect("/");
   }
-
   if (user.mustResetPassword) {
     redirect("/force-reset-password");
   }
 
   const displayName = user.name ?? "Admin";
-  const initials = getInitials(displayName);
 
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-border bg-surface">
-        {/* Logo */}
-        <div className="flex items-center gap-2 px-6 py-5">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
+        {/* Top: user menu */}
+        <div className="border-b border-border px-3 py-3">
+          <UserMenu
+            name={displayName}
+            email={user.email}
+            avatar={user.avatar}
+            roleLabel={user.role === "SUPER_ADMIN" ? "Super Admin" : "Administrador"}
+            settingsHref="/admin/settings"
+          />
+        </div>
+
+        {/* Brand */}
+        <div className="flex items-center gap-2 px-6 py-4">
           <span className="font-heading text-xl font-bold text-primary-700">
             PROL
           </span>
@@ -61,7 +61,7 @@ export default async function AdminLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -76,34 +76,12 @@ export default async function AdminLayout({
             );
           })}
         </nav>
-
-        {/* Admin Profile */}
-        <div className="border-t border-border px-4 py-4">
-          <div className="flex items-center gap-3">
-            {user.avatar ? (
-              <img
-                src={user.avatar}
-                alt={displayName}
-                className="h-9 w-9 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-sm font-semibold text-red-700">
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-text-primary">
-                {displayName}
-              </p>
-              <p className="text-xs text-text-tertiary">Administrador</p>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 bg-surface-secondary">
-        <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+          {children}
+        </div>
       </main>
     </div>
   );

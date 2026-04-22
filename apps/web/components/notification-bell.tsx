@@ -140,9 +140,12 @@ export function NotificationBell({ initialUnreadCount }: NotificationBellProps) 
         )}
       </button>
 
-      {/* Dropdown Panel */}
+      {/* Dropdown Panel
+          Mobile: full-width sheet anchored under the header.
+          Desktop: dropdown opens to the LEFT of the bell so it never
+          overflows when the bell lives inside a 256px sidebar. */}
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-lg md:w-96">
+        <div className="fixed left-2 right-2 top-16 z-50 mx-auto max-w-md overflow-hidden rounded-xl border border-border bg-surface shadow-lg md:absolute md:left-0 md:right-auto md:top-full md:mt-2 md:w-80 md:max-w-none lg:w-96">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h3 className="font-heading text-sm font-semibold text-text-primary">

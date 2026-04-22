@@ -8,6 +8,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { UserMenu } from "@/components/user-menu";
 
 const navItems = [
   { label: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
@@ -16,15 +17,6 @@ const navItems = [
   { label: "Cursos", href: "/tenant-admin/courses", icon: GraduationCap },
   { label: "Configuracion", href: "/tenant-admin/settings", icon: Settings },
 ];
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export default async function TenantAdminLayout({
   children,
@@ -36,24 +28,34 @@ export default async function TenantAdminLayout({
   if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
     redirect("/dashboard");
   }
-  // ADMIN must belong to a tenant; SUPER_ADMIN is allowed without one.
   if (user.role === "ADMIN" && !user.tenantId) {
     redirect("/dashboard");
   }
-
   if (user.mustResetPassword) {
     redirect("/force-reset-password");
   }
 
   const displayName = user.name ?? "Admin";
-  const initials = getInitials(displayName);
   const tenantName = user.tenant?.name ?? "Plataforma";
 
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-border bg-surface">
-        <div className="flex items-center gap-2 px-6 py-5">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
+        {/* Top: user menu */}
+        <div className="border-b border-border px-3 py-3">
+          <UserMenu
+            name={displayName}
+            email={user.email}
+            avatar={user.avatar}
+            roleLabel={
+              user.role === "SUPER_ADMIN" ? "Super Admin" : "Administrador"
+            }
+            settingsHref="/tenant-admin/settings"
+          />
+        </div>
+
+        {/* Brand */}
+        <div className="flex items-center gap-2 px-6 py-4">
           <span className="font-heading text-xl font-bold text-primary-700">
             PROL
           </span>
@@ -62,7 +64,8 @@ export default async function TenantAdminLayout({
           </span>
         </div>
 
-        <div className="px-6 pb-3">
+        {/* Tenant context */}
+        <div className="border-b border-border px-6 pb-3">
           <p className="truncate text-xs font-medium uppercase tracking-wider text-text-tertiary">
             Academia
           </p>
@@ -71,7 +74,8 @@ export default async function TenantAdminLayout({
           </p>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -86,34 +90,12 @@ export default async function TenantAdminLayout({
             );
           })}
         </nav>
-
-        <div className="border-t border-border px-4 py-4">
-          <div className="flex items-center gap-3">
-            {user.avatar ? (
-              <img
-                src={user.avatar}
-                alt={displayName}
-                className="h-9 w-9 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-text-primary">
-                {displayName}
-              </p>
-              <p className="text-xs text-text-tertiary">
-                {user.role === "SUPER_ADMIN" ? "Super Admin" : "Administrador"}
-              </p>
-            </div>
-          </div>
-        </div>
       </aside>
 
       <main className="flex-1 bg-surface-secondary">
-        <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+          {children}
+        </div>
       </main>
     </div>
   );

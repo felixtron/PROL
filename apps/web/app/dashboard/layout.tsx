@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Home, BookOpen, Calendar, Award, Settings, Building2 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { NotificationBell } from "@/components/notification-bell";
+import { UserMenu } from "@/components/user-menu";
 import { MobileNav } from "./mobile-nav";
 
 const navItems = [
@@ -14,15 +16,6 @@ const navItems = [
   { href: "/dashboard/settings", label: "Configuracion", icon: Settings },
 ];
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 export default async function DashboardLayout({
   children,
 }: Readonly<{
@@ -31,33 +24,42 @@ export default async function DashboardLayout({
   const user = await getCurrentUser();
 
   if (user?.mustResetPassword) {
-    const { redirect } = await import("next/navigation");
     redirect("/force-reset-password");
   }
 
   const unreadCount = await getUnreadNotificationCount();
-
   const displayName = user?.name ?? "Estudiante";
-  const displayEmail = user?.email ?? "";
-  const initials = getInitials(displayName);
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-secondary">
       {/* ─── Desktop sidebar (hidden on mobile) ─── */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex">
-        {/* Logo + Notification Bell */}
-        <div className="flex h-16 items-center justify-between px-6">
+        {/* Top: user menu + bell */}
+        <div className="flex items-center gap-2 border-b border-border px-3 py-3">
+          <div className="min-w-0 flex-1">
+            <UserMenu
+              name={displayName}
+              email={user?.email ?? ""}
+              avatar={user?.avatar ?? null}
+              roleLabel="Estudiante"
+              settingsHref="/dashboard/settings"
+            />
+          </div>
+          <NotificationBell initialUnreadCount={unreadCount} />
+        </div>
+
+        {/* Brand */}
+        <div className="flex items-center px-6 py-4">
           <Link
             href="/dashboard"
             className="font-heading text-2xl font-bold text-primary-600"
           >
             PROL
           </Link>
-          <NotificationBell initialUnreadCount={unreadCount} />
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -72,37 +74,42 @@ export default async function DashboardLayout({
             );
           })}
         </nav>
-
-        {/* User profile */}
-        <div className="border-t border-border p-4">
-          <div className="flex items-center gap-3">
-            {user?.avatar ? (
-              <img
-                src={user.avatar}
-                alt={displayName}
-                className="h-9 w-9 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-text-primary">
-                {displayName}
-              </p>
-              <p className="truncate text-xs text-text-tertiary">
-                {displayEmail}
-              </p>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      {/* ─── Main content ─── */}
-      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
-        {children}
-      </main>
+      {/* ─── Mobile top header ─── */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
+          <Link
+            href="/dashboard"
+            className="font-heading text-xl font-bold text-primary-600"
+          >
+            PROL
+          </Link>
+          <div className="flex items-center gap-2">
+            <NotificationBell initialUnreadCount={unreadCount} />
+            <Link
+              href="/dashboard/settings"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700"
+              aria-label="Mi perfil"
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={displayName}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                displayName.slice(0, 1).toUpperCase()
+              )}
+            </Link>
+          </div>
+        </header>
+
+        {/* ─── Main content ─── */}
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+          {children}
+        </main>
+      </div>
 
       {/* ─── Mobile bottom navigation ─── */}
       <MobileNav />

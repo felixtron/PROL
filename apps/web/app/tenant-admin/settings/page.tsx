@@ -1,9 +1,8 @@
-import { Settings } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { ProfileForm } from "@/components/profile-form";
-import { AdminSignOutButton } from "./sign-out-button";
+import { TenantAdminSignOutButton } from "./sign-out-button";
 
-export default async function AdminSettingsPage() {
+export default async function TenantAdminSettingsPage() {
   const user = await getCurrentUser();
 
   return (
@@ -13,7 +12,7 @@ export default async function AdminSettingsPage() {
           Configuracion
         </h1>
         <p className="mt-1 text-text-secondary">
-          Administra tu perfil y la plataforma.
+          Administra tu perfil y tu academia.
         </p>
       </div>
 
@@ -30,21 +29,6 @@ export default async function AdminSettingsPage() {
 
       <section>
         <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-          Plataforma
-        </h2>
-        <div className="rounded-xl border border-border bg-surface p-12 text-center shadow-sm">
-          <Settings className="mx-auto h-10 w-10 text-text-tertiary" />
-          <p className="mt-3 text-sm text-text-secondary">
-            Configuracion global de la plataforma proximamente
-          </p>
-          <p className="mt-1 text-xs text-text-tertiary">
-            Tarifas, integraciones globales y feature flags.
-          </p>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
           Sesion
         </h2>
         <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
@@ -52,7 +36,7 @@ export default async function AdminSettingsPage() {
             Cierra tu sesion en este dispositivo.
           </p>
           <div className="mt-3">
-            <AdminSignOutButton />
+            <TenantAdminSignOutButton />
           </div>
         </div>
       </section>
