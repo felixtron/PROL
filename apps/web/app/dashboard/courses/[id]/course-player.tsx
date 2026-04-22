@@ -23,12 +23,17 @@ import { updateLessonProgress } from "@/lib/actions/enrollment";
 import { QuizPlayer } from "./quiz-player";
 import { InteractiveStopOverlay } from "./interactive-stop-overlay";
 import { VideoPlayer } from "@/components/video-player";
+import { MultiLessonPlayer } from "./multi-lesson-player";
+import {
+  multiLessonContentSchema,
+  type MultiLessonProgressMetadata,
+} from "@prol/shared";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type LessonType = "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT";
+type LessonType = "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI";
 
 interface Lesson {
   id: string;
@@ -78,6 +83,7 @@ const lessonTypeIcon: Record<LessonType, typeof Video> = {
   TEXT: FileText,
   QUIZ: HelpCircle,
   ASSIGNMENT: ClipboardList,
+  MULTI: BookOpen,
 };
 
 const lessonTypeLabel: Record<LessonType, string> = {
@@ -85,6 +91,7 @@ const lessonTypeLabel: Record<LessonType, string> = {
   TEXT: "Lectura",
   QUIZ: "Evaluacion",
   ASSIGNMENT: "Actividad",
+  MULTI: "Leccion",
 };
 
 function formatDuration(seconds: number | null): string | null {
@@ -629,6 +636,34 @@ function LessonView({
                 </div>
               </div>
             )
+          ) : lesson.type === "MULTI" ? (
+            (() => {
+              const parsed = multiLessonContentSchema.safeParse(lesson.content);
+              if (!parsed.success || parsed.data.blocks.length === 0) {
+                return (
+                  <div className="rounded-xl bg-surface p-8 text-center text-sm text-text-tertiary">
+                    El profesor aun no ha agregado bloques a esta leccion.
+                  </div>
+                );
+              }
+              const meta =
+                typeof window !== "undefined"
+                  ? (undefined as MultiLessonProgressMetadata | undefined)
+                  : undefined;
+              void meta;
+              // blockProgress should come from server; for now, read from
+              // a lessonProgressMap-derived map if available.
+              const blockProgress: Record<string, boolean> = {};
+              return (
+                <MultiLessonPlayer
+                  enrollmentId={enrollmentId}
+                  lessonId={lesson.id}
+                  content={parsed.data}
+                  initialBlockProgress={blockProgress}
+                  onAllComplete={onMarkComplete}
+                />
+              );
+            })()
           ) : lesson.type === "TEXT" ? (
             <div className="prose prose-sm max-w-none rounded-xl bg-surface p-4 shadow-sm md:p-6">
               {typeof lesson.content === "string" ? (

@@ -42,6 +42,11 @@ export default async function ProfessorLayout({
     redirect("/dashboard");
   }
 
+  // Force password reset if flagged
+  if (user.mustResetPassword) {
+    redirect("/force-reset-password");
+  }
+
   // Require completed onboarding (must have a tenant)
   if (!user.onboardingCompleted || !user.tenantId) {
     redirect("/onboarding");

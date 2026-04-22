@@ -233,3 +233,44 @@ export function certificateIssued({
     html: baseLayout(tenantName, body),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Company invitation
+// ---------------------------------------------------------------------------
+
+export interface CompanyInvitationParams {
+  companyName: string;
+  inviterName: string;
+  acceptUrl: string;
+  expiresInDays: number;
+}
+
+export function companyInvitationEmail({
+  companyName,
+  inviterName,
+  acceptUrl,
+  expiresInDays,
+}: CompanyInvitationParams) {
+  const body = `
+    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;font-weight:600;">
+      Te invitaron a unirte a ${companyName}
+    </h2>
+    <p style="margin:0 0 8px;color:#374151;font-size:16px;line-height:1.6;">
+      <strong>${inviterName}</strong> te invit&oacute; a unirte a su equipo en
+      <strong>${companyName}</strong> dentro de la plataforma.
+    </p>
+    <p style="margin:0 0 8px;color:#374151;font-size:16px;line-height:1.6;">
+      Al aceptar, podr&aacute;s acceder a los cursos asignados a tu empresa
+      sin costo adicional.
+    </p>
+    ${ctaButton("Aceptar invitación", acceptUrl)}
+    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.5;">
+      Esta invitaci&oacute;n expira en ${expiresInDays} d&iacute;as. Si no esperabas
+      este correo, puedes ignorarlo.
+    </p>`;
+
+  return {
+    subject: `Invitación para unirte a ${companyName}`,
+    html: baseLayout(companyName, body),
+  };
+}

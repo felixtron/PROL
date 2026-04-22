@@ -39,7 +39,25 @@ export async function POST(request: NextRequest) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
+        // Cards: paid immediately. Non-card methods still emit this event
+        // but the payment may still be in "processing" state — handled below.
         await handleCheckoutCompleted(
+          event.data.object as Stripe.Checkout.Session
+        );
+        break;
+      }
+
+      case "checkout.session.async_payment_succeeded": {
+        // OXXO/SPEI: the customer paid at OXXO or wired via SPEI.
+        await handleCheckoutCompleted(
+          event.data.object as Stripe.Checkout.Session
+        );
+        break;
+      }
+
+      case "checkout.session.async_payment_failed": {
+        // OXXO voucher expired / SPEI bounce
+        await handleCheckoutAsyncFailed(
           event.data.object as Stripe.Checkout.Session
         );
         break;
@@ -53,7 +71,6 @@ export async function POST(request: NextRequest) {
       }
 
       default: {
-        // Unhandled event type — acknowledge receipt
         console.log(`Evento de Stripe no manejado: ${event.type}`);
       }
     }
@@ -94,17 +111,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     ? session.payment_intent
     : session.payment_intent.id;
 
-  // Prevent duplicate processing
-  const existingPayment = await db.coursePayment.findUnique({
-    where: { stripePaymentId: paymentIntentId },
-  });
+  // Detect the real payment method used (could be card/oxxo/customer_balance)
+  const pmTypes = session.payment_method_types ?? [];
+  const rawMethod = pmTypes[0] ?? "card";
+  const paymentMethod: "CARD" | "OXXO" | "SPEI" =
+    rawMethod === "oxxo"
+      ? "OXXO"
+      : rawMethod === "customer_balance"
+        ? "SPEI"
+        : "CARD";
 
-  if (existingPayment) {
-    console.log(
-      `Pago ya procesado para payment_intent: ${session.payment_intent}`
-    );
-    return;
-  }
+  // Async payment state: for OXXO/SPEI, checkout.session.completed fires
+  // when the session is finalized, but the payment may still be pending.
+  // The real "paid" signal is checkout.session.async_payment_succeeded.
+  const paymentStatus = session.payment_status;
+  const isPaid = paymentStatus === "paid";
 
   // Get the tenant's revenue share rate at payment time
   const tenant = await db.tenant.findUnique({
@@ -116,12 +137,63 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const amount = session.amount_total ?? 0;
   const prolFee = Math.round(amount * revenueShareRate);
   const creatorReceives = amount - prolFee;
-
-  // Estimate Stripe fee (approximately 3.6% + $3 MXN for Mexico)
-  // This is an estimate; the actual fee comes from the balance transaction
   const stripeFee = Math.round(amount * 0.036 + 300);
 
-  // Create payment record and enrollment in a transaction
+  // Voucher URL for OXXO/SPEI (available in payment_intent.next_action).
+  // Reading it requires expanding payment_intent — do it lazily if missing.
+  let voucherUrl: string | null = null;
+  let voucherExpiresAt: Date | null = null;
+  if (!isPaid && (paymentMethod === "OXXO" || paymentMethod === "SPEI")) {
+    try {
+      const pi = await getStripe().paymentIntents.retrieve(paymentIntentId, {
+        expand: ["latest_charge"],
+      });
+      const na = pi.next_action;
+      if (paymentMethod === "OXXO" && na?.oxxo_display_details) {
+        voucherUrl = na.oxxo_display_details.hosted_voucher_url ?? null;
+        const exp = na.oxxo_display_details.expires_after;
+        voucherExpiresAt = exp ? new Date(exp * 1000) : null;
+      } else if (
+        paymentMethod === "SPEI" &&
+        na?.display_bank_transfer_instructions
+      ) {
+        // SPEI instructions page — Stripe hosts a page with CLABE details
+        voucherUrl = na.display_bank_transfer_instructions.hosted_instructions_url ?? null;
+      }
+    } catch (err) {
+      console.error("No se pudo recuperar next_action del PaymentIntent:", err);
+    }
+  }
+
+  // Idempotency: if we already recorded this payment, update its state
+  // instead of inserting a duplicate (common on async_payment_succeeded
+  // fired after the initial PENDING row).
+  const existingPayment = await db.coursePayment.findUnique({
+    where: { stripePaymentId: paymentIntentId },
+  });
+
+  if (existingPayment) {
+    if (existingPayment.status !== "COMPLETED" && isPaid) {
+      await db.coursePayment.update({
+        where: { id: existingPayment.id },
+        data: { status: "COMPLETED", paidAt: new Date() },
+      });
+      // Ensure enrollment exists
+      await db.enrollment.upsert({
+        where: { studentId_courseId: { studentId, courseId } },
+        create: { studentId, courseId, tenantId },
+        update: {},
+      });
+    } else {
+      console.log(
+        `Pago ya registrado (status=${existingPayment.status}) para ${paymentIntentId}`
+      );
+    }
+    revalidatePath("/dashboard");
+    return;
+  }
+
+  // Create payment record and, if paid, the enrollment in a transaction
   await db.$transaction([
     db.coursePayment.create({
       data: {
@@ -135,20 +207,23 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         creatorReceives,
         stripeFee,
         stripePaymentId: paymentIntentId,
-        paymentMethod: "CARD",
-        status: "COMPLETED",
-        paidAt: new Date(),
+        paymentMethod,
+        status: isPaid ? "COMPLETED" : "PROCESSING",
+        paidAt: isPaid ? new Date() : null,
+        voucherUrl,
+        voucherExpiresAt,
       },
     }),
-    db.enrollment.upsert({
-      where: { studentId_courseId: { studentId, courseId } },
-      create: {
-        studentId,
-        courseId,
-        tenantId,
-      },
-      update: {},
-    }),
+    // Only create enrollment once the payment actually cleared.
+    ...(isPaid
+      ? [
+          db.enrollment.upsert({
+            where: { studentId_courseId: { studentId, courseId } },
+            create: { studentId, courseId, tenantId },
+            update: {},
+          }),
+        ]
+      : []),
   ]);
 
   revalidatePath("/dashboard");
@@ -156,7 +231,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   revalidatePath(`/dashboard/courses/${courseId}`);
   revalidatePath("/professor/courses");
 
-  // Send confirmation emails (non-blocking — failures don't affect the webhook)
+  // Only send confirmation emails once payment is actually cleared
+  if (!isPaid) return;
+
   try {
     const [student, course] = await Promise.all([
       db.user.findUnique({
@@ -213,14 +290,55 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   if (!session.payment_intent) return;
 
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent.id;
+
   const existingPayment = await db.coursePayment.findUnique({
-    where: { stripePaymentId: session.payment_intent as string },
+    where: { stripePaymentId: paymentIntentId },
   });
 
-  if (existingPayment && existingPayment.status === "PENDING") {
+  if (
+    existingPayment &&
+    (existingPayment.status === "PENDING" ||
+      existingPayment.status === "PROCESSING")
+  ) {
     await db.coursePayment.update({
       where: { id: existingPayment.id },
       data: { status: "FAILED" },
     });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// checkout.session.async_payment_failed (OXXO voucher expired / SPEI bounce)
+// ---------------------------------------------------------------------------
+
+async function handleCheckoutAsyncFailed(session: Stripe.Checkout.Session) {
+  if (!session.payment_intent) return;
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent.id;
+
+  const existingPayment = await db.coursePayment.findUnique({
+    where: { stripePaymentId: paymentIntentId },
+  });
+
+  if (!existingPayment) {
+    console.warn(
+      `async_payment_failed for unknown payment_intent: ${paymentIntentId}`
+    );
+    return;
+  }
+
+  if (existingPayment.status !== "COMPLETED") {
+    await db.coursePayment.update({
+      where: { id: existingPayment.id },
+      data: { status: "FAILED" },
+    });
+    revalidatePath("/dashboard");
   }
 }

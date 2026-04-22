@@ -51,7 +51,8 @@ export function middleware(req: NextRequest) {
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/professor") ||
-    pathname.startsWith("/admin");
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/tenant-admin");
 
   if (isProtectedRoute && !hasSession) {
     const signInUrl = new URL("/sign-in", url.origin);

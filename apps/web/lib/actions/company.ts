@@ -1,0 +1,460 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { db } from "@prol/db";
+import crypto from "node:crypto";
+import {
+  requireUser,
+  requireTenantAdmin,
+  assertSameTenant,
+} from "@/lib/auth";
+import { createNotification } from "@/lib/notifications";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+}
+
+function generateInvitationToken(): string {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Find or create a fresh slug within a tenant.
+async function uniqueCompanySlug(tenantId: string, name: string): Promise<string> {
+  const base = slugify(name);
+  if (!base) throw new Error("Nombre invalido");
+
+  const existing = await db.company.findUnique({
+    where: { tenantId_slug: { tenantId, slug: base } },
+  });
+  if (!existing) return base;
+
+  return `${base}-${Date.now().toString(36).slice(-4)}`;
+}
+
+// ─── Company CRUD (TENANT_ADMIN) ──────────────────────────────────────────────
+
+export async function createCompany(formData: FormData) {
+  const admin = await requireTenantAdmin();
+
+  const name = (formData.get("name") as string | null)?.trim();
+  const contactEmail = (formData.get("contactEmail") as string | null)?.trim() || null;
+  const seatsLimitRaw = formData.get("seatsLimit") as string | null;
+  const allowMemberInvitations = formData.get("allowMemberInvitations") === "true";
+
+  if (!name || name.length < 2 || name.length > 80) {
+    throw new Error("Nombre requerido (2-80 caracteres)");
+  }
+  if (contactEmail && !/^\S+@\S+\.\S+$/.test(contactEmail)) {
+    throw new Error("Email de contacto invalido");
+  }
+  const seatsLimit = seatsLimitRaw ? Math.max(1, parseInt(seatsLimitRaw, 10)) : null;
+
+  const tenantId = admin.tenantId!; // Guaranteed for non-SUPER_ADMIN by requireTenantAdmin.
+  if (admin.role === "SUPER_ADMIN" && !tenantId) {
+    throw new Error("SUPER_ADMIN debe especificar tenantId (no implementado en demo)");
+  }
+
+  const slug = await uniqueCompanySlug(tenantId, name);
+
+  const company = await db.company.create({
+    data: {
+      tenantId,
+      name,
+      slug,
+      contactEmail,
+      seatsLimit,
+      allowMemberInvitations,
+    },
+  });
+
+  revalidatePath("/tenant-admin/companies");
+  return { success: true, companyId: company.id, slug: company.slug };
+}
+
+export async function updateCompany(
+  companyId: string,
+  data: {
+    name?: string;
+    contactEmail?: string | null;
+    seatsLimit?: number | null;
+    allowMemberInvitations?: boolean;
+  }
+) {
+  const admin = await requireTenantAdmin();
+
+  const company = await db.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new Error("Empresa no encontrada");
+  assertSameTenant(admin, company.tenantId);
+
+  if (data.name !== undefined && (data.name.length < 2 || data.name.length > 80)) {
+    throw new Error("Nombre invalido");
+  }
+  if (data.contactEmail && !/^\S+@\S+\.\S+$/.test(data.contactEmail)) {
+    throw new Error("Email invalido");
+  }
+
+  await db.company.update({
+    where: { id: companyId },
+    data: {
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.contactEmail !== undefined ? { contactEmail: data.contactEmail } : {}),
+      ...(data.seatsLimit !== undefined ? { seatsLimit: data.seatsLimit } : {}),
+      ...(data.allowMemberInvitations !== undefined
+        ? { allowMemberInvitations: data.allowMemberInvitations }
+        : {}),
+    },
+  });
+
+  revalidatePath("/tenant-admin/companies");
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true };
+}
+
+export async function deleteCompany(companyId: string) {
+  const admin = await requireTenantAdmin();
+
+  const company = await db.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new Error("Empresa no encontrada");
+  assertSameTenant(admin, company.tenantId);
+
+  // Members keep their accounts but lose company association (SetNull on user.companyId).
+  await db.company.delete({ where: { id: companyId } });
+
+  revalidatePath("/tenant-admin/companies");
+  return { success: true };
+}
+
+// ─── Member management ────────────────────────────────────────────────────────
+
+export async function addMemberToCompany(companyId: string, userId: string) {
+  const admin = await requireTenantAdmin();
+
+  const [company, target] = await Promise.all([
+    db.company.findUnique({
+      where: { id: companyId },
+      include: { _count: { select: { members: true } } },
+    }),
+    db.user.findUnique({ where: { id: userId } }),
+  ]);
+
+  if (!company) throw new Error("Empresa no encontrada");
+  if (!target) throw new Error("Usuario no encontrado");
+  assertSameTenant(admin, company.tenantId);
+  if (target.tenantId !== company.tenantId) {
+    throw new Error("El usuario pertenece a otro tenant");
+  }
+  if (target.companyId === companyId) {
+    return { success: true }; // already a member
+  }
+  if (
+    company.seatsLimit !== null &&
+    company._count.members >= company.seatsLimit
+  ) {
+    throw new Error("La empresa alcanzo su limite de miembros");
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: { companyId },
+  });
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true };
+}
+
+export async function removeMemberFromCompany(companyId: string, userId: string) {
+  const admin = await requireTenantAdmin();
+
+  const [company, target] = await Promise.all([
+    db.company.findUnique({ where: { id: companyId } }),
+    db.user.findUnique({ where: { id: userId } }),
+  ]);
+  if (!company) throw new Error("Empresa no encontrada");
+  if (!target) throw new Error("Usuario no encontrado");
+  assertSameTenant(admin, company.tenantId);
+  if (target.companyId !== companyId) {
+    throw new Error("El usuario no pertenece a esta empresa");
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: { companyId: null },
+  });
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true };
+}
+
+// ─── Invitations ──────────────────────────────────────────────────────────────
+
+export async function inviteToCompany(companyId: string, email: string) {
+  const inviter = await requireUser();
+
+  const trimmedEmail = email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+    throw new Error("Email invalido");
+  }
+
+  const company = await db.company.findUnique({
+    where: { id: companyId },
+    include: { _count: { select: { members: true } } },
+  });
+  if (!company) throw new Error("Empresa no encontrada");
+
+  // Authorization: ADMIN/SUPER_ADMIN of the company's tenant can always invite.
+  // Members can invite only if the company has allowMemberInvitations = true.
+  const isAdmin =
+    inviter.role === "SUPER_ADMIN" ||
+    (inviter.role === "ADMIN" && inviter.tenantId === company.tenantId);
+  const isMember =
+    inviter.companyId === companyId &&
+    inviter.tenantId === company.tenantId;
+
+  if (!isAdmin && !(isMember && company.allowMemberInvitations)) {
+    throw new Error("No autorizado para invitar a esta empresa");
+  }
+
+  // Block if the email already belongs to a user in this company.
+  const existingUser = await db.user.findUnique({
+    where: { email: trimmedEmail },
+  });
+  if (existingUser && existingUser.companyId === companyId) {
+    throw new Error("El usuario ya es miembro de esta empresa");
+  }
+  if (existingUser && existingUser.tenantId && existingUser.tenantId !== company.tenantId) {
+    throw new Error("El usuario pertenece a otro tenant");
+  }
+
+  // Capacity check: count current members + pending invitations against limit.
+  if (company.seatsLimit !== null) {
+    const pending = await db.companyInvitation.count({
+      where: { companyId, status: "PENDING" },
+    });
+    if (company._count.members + pending >= company.seatsLimit) {
+      throw new Error("La empresa alcanzo su limite (incluyendo invitaciones pendientes)");
+    }
+  }
+
+  // Idempotency: if a PENDING invite for this email exists, refresh its token.
+  const existingInvite = await db.companyInvitation.findFirst({
+    where: { companyId, email: trimmedEmail, status: "PENDING" },
+  });
+
+  const token = generateInvitationToken();
+  const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
+
+  const invitation = existingInvite
+    ? await db.companyInvitation.update({
+        where: { id: existingInvite.id },
+        data: { token, expiresAt, invitedBy: inviter.id },
+      })
+    : await db.companyInvitation.create({
+        data: {
+          companyId,
+          email: trimmedEmail,
+          invitedBy: inviter.id,
+          token,
+          expiresAt,
+        },
+      });
+
+  // Send email (non-blocking)
+  try {
+    const { sendEmail, companyInvitationEmail } = await import("@prol/email");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+    const acceptUrl = `${appUrl}/invite/${token}`;
+    const tpl = companyInvitationEmail({
+      companyName: company.name,
+      inviterName: inviter.name ?? "Un miembro",
+      acceptUrl,
+      expiresInDays: 7,
+    });
+    await sendEmail({
+      to: trimmedEmail,
+      subject: tpl.subject,
+      html: tpl.html,
+    });
+  } catch (err) {
+    console.error("Error enviando email de invitacion:", err);
+  }
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true, invitationId: invitation.id };
+}
+
+export async function revokeInvitation(invitationId: string) {
+  const inviter = await requireUser();
+
+  const invitation = await db.companyInvitation.findUnique({
+    where: { id: invitationId },
+    include: { company: { select: { tenantId: true } } },
+  });
+  if (!invitation) throw new Error("Invitacion no encontrada");
+
+  // Same authorization as inviting.
+  const isAdmin =
+    inviter.role === "SUPER_ADMIN" ||
+    (inviter.role === "ADMIN" && inviter.tenantId === invitation.company.tenantId);
+  const isInviter = inviter.id === invitation.invitedBy;
+
+  if (!isAdmin && !isInviter) {
+    throw new Error("No autorizado");
+  }
+
+  if (invitation.status !== "PENDING") {
+    throw new Error("Solo se pueden revocar invitaciones pendientes");
+  }
+
+  await db.companyInvitation.update({
+    where: { id: invitationId },
+    data: { status: "REVOKED" },
+  });
+
+  revalidatePath(`/tenant-admin/companies/${invitation.companyId}`);
+  return { success: true };
+}
+
+// Public action — called from /invite/[token] by an authenticated user.
+export async function acceptCompanyInvitation(token: string) {
+  const user = await requireUser();
+
+  const invitation = await db.companyInvitation.findUnique({
+    where: { token },
+    include: { company: { include: { _count: { select: { members: true } } } } },
+  });
+  if (!invitation) throw new Error("Invitacion no encontrada");
+  if (invitation.status !== "PENDING") {
+    throw new Error("Esta invitacion ya no es valida");
+  }
+  if (invitation.expiresAt < new Date()) {
+    await db.companyInvitation.update({
+      where: { id: invitation.id },
+      data: { status: "EXPIRED" },
+    });
+    throw new Error("La invitacion ha expirado");
+  }
+
+  // The accepting user's email must match the invited email.
+  if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+    throw new Error("Esta invitacion fue enviada a otro email");
+  }
+
+  // The user must belong to the company's tenant (or have no tenant yet,
+  // which would happen for a brand-new sign-up landing on /invite/[token]).
+  if (user.tenantId && user.tenantId !== invitation.company.tenantId) {
+    throw new Error("Tu cuenta pertenece a otra academia");
+  }
+
+  if (
+    invitation.company.seatsLimit !== null &&
+    invitation.company._count.members >= invitation.company.seatsLimit
+  ) {
+    throw new Error("La empresa alcanzo su limite de miembros");
+  }
+
+  // Atomically: assign user to tenant + company, mark invitation accepted.
+  await db.$transaction([
+    db.user.update({
+      where: { id: user.id },
+      data: {
+        tenantId: invitation.company.tenantId,
+        companyId: invitation.companyId,
+      },
+    }),
+    db.companyInvitation.update({
+      where: { id: invitation.id },
+      data: { status: "ACCEPTED", acceptedAt: new Date() },
+    }),
+  ]);
+
+  // Notify the inviter
+  try {
+    await createNotification({
+      userId: invitation.invitedBy,
+      tenantId: invitation.company.tenantId,
+      type: "SYSTEM",
+      title: "Invitacion aceptada",
+      message: `${user.name ?? user.email} se unio a ${invitation.company.name}.`,
+      link: `/tenant-admin/companies/${invitation.companyId}`,
+    });
+  } catch {
+    /* ignore */
+  }
+
+  return { success: true, companyId: invitation.companyId };
+}
+
+// ─── Course assignments ───────────────────────────────────────────────────────
+
+export async function assignCourseToCompany(
+  companyId: string,
+  courseId: string,
+  expiresAt?: Date | null
+) {
+  const admin = await requireTenantAdmin();
+
+  const [company, course] = await Promise.all([
+    db.company.findUnique({ where: { id: companyId } }),
+    db.course.findUnique({ where: { id: courseId } }),
+  ]);
+  if (!company) throw new Error("Empresa no encontrada");
+  if (!course) throw new Error("Curso no encontrado");
+  assertSameTenant(admin, company.tenantId);
+  assertSameTenant(admin, course.tenantId);
+  if (course.tenantId !== company.tenantId) {
+    throw new Error("La empresa y el curso pertenecen a tenants distintos");
+  }
+
+  // Upsert: if previously revoked (isActive=false), re-activate it.
+  const assignment = await db.companyCourseAssignment.upsert({
+    where: { companyId_courseId: { companyId, courseId } },
+    create: {
+      companyId,
+      courseId,
+      assignedBy: admin.id,
+      expiresAt: expiresAt ?? null,
+      isActive: true,
+    },
+    update: {
+      assignedBy: admin.id,
+      expiresAt: expiresAt ?? null,
+      isActive: true,
+      assignedAt: new Date(),
+    },
+  });
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true, assignmentId: assignment.id };
+}
+
+export async function revokeCourseFromCompany(
+  companyId: string,
+  courseId: string
+) {
+  const admin = await requireTenantAdmin();
+
+  const assignment = await db.companyCourseAssignment.findUnique({
+    where: { companyId_courseId: { companyId, courseId } },
+    include: { company: { select: { tenantId: true } } },
+  });
+  if (!assignment) throw new Error("Asignacion no encontrada");
+  assertSameTenant(admin, assignment.company.tenantId);
+
+  await db.companyCourseAssignment.update({
+    where: { id: assignment.id },
+    data: { isActive: false },
+  });
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true };
+}

@@ -5,6 +5,7 @@ import { db } from "@prol/db";
 import { sendEmail, enrollmentConfirmation } from "@prol/email";
 import { requireUser } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { issueCertificateForEnrollment } from "@/lib/actions/certificate";
 import crypto from "crypto";
 
 export async function enrollInCourse(courseId: string) {
@@ -82,7 +83,7 @@ export async function updateLessonProgress(
   // Verify enrollment belongs to user
   const enrollment = await db.enrollment.findFirst({
     where: { id: enrollmentId, studentId: user.id },
-    include: { course: { select: { totalLessons: true } } },
+    include: { course: { select: { id: true, totalLessons: true } } },
   });
   if (!enrollment) throw new Error("Inscripcion no encontrada");
 
@@ -122,56 +123,32 @@ export async function updateLessonProgress(
         },
       });
 
-      // Auto-issue certificate upon course completion
+      // Auto-issue certificate upon course completion (fallback for courses
+      // without a final exam). When a final exam exists, the certificate is
+      // issued by the quiz submission flow when the student passes it.
       try {
-        // Check if certificate already exists
-        const existingCertificate = await db.certificate.findUnique({
-          where: { enrollmentId },
+        const courseHasFinalExam = await db.quiz.findFirst({
+          where: {
+            isFinalExam: true,
+            lesson: { module: { courseId: enrollment.course.id } },
+          },
+          select: { id: true },
         });
 
-        if (!existingCertificate) {
-          // Get course and professor info for the certificate
-          const enrollmentWithDetails = await db.enrollment.findUnique({
-            where: { id: enrollmentId },
-            include: {
-              course: {
-                include: {
-                  professor: {
-                    select: { name: true },
-                  },
-                },
-              },
-            },
-          });
-
-          if (enrollmentWithDetails) {
-            // Generate unique hash for certificate
-            const hash = crypto.randomBytes(16).toString("hex");
-
-            // Create certificate
-            const certificate = await db.certificate.create({
-              data: {
-                enrollmentId,
-                tenantId: enrollment.tenantId,
-                studentName: user.name ?? "Estudiante",
-                courseName: enrollmentWithDetails.course.title,
-                professorName: enrollmentWithDetails.course.professor.name ?? "Profesor",
-                hash,
-              },
-            });
-
-            // Create certificate notification
+        if (!courseHasFinalExam) {
+          const result = await issueCertificateForEnrollment(enrollmentId);
+          if (result.folio) {
             try {
               await createNotification({
                 userId: user.id,
                 tenantId: enrollment.tenantId,
                 type: "CERTIFICATE",
                 title: "Certificado emitido",
-                message: `Has completado el curso "${enrollmentWithDetails.course.title}" y tu certificado está listo.`,
-                link: `/verify/${hash}`,
+                message: `Has completado el curso y tu certificado esta listo.`,
+                link: `/verify/${result.folio}`,
               });
             } catch (notifError) {
-              console.error("Error creando notificación de certificado:", notifError);
+              console.error("Error creando notificacion de certificado:", notifError);
             }
           }
         }

@@ -42,6 +42,7 @@ enum LessonType {
   TEXT
   QUIZ
   ASSIGNMENT
+  MULTI
 }
 
 enum VideoProvider {
@@ -127,6 +128,19 @@ enum AIJobStatus {
   FAILED
 }
 
+enum CertificateStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 enum AIJobType {
   COURSE_OUTLINE
   VIDEO_TRANSCRIPTION
@@ -167,6 +181,10 @@ model Tenant {
   // Feature flags
   workshopsEnabled Boolean      @default(false) @map("workshops_enabled")
   aiEnabled        Boolean      @default(false) @map("ai_enabled")
+  companiesEnabled Boolean      @default(true) @map("companies_enabled")
+
+  // Certificate folio prefix (e.g. "PROL", "ACME", etc.)
+  certificatePrefix String      @default("PROL") @map("certificate_prefix")
 
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
@@ -181,6 +199,8 @@ model Tenant {
   auditLogs        AuditLog[]
   notifications    Notification[]
   aiGenerationJobs AIGenerationJob[]
+  companies          Company[]
+  certificateCounters CertificateCounter[]
 
   @@index([slug])
   @@index([status])
@@ -202,7 +222,14 @@ model User {
   tenantId              String?  @map("tenant_id")
   tenant                Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  companyId             String?  @map("company_id")
+  company               Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  stripeCustomerId      String?  @unique @map("stripe_customer_id")
+
   onboardingCompleted   Boolean  @default(false) @map("onboarding_completed")
+  mustResetPassword     Boolean  @default(false) @map("must_reset_password")
+  disabledAt            DateTime? @map("disabled_at")
   lastLoginAt           DateTime? @map("last_login_at")
 
   createdAt             DateTime @default(now()) @map("created_at")
@@ -220,8 +247,11 @@ model User {
   notifications         Notification[]
   auditLogs             AuditLog[]
   aiGenerationJobs      AIGenerationJob[]
+  invitationsSent       CompanyInvitation[]   @relation("InvitationsSent")
+  assignmentsMade       CompanyCourseAssignment[] @relation("AssignmentsMade")
 
   @@index([tenantId])
+  @@index([companyId])
   @@index([email])
   @@index([role])
   @@map("users")
@@ -318,6 +348,7 @@ model Course {
   enrollments          Enrollment[]
   payments             CoursePayment[]
   workshops            Workshop[]
+  companyAssignments   CompanyCourseAssignment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -424,6 +455,10 @@ model Quiz {
   timeLimit    Int?     @map("time_limit")
   maxAttempts  Int      @default(3) @map("max_attempts")
 
+  // When true, passing this quiz triggers certificate issuance for the course.
+  // Each course should have at most one quiz with isFinalExam=true.
+  isFinalExam  Boolean  @default(false) @map("is_final_exam")
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -480,6 +515,10 @@ model LessonProgress {
   status               LessonProgressStatus @default(NOT_STARTED)
   videoPositionSeconds Int                  @default(0) @map("video_position_seconds")
   completedAt          DateTime?            @map("completed_at")
+
+  // For MULTI lessons: tracks per-block completion
+  // Schema: { videoWatchedSeconds?: number, pdfDownloadedAt?: string, blockProgress?: { [blockId: string]: boolean } }
+  metadata             Json?
 
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
@@ -556,6 +595,10 @@ model CoursePayment {
   stripePaymentId  String        @unique @map("stripe_payment_id")
   paymentMethod    PaymentMethod @map("payment_method")
   status           PaymentStatus @default(PENDING)
+
+  // For OXXO/SPEI: URL to the hosted voucher with payment instructions
+  voucherUrl       String?       @map("voucher_url")
+  voucherExpiresAt DateTime?     @map("voucher_expires_at")
 
   paidAt           DateTime?     @map("paid_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -665,27 +708,140 @@ model WorkshopAttendance {
   @@map("workshop_attendances")
 }
 
-/// Certificate issued upon course completion.
+/// Certificate issued upon course completion (passing the final exam with >= 80%).
 model Certificate {
-  id            String     @id @default(cuid())
-  enrollmentId  String     @unique @map("enrollment_id")
-  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  id            String            @id @default(cuid())
+  enrollmentId  String            @unique @map("enrollment_id")
+  enrollment    Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
-  tenantId      String     @map("tenant_id")
-  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId      String            @map("tenant_id")
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  studentName   String     @map("student_name")
-  courseName    String     @map("course_name")
-  professorName String     @map("professor_name")
+  studentName   String            @map("student_name")
+  courseName    String            @map("course_name")
+  professorName String            @map("professor_name")
 
-  hash          String     @unique
-  issuedAt      DateTime   @default(now()) @map("issued_at")
-  pdfUrl        String?    @map("pdf_url")
+  // Sequential public folio: "{prefix}-{year}-{NNNN}" e.g. "PROL-2026-0042"
+  folio         String            @unique
+  // Random hash kept for backwards-compat / private references
+  hash          String            @unique
+  // SHA-256 of the canonical certificate data (anti-forgery, verifiable)
+  sha256        String            @map("sha256")
+
+  status        CertificateStatus @default(ACTIVE)
+  issuedAt      DateTime          @default(now()) @map("issued_at")
+  expiresAt     DateTime?         @map("expires_at")
+  revokedAt     DateTime?         @map("revoked_at")
+  revokedReason String?           @map("revoked_reason")
+
+  // Snapshot of the final exam score that triggered issuance
+  finalExamScore Int?             @map("final_exam_score")
+
+  pdfUrl        String?           @map("pdf_url")
   metadata      Json?
 
   @@index([tenantId])
+  @@index([folio])
   @@index([hash])
+  @@index([status])
   @@map("certificates")
+}
+
+/// Counter for sequential certificate folios per tenant per year.
+/// Avoids race conditions when generating folios concurrently.
+model CertificateCounter {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  year      Int
+  lastSeq   Int      @default(0) @map("last_seq")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, year])
+  @@map("certificate_counters")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Companies (groups of users within a tenant — e.g. corporate clients)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A company groups users within a tenant. Used for B2B scenarios where
+/// an organization wants to manage its own employees as students.
+model Company {
+  id                       String   @id @default(cuid())
+  tenantId                 String   @map("tenant_id")
+  tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name                     String
+  slug                     String
+  logo                     String?
+  contactEmail             String?  @map("contact_email")
+  seatsLimit               Int?     @map("seats_limit")
+
+  // When true, current members can invite new users to the company.
+  // When false, only ADMIN/SUPER_ADMIN can add members.
+  allowMemberInvitations   Boolean  @default(false) @map("allow_member_invitations")
+
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  members                  User[]
+  invitations              CompanyInvitation[]
+  courseAssignments        CompanyCourseAssignment[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("companies")
+}
+
+/// Pending invitation for a user to join a company.
+model CompanyInvitation {
+  id         String           @id @default(cuid())
+  companyId  String           @map("company_id")
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  email      String
+  invitedBy  String           @map("invited_by")
+  inviter    User             @relation("InvitationsSent", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  token      String           @unique
+  status     InvitationStatus @default(PENDING)
+
+  expiresAt  DateTime         @map("expires_at")
+  acceptedAt DateTime?        @map("accepted_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  @@index([companyId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("company_invitations")
+}
+
+/// Assignment of a course to a company. Members of the company gain
+/// the ability to enroll in the course without paying.
+model CompanyCourseAssignment {
+  id         String    @id @default(cuid())
+  companyId  String    @map("company_id")
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  courseId   String    @map("course_id")
+  course     Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  assignedBy String    @map("assigned_by")
+  assigner   User      @relation("AssignmentsMade", fields: [assignedBy], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  expiresAt  DateTime? @map("expires_at")
+  isActive   Boolean   @default(true) @map("is_active")
+
+  @@unique([companyId, courseId])
+  @@index([companyId])
+  @@index([courseId])
+  @@index([isActive])
+  @@map("company_course_assignments")
 }
 
 /// Immutable audit trail for compliance and debugging.

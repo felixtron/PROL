@@ -63,6 +63,7 @@ export const getQuizForLesson = cache(async (lessonId: string) => {
     questions: quiz.questions as unknown as QuizQuestion[],
     timeLimit: quiz.timeLimit,
     maxAttempts: quiz.maxAttempts,
+    isFinalExam: quiz.isFinalExam,
     createdAt: quiz.createdAt,
     updatedAt: quiz.updatedAt,
   };

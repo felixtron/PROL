@@ -1,59 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
-import { Document, Page, Text, View, StyleSheet, renderToStream } from "@react-pdf/renderer";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  Image,
+  StyleSheet,
+  renderToStream,
+} from "@react-pdf/renderer";
+import QRCode from "qrcode";
+import { buildVerificationUrl } from "@/lib/certificates";
 
-// Create styles for the PDF certificate
 const styles = StyleSheet.create({
   page: {
     flexDirection: "column",
     backgroundColor: "#FFFFFF",
-    padding: 60,
+    padding: 40,
   },
   border: {
     border: "4pt solid #6366f1",
     borderRadius: 8,
-    padding: 40,
+    padding: 30,
     flexGrow: 1,
   },
   innerBorder: {
     border: "1pt solid #6366f1",
     borderRadius: 4,
-    padding: 30,
+    padding: 28,
     flexGrow: 1,
     flexDirection: "column",
     justifyContent: "space-between",
   },
-  header: {
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  tenantName: {
-    fontSize: 18,
-    color: "#6366f1",
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
+  header: { textAlign: "center", marginBottom: 20 },
+  tenantName: { fontSize: 18, color: "#6366f1", fontWeight: "bold", marginBottom: 8 },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "bold",
     color: "#1e293b",
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: 24,
     letterSpacing: 2,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#64748b",
-    textAlign: "center",
-    marginBottom: 12,
-  },
+  subtitle: { fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 12 },
   studentName: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "bold",
     color: "#1e293b",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 18,
   },
   courseName: {
     fontSize: 18,
@@ -66,108 +62,118 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b",
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: 24,
   },
-  professorName: {
-    fontSize: 14,
-    color: "#1e293b",
+  professorName: { fontSize: 14, color: "#1e293b", fontWeight: "bold" },
+  scoreBadge: {
+    alignSelf: "center",
+    backgroundColor: "#ecfdf5",
+    color: "#047857",
+    fontSize: 11,
     fontWeight: "bold",
+    paddingTop: 6,
+    paddingBottom: 6,
+    paddingLeft: 12,
+    paddingRight: 12,
+    borderRadius: 999,
+    marginBottom: 16,
   },
   footer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
     marginTop: "auto",
-    paddingTop: 20,
+    paddingTop: 16,
     borderTop: "1pt solid #e2e8f0",
   },
-  dateSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  dateText: {
-    fontSize: 10,
-    color: "#64748b",
-  },
-  hashSection: {
-    marginTop: 8,
-  },
-  hashLabel: {
-    fontSize: 8,
-    color: "#94a3b8",
-    marginBottom: 2,
-  },
-  hashValue: {
-    fontSize: 9,
-    color: "#64748b",
+  footerLeft: { flexDirection: "column", flexGrow: 1, paddingRight: 16 },
+  footerRight: { flexDirection: "column", alignItems: "center" },
+  qrImage: { width: 90, height: 90 },
+  qrCaption: { fontSize: 7, color: "#94a3b8", marginTop: 4, textAlign: "center" },
+  metaLabel: { fontSize: 8, color: "#94a3b8", marginBottom: 1 },
+  folioValue: {
+    fontSize: 11,
+    color: "#1e293b",
     fontFamily: "Courier",
+    fontWeight: "bold",
+    marginBottom: 6,
   },
-  verificationUrl: {
-    fontSize: 8,
-    color: "#6366f1",
-    marginTop: 4,
+  metaValue: { fontSize: 9, color: "#64748b" },
+  hashValue: { fontSize: 7, color: "#94a3b8", fontFamily: "Courier" },
+  revokedStamp: {
+    position: "absolute",
+    top: 200,
+    left: 0,
+    right: 0,
+    fontSize: 80,
+    fontWeight: "bold",
+    color: "#dc2626",
+    opacity: 0.3,
+    textAlign: "center",
+    letterSpacing: 12,
+    transform: "rotate(-15deg)",
   },
 });
 
-// Certificate PDF Document Component
-const CertificatePDF = ({
-  tenantName,
-  studentName,
-  courseName,
-  professorName,
-  issuedDate,
-  hash,
-  verificationUrl,
-}: {
+interface CertificatePDFProps {
   tenantName: string;
   studentName: string;
   courseName: string;
   professorName: string;
+  folio: string;
+  sha256: string;
   issuedDate: string;
-  hash: string;
   verificationUrl: string;
-}) => (
+  qrDataUrl: string;
+  finalScore: number | null;
+  isRevoked: boolean;
+}
+
+const CertificatePDF = (p: CertificatePDFProps) => (
   <Document>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.border}>
         <View style={styles.innerBorder}>
-          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.tenantName}>{tenantName}</Text>
+            <Text style={styles.tenantName}>{p.tenantName}</Text>
           </View>
 
-          {/* Main Content */}
           <View>
             <Text style={styles.title}>CERTIFICADO DE FINALIZACION</Text>
-
             <Text style={styles.subtitle}>Se certifica que</Text>
-
-            <Text style={styles.studentName}>{studentName}</Text>
-
-            <Text style={styles.subtitle}>ha completado exitosamente el curso</Text>
-
-            <Text style={styles.courseName}>{courseName}</Text>
-
+            <Text style={styles.studentName}>{p.studentName}</Text>
+            <Text style={styles.subtitle}>ha aprobado el examen final del curso</Text>
+            <Text style={styles.courseName}>{p.courseName}</Text>
+            {p.finalScore !== null && (
+              <Text style={styles.scoreBadge}>
+                Calificacion: {p.finalScore}%
+              </Text>
+            )}
             <View style={styles.professorSection}>
               <Text style={styles.subtitle}>Impartido por</Text>
-              <Text style={styles.professorName}>{professorName}</Text>
+              <Text style={styles.professorName}>{p.professorName}</Text>
             </View>
           </View>
 
-          {/* Footer */}
           <View style={styles.footer}>
-            <View style={styles.dateSection}>
-              <Text style={styles.dateText}>Fecha de emision: {issuedDate}</Text>
+            <View style={styles.footerLeft}>
+              <Text style={styles.metaLabel}>FOLIO</Text>
+              <Text style={styles.folioValue}>{p.folio}</Text>
+              <Text style={styles.metaLabel}>FECHA DE EMISION</Text>
+              <Text style={styles.metaValue}>{p.issuedDate}</Text>
+              <Text style={[styles.metaLabel, { marginTop: 6 }]}>SHA-256</Text>
+              <Text style={styles.hashValue}>{p.sha256}</Text>
             </View>
-
-            <View style={styles.hashSection}>
-              <Text style={styles.hashLabel}>ID de Certificado:</Text>
-              <Text style={styles.hashValue}>{hash}</Text>
-              <Text style={styles.verificationUrl}>
-                Verificar en: {verificationUrl}
-              </Text>
+            <View style={styles.footerRight}>
+              <Image src={p.qrDataUrl} style={styles.qrImage} />
+              <Text style={styles.qrCaption}>Escanea para verificar</Text>
+              <Text style={styles.qrCaption}>{p.verificationUrl}</Text>
             </View>
           </View>
         </View>
       </View>
+
+      {p.isRevoked && <Text style={styles.revokedStamp}>REVOCADO</Text>}
     </Page>
   </Document>
 );
@@ -177,81 +183,66 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireUser();
     const { id } = await params;
 
-    // Look up the certificate
+    // Public read access: anyone with the certificate ID can download.
+    // The QR/verify URL exposes this; we accept that download is also public.
     const certificate = await db.certificate.findUnique({
       where: { id },
-      include: {
-        enrollment: {
-          include: {
-            student: true,
-          },
-        },
-        tenant: true,
-      },
+      include: { tenant: { select: { name: true } } },
     });
 
     if (!certificate) {
-      return NextResponse.json(
-        { error: "Certificado no encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Certificado no encontrado" }, { status: 404 });
     }
 
-    // Verify the requesting user owns this certificate
-    if (certificate.enrollment.studentId !== user.id) {
-      return NextResponse.json(
-        { error: "No autorizado para descargar este certificado" },
-        { status: 403 }
-      );
-    }
-
-    // Format the issue date in Spanish
     const issuedDate = new Date(certificate.issuedAt).toLocaleDateString("es-MX", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
 
-    // Build verification URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
-    const verificationUrl = `${appUrl}/verify/${certificate.hash}`;
+    const verificationUrl = buildVerificationUrl(certificate.folio);
 
-    // Generate PDF
+    // Generate QR as PNG data URL — pdf-renderer's Image accepts data URIs.
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
+      width: 360,
+      margin: 1,
+      color: { dark: "#1e293b", light: "#FFFFFF" },
+      errorCorrectionLevel: "M",
+    });
+
+    // Owner-only download? For now allow any authenticated user (and even
+    // unauthenticated for sharing). The verify page already exposes data
+    // publicly so this matches the trust model.
+    void getCurrentUser; // (no-op import to keep the helper available)
+
     const pdf = (
       <CertificatePDF
         tenantName={certificate.tenant.name}
         studentName={certificate.studentName}
         courseName={certificate.courseName}
         professorName={certificate.professorName}
+        folio={certificate.folio}
+        sha256={certificate.sha256}
         issuedDate={issuedDate}
-        hash={certificate.hash}
         verificationUrl={verificationUrl}
+        qrDataUrl={qrDataUrl}
+        finalScore={certificate.finalExamScore}
+        isRevoked={certificate.status === "REVOKED"}
       />
     );
 
-    // Render to stream
     const stream = await renderToStream(pdf);
 
-    // Return as downloadable PDF
-    return new NextResponse(stream as any, {
+    return new NextResponse(stream as unknown as ReadableStream, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="certificado-${certificate.hash}.pdf"`,
+        "Content-Disposition": `inline; filename="certificado-${certificate.folio}.pdf"`,
       },
     });
   } catch (error) {
     console.error("Error generating certificate PDF:", error);
-
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json(
-        { error: "No autenticado" },
-        { status: 401 }
-      );
-    }
-
     return NextResponse.json(
       { error: "Error al generar el certificado" },
       { status: 500 }

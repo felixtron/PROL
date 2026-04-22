@@ -182,7 +182,7 @@ export type CourseDetail = {
     title: string;
     lessons: {
       title: string;
-      type: "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT";
+      type: "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI";
       videoDurationSeconds: number | null;
       isFree: boolean;
     }[];

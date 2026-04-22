@@ -669,6 +669,13 @@ async function main() {
   // ── 8. Certificate ─────────────────────────────────────────────────────
   console.log("🏆 Creating certificate…");
 
+  const certHash = "cert_prol_mktg_ana_rodriguez_2025";
+  const certFolio = "PROL-2025-0001";
+  const { createHash } = await import("node:crypto");
+  const certSha256 = createHash("sha256")
+    .update(`${certFolio}|Ana Rodríguez|Marketing Digital Avanzado|María García|Academia Digital MX|${daysAgo(10).toISOString()}`)
+    .digest("hex");
+
   const certificate = await prisma.certificate.create({
     data: {
       enrollmentId: enrollAnaMarketing.id,
@@ -676,7 +683,11 @@ async function main() {
       studentName: "Ana Rodríguez",
       courseName: "Marketing Digital Avanzado",
       professorName: "María García",
-      hash: "cert_prol_mktg_ana_rodriguez_2025",
+      folio: certFolio,
+      hash: certHash,
+      sha256: certSha256,
+      status: "ACTIVE",
+      finalExamScore: 95,
       issuedAt: daysAgo(10),
       pdfUrl: "https://storage.prol.prosuite.pro/certificates/cert_prol_mktg_ana_rodriguez_2025.pdf",
       metadata: {
@@ -692,7 +703,14 @@ async function main() {
     },
   });
 
-  console.log(`   ✅ Certificate for Ana: ${certificate.hash}\n`);
+  // Initialize counter so the next folio continues from 0002
+  await prisma.certificateCounter.upsert({
+    where: { tenantId_year: { tenantId: tenant.id, year: 2025 } },
+    create: { tenantId: tenant.id, year: 2025, lastSeq: 1 },
+    update: { lastSeq: 1 },
+  });
+
+  console.log(`   ✅ Certificate for Ana: ${certificate.folio}\n`);
 
   // ── 9. Notifications ───────────────────────────────────────────────────
   console.log("🔔 Creating notifications…");
@@ -762,6 +780,49 @@ async function main() {
 
   console.log(`   ✅ Workshop: ${workshop.title} (${workshop.id})\n`);
 
+  // ── 11. Demo Company (B2B) ─────────────────────────────────────────────
+  console.log("🏢 Creating demo company…");
+
+  const acmeCorp = await prisma.company.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Acme Corp",
+      slug: "acme-corp",
+      contactEmail: "rh@acmecorp.com",
+      seatsLimit: 50,
+      allowMemberInvitations: true,
+    },
+  });
+
+  // Move both seed students into Acme Corp
+  await prisma.user.updateMany({
+    where: { id: { in: [student1.id, student2.id] } },
+    data: { companyId: acmeCorp.id },
+  });
+
+  // Assign Marketing course to Acme Corp (members get free access)
+  await prisma.companyCourseAssignment.create({
+    data: {
+      companyId: acmeCorp.id,
+      courseId: marketingCourse.id,
+      assignedBy: superAdmin.id,
+    },
+  });
+
+  // One pending invitation for demo
+  await prisma.companyInvitation.create({
+    data: {
+      companyId: acmeCorp.id,
+      email: "nuevo.empleado@acmecorp.com",
+      invitedBy: student2.id,
+      token: "inv_demo_" + Math.random().toString(36).slice(2, 18),
+      status: "PENDING",
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  console.log(`   ✅ Company: ${acmeCorp.name} (2 members, 1 course assigned, 1 pending invite)\n`);
+
   // ── Done! ──────────────────────────────────────────────────────────────
   console.log("═══════════════════════════════════════════════════════════════");
   console.log("🌱 Seed completed successfully!");
@@ -778,6 +839,7 @@ async function main() {
   console.log(`  • 1 Certificate`);
   console.log(`  • 2 Notifications`);
   console.log(`  • 1 Workshop`);
+  console.log(`  • 1 Company (Acme Corp) with 2 members + 1 course assigned`);
   console.log();
 }
 

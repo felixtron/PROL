@@ -32,6 +32,7 @@ interface QuizData {
   questions: QuizQuestion[];
   timeLimit: number | null;
   maxAttempts: number;
+  isFinalExam: boolean;
 }
 
 interface QuizBuilderProps {
@@ -52,6 +53,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
     existingQuiz?.timeLimit ? Math.floor(existingQuiz.timeLimit / 60) : null
   );
   const [maxAttempts, setMaxAttempts] = useState(existingQuiz?.maxAttempts ?? 3);
+  const [isFinalExam, setIsFinalExam] = useState(existingQuiz?.isFinalExam ?? false);
   const [questions, setQuestions] = useState<QuizQuestion[]>(
     existingQuiz?.questions ?? []
   );
@@ -159,6 +161,7 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
           questions,
           timeLimit: timeLimit ? timeLimit * 60 : undefined,
           maxAttempts,
+          isFinalExam,
         };
 
         if (isEditing && existingQuiz) {
@@ -291,6 +294,32 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
+        </div>
+
+        {/* Final exam toggle */}
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-border bg-surface-secondary p-3">
+          <input
+            type="checkbox"
+            id="isFinalExam"
+            checked={isFinalExam}
+            onChange={(e) => {
+              setIsFinalExam(e.target.checked);
+              if (e.target.checked && passingScore < 80) {
+                setPassingScore(80);
+              }
+            }}
+            className="mt-1 h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
+          />
+          <label htmlFor="isFinalExam" className="text-sm">
+            <span className="font-medium text-text-primary">
+              Marcar como examen final del curso
+            </span>
+            <p className="mt-0.5 text-xs text-text-tertiary">
+              Al aprobar este quiz con &ge; 80%, el alumno completa el curso y
+              recibe automaticamente su certificado con QR. Solo puede haber un
+              examen final por curso.
+            </p>
+          </label>
         </div>
       </div>
 

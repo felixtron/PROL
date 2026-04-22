@@ -39,6 +39,10 @@ export default async function AdminLayout({
     redirect("/");
   }
 
+  if (user.mustResetPassword) {
+    redirect("/force-reset-password");
+  }
+
   const displayName = user.name ?? "Admin";
   const initials = getInitials(displayName);
 

@@ -25,6 +25,7 @@ export const getCourseForEdit = cache(async (courseId: string) => {
               videoUrl: true,
               videoProvider: true,
               videoRawUrl: true,
+              content: true,
               aiStatus: true,
               interactiveStops: {
                 orderBy: { timestampSeconds: "asc" },
@@ -47,5 +48,14 @@ export const getCourseForEdit = cache(async (courseId: string) => {
   });
 
   if (!course) throw new Error("Curso no encontrado");
-  return course;
+
+  // All quizzes in the course — used by the MULTI block editor to reference
+  // existing quizzes as quiz-blocks.
+  const quizzes = await db.quiz.findMany({
+    where: { lesson: { module: { courseId } } },
+    select: { id: true, title: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return { ...course, quizzes };
 });

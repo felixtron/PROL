@@ -1,0 +1,158 @@
+import Link from "next/link";
+import {
+  Building2,
+  Users,
+  GraduationCap,
+  ArrowRight,
+} from "lucide-react";
+import { getMyCompany } from "@/lib/queries/company";
+import { InviteMemberForm } from "./invite-member-form";
+
+export const dynamic = "force-dynamic";
+
+export default async function MyCompanyPage() {
+  const company = await getMyCompany();
+
+  if (!company) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <div className="rounded-xl border border-dashed border-border bg-surface p-12 text-center">
+          <Building2 className="mx-auto h-10 w-10 text-text-tertiary" />
+          <h2 className="mt-4 font-heading text-lg font-semibold text-text-primary">
+            No perteneces a ninguna empresa
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Si recibiste una invitacion, abre el link que te enviaron por email.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+      {/* Header */}
+      <div className="flex items-start gap-4 rounded-xl border border-border bg-surface p-6">
+        {company.logo ? (
+          <img
+            src={company.logo}
+            alt={company.name}
+            className="h-14 w-14 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary-100">
+            <Building2 className="h-7 w-7 text-primary-700" />
+          </div>
+        )}
+        <div className="flex-1">
+          <h1 className="font-heading text-2xl font-bold text-text-primary">
+            {company.name}
+          </h1>
+          <p className="mt-1 text-sm text-text-tertiary">
+            {company._count.members} miembro{company._count.members !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+
+      {/* Cursos disponibles */}
+      <section className="rounded-xl border border-border bg-surface">
+        <div className="border-b border-border px-5 py-3">
+          <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
+            <GraduationCap className="h-4 w-4 text-primary-600" />
+            Cursos disponibles para ti
+          </h2>
+          <p className="mt-0.5 text-xs text-text-tertiary">
+            Tu empresa ya pago por estos cursos. Inscribete sin costo.
+          </p>
+        </div>
+        {company.courseAssignments.length === 0 ? (
+          <p className="p-6 text-center text-sm text-text-tertiary">
+            Tu empresa aun no tiene cursos asignados.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {company.courseAssignments.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center justify-between px-5 py-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  {a.course.thumbnail ? (
+                    <img
+                      src={a.course.thumbnail}
+                      alt={a.course.title}
+                      className="h-12 w-16 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-16 items-center justify-center rounded bg-primary-100">
+                      <GraduationCap className="h-5 w-5 text-primary-700" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-text-primary">
+                      {a.course.title}
+                    </p>
+                    <p className="text-xs text-text-tertiary">
+                      {a.course.totalLessons} lecciones · gratis para tu empresa
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/courses/${a.course.slug}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
+                >
+                  Ver curso
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Compañeros */}
+      <section className="rounded-xl border border-border bg-surface">
+        <div className="border-b border-border px-5 py-3">
+          <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
+            <Users className="h-4 w-4 text-primary-600" />
+            Companeros
+          </h2>
+        </div>
+        {company.members.length === 0 ? (
+          <p className="p-6 text-center text-sm text-text-tertiary">
+            Eres el unico miembro de esta empresa por ahora.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-1 p-2 md:grid-cols-2">
+            {company.members.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-surface-secondary"
+              >
+                {m.avatar ? (
+                  <img
+                    src={m.avatar}
+                    alt={m.name ?? m.email}
+                    className="h-9 w-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+                    {(m.name ?? m.email).slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-text-primary">
+                    {m.name ?? m.email}
+                  </p>
+                  <p className="truncate text-xs text-text-tertiary">{m.email}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <InviteMemberForm companyId={company.id} />
+    </div>
+  );
+}

@@ -38,13 +38,14 @@ function formatSeconds(seconds: number): string {
 }
 
 const lessonTypeIcons: Record<
-  "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT",
+  "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI",
   typeof Play
 > = {
   VIDEO: Play,
   TEXT: FileText,
   QUIZ: Brain,
   ASSIGNMENT: ClipboardList,
+  MULTI: BookOpen,
 };
 
 function ProfessorAvatar({

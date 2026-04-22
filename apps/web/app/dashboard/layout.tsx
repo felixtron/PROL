@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, BookOpen, Calendar, Award, Settings } from "lucide-react";
+import { Home, BookOpen, Calendar, Award, Settings, Building2 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { NotificationBell } from "@/components/notification-bell";
@@ -8,6 +8,7 @@ import { MobileNav } from "./mobile-nav";
 const navItems = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/dashboard/courses", label: "Mis Cursos", icon: BookOpen },
+  { href: "/dashboard/company", label: "Mi Empresa", icon: Building2 },
   { href: "/dashboard/workshops", label: "Workshops", icon: Calendar },
   { href: "/dashboard/certificates", label: "Certificados", icon: Award },
   { href: "/dashboard/settings", label: "Configuracion", icon: Settings },
@@ -28,6 +29,12 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const user = await getCurrentUser();
+
+  if (user?.mustResetPassword) {
+    const { redirect } = await import("next/navigation");
+    redirect("/force-reset-password");
+  }
+
   const unreadCount = await getUnreadNotificationCount();
 
   const displayName = user?.name ?? "Estudiante";

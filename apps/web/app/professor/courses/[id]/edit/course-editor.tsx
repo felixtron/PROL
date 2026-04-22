@@ -30,6 +30,8 @@ import { AILessonActions } from "./ai-lesson-actions";
 import { ThumbnailUpload } from "./thumbnail-upload";
 import { QuizBuilder } from "./quiz-builder";
 import { InteractiveStopEditor } from "./interactive-stop-editor";
+import { LessonBlocksEditor } from "./lesson-blocks-editor";
+import type { LessonBlock } from "@prol/shared";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +46,7 @@ type LessonData = {
   videoUrl: string | null;
   videoProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | null;
   videoRawUrl: string | null;
+  content?: unknown;
   aiStatus: string | null;
   interactiveStops: Array<{
     id: string;
@@ -72,6 +75,7 @@ type CourseData = {
   status: string;
   category: string | null;
   modules: ModuleData[];
+  quizzes?: { id: string; title: string }[];
   _count: { enrollments: number };
   aiEnabled?: boolean;
 };
@@ -147,7 +151,12 @@ export function CourseEditor({ course }: { course: CourseData }) {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Left Column — Content */}
       <div className="lg:col-span-2">
-        <ModulesSection courseId={course.id} modules={course.modules} aiEnabled={course.aiEnabled ?? false} />
+        <ModulesSection
+          courseId={course.id}
+          modules={course.modules}
+          aiEnabled={course.aiEnabled ?? false}
+          availableQuizzes={course.quizzes ?? []}
+        />
       </div>
 
       {/* Right Column — Settings */}
@@ -167,10 +176,12 @@ function ModulesSection({
   courseId,
   modules,
   aiEnabled,
+  availableQuizzes,
 }: {
   courseId: string;
   modules: ModuleData[];
   aiEnabled: boolean;
+  availableQuizzes: { id: string; title: string }[];
 }) {
   const [showNewModule, setShowNewModule] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -213,7 +224,13 @@ function ModulesSection({
 
       <div className="mt-4 space-y-3">
         {modules.map((mod, idx) => (
-          <ModuleCard key={mod.id} module={mod} index={idx} aiEnabled={aiEnabled} />
+          <ModuleCard
+            key={mod.id}
+            module={mod}
+            index={idx}
+            aiEnabled={aiEnabled}
+            availableQuizzes={availableQuizzes}
+          />
         ))}
       </div>
 
@@ -264,10 +281,12 @@ function ModuleCard({
   module: mod,
   index,
   aiEnabled,
+  availableQuizzes,
 }: {
   module: ModuleData;
   index: number;
   aiEnabled: boolean;
+  availableQuizzes: { id: string; title: string }[];
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -406,7 +425,12 @@ function ModuleCard({
           )}
 
           {mod.lessons.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} aiEnabled={aiEnabled} />
+            <LessonRow
+              key={lesson.id}
+              lesson={lesson}
+              aiEnabled={aiEnabled}
+              availableQuizzes={availableQuizzes}
+            />
           ))}
 
           {/* Add Lesson Form */}
@@ -437,7 +461,15 @@ function ModuleCard({
 // Lesson Row
 // ---------------------------------------------------------------------------
 
-function LessonRow({ lesson, aiEnabled }: { lesson: LessonData; aiEnabled: boolean }) {
+function LessonRow({
+  lesson,
+  aiEnabled,
+  availableQuizzes,
+}: {
+  lesson: LessonData;
+  aiEnabled: boolean;
+  availableQuizzes: { id: string; title: string }[];
+}) {
   const [isDeleting, startTransition] = useTransition();
   const [showVideo, setShowVideo] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -559,6 +591,19 @@ function LessonRow({ lesson, aiEnabled }: { lesson: LessonData; aiEnabled: boole
       {lesson.type === "QUIZ" && showQuiz && (
         <div className="px-4 pb-3">
           <QuizBuilder lessonId={lesson.id} existingQuiz={quizData} />
+        </div>
+      )}
+
+      {/* Multi-format blocks editor for MULTI lessons */}
+      {lesson.type === "MULTI" && showVideo && (
+        <div className="px-4 pb-3">
+          <LessonBlocksEditor
+            lessonId={lesson.id}
+            initialBlocks={
+              ((lesson.content as { blocks?: LessonBlock[] } | null)?.blocks) ?? []
+            }
+            availableQuizzes={availableQuizzes}
+          />
         </div>
       )}
     </div>

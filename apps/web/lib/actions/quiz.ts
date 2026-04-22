@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { issueCertificateForEnrollment } from "@/lib/actions/certificate";
+import { createNotification } from "@/lib/notifications";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,7 +23,10 @@ interface CreateQuizData {
   questions: QuizQuestion[];
   timeLimit?: number;
   maxAttempts: number;
+  isFinalExam?: boolean;
 }
+
+const FINAL_EXAM_MIN_PASSING_SCORE = 80;
 
 // ---------------------------------------------------------------------------
 // Actions
@@ -88,6 +93,26 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
     throw new Error("Ya existe un quiz para esta leccion. Usa updateQuiz para actualizarlo.");
   }
 
+  // Final exam rules
+  if (data.isFinalExam) {
+    if (data.passingScore < FINAL_EXAM_MIN_PASSING_SCORE) {
+      throw new Error(
+        `El examen final debe requerir al menos ${FINAL_EXAM_MIN_PASSING_SCORE}% para aprobar`
+      );
+    }
+    // Only one final exam per course
+    const existingFinal = await db.quiz.findFirst({
+      where: {
+        isFinalExam: true,
+        lesson: { module: { courseId: lesson.module.course.id } },
+      },
+      select: { id: true },
+    });
+    if (existingFinal) {
+      throw new Error("Este curso ya tiene un examen final. Solo se permite uno.");
+    }
+  }
+
   const quiz = await db.quiz.create({
     data: {
       lessonId,
@@ -96,6 +121,7 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
       questions: data.questions as unknown as Prisma.InputJsonValue,
       timeLimit: data.timeLimit,
       maxAttempts: data.maxAttempts,
+      isFinalExam: data.isFinalExam ?? false,
     },
   });
 
@@ -160,6 +186,27 @@ export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) 
     }
   }
 
+  // Final exam rules
+  if (data.isFinalExam === true) {
+    const targetScore = data.passingScore ?? quiz.passingScore;
+    if (targetScore < FINAL_EXAM_MIN_PASSING_SCORE) {
+      throw new Error(
+        `El examen final debe requerir al menos ${FINAL_EXAM_MIN_PASSING_SCORE}% para aprobar`
+      );
+    }
+    const existingFinal = await db.quiz.findFirst({
+      where: {
+        isFinalExam: true,
+        id: { not: quizId },
+        lesson: { module: { courseId: quiz.lesson.module.course.id } },
+      },
+      select: { id: true },
+    });
+    if (existingFinal) {
+      throw new Error("Este curso ya tiene un examen final");
+    }
+  }
+
   await db.quiz.update({
     where: { id: quizId },
     data: {
@@ -168,6 +215,7 @@ export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) 
       ...(data.questions && { questions: data.questions as unknown as Prisma.InputJsonValue }),
       ...(data.timeLimit !== undefined && { timeLimit: data.timeLimit }),
       ...(data.maxAttempts !== undefined && { maxAttempts: data.maxAttempts }),
+      ...(data.isFinalExam !== undefined && { isFinalExam: data.isFinalExam }),
     },
   });
 
@@ -317,16 +365,39 @@ export async function submitQuizAttempt(
           ? completedCount / course.totalLessons
           : 0;
 
+        // If this quiz is the course's final exam and the student passed
+        // with >= 80%, mark the enrollment completed and issue the certificate.
+        const isFinalAndPassed = quiz.isFinalExam && passed && score >= 80;
+
         await db.enrollment.update({
           where: { id: enrollmentId },
           data: {
             progress: newProgress,
-            ...(newProgress >= 1.0 ? {
-              status: "COMPLETED",
-              completedAt: new Date(),
-            } : {}),
+            ...(newProgress >= 1.0 || isFinalAndPassed
+              ? { status: "COMPLETED", completedAt: new Date() }
+              : {}),
           },
         });
+
+        if (isFinalAndPassed) {
+          try {
+            const result = await issueCertificateForEnrollment(enrollmentId, {
+              finalExamScore: score,
+            });
+            if (result.folio) {
+              await createNotification({
+                userId: user.id,
+                tenantId: enrollment.tenantId,
+                type: "CERTIFICATE",
+                title: "Certificado emitido",
+                message: `Aprobaste el examen final con ${score}%. Tu certificado esta listo.`,
+                link: `/verify/${result.folio}`,
+              });
+            }
+          } catch (err) {
+            console.error("Error emitiendo certificado tras examen final:", err);
+          }
+        }
       }
     }
   }
@@ -339,5 +410,6 @@ export async function submitQuizAttempt(
     passed,
     correctCount,
     totalQuestions: questions.length,
+    isFinalExam: quiz.isFinalExam,
   };
 }

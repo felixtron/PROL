@@ -55,7 +55,7 @@ export default async function CourseDetailPage({
         lessons: m.lessons.map((l) => ({
           id: l.id,
           title: l.title,
-          type: l.type as "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT",
+          type: l.type as "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI",
           position: l.position,
           videoDurationSeconds: l.videoDurationSeconds,
           videoUrl: l.videoUrl,

@@ -39,14 +39,19 @@ export default function SignInPage() {
       return;
     }
 
-    // Redirect based on role and onboarding status
+    // Redirect based on role, reset flag and onboarding status
     try {
       const res = await fetch("/api/auth/check-role");
       const data = await res.json();
 
-      if (data.role === "PROFESSOR" && !data.onboardingCompleted) {
+      // Force password reset takes priority over everything else
+      if (data.mustResetPassword) {
+        router.push("/force-reset-password");
+      } else if (data.role === "PROFESSOR" && !data.onboardingCompleted) {
         router.push("/onboarding");
-      } else if (data.role === "ADMIN" || data.role === "SUPER_ADMIN") {
+      } else if (data.role === "ADMIN") {
+        router.push("/tenant-admin");
+      } else if (data.role === "SUPER_ADMIN") {
         router.push("/admin");
       } else if (data.role === "PROFESSOR") {
         router.push("/professor");

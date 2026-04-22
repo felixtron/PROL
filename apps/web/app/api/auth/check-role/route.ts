@@ -8,5 +8,7 @@ export async function GET() {
     role: user.role,
     onboardingCompleted: user.onboardingCompleted,
     tenantId: user.tenantId,
+    companyId: user.companyId,
+    mustResetPassword: user.mustResetPassword,
   });
 }

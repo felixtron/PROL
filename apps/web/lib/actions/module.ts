@@ -95,7 +95,7 @@ export async function createLesson(moduleId: string, formData: FormData) {
     db.lesson.create({
       data: {
         title,
-        type: type as "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT",
+        type: type as "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI",
         position: maxPosition + 1,
         moduleId,
       },
@@ -112,7 +112,7 @@ export async function createLesson(moduleId: string, formData: FormData) {
 
 export async function updateLesson(
   lessonId: string,
-  data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT"; content?: string }
+  data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI"; content?: string }
 ) {
   const user = await requireUser();
 

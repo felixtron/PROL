@@ -86,4 +86,38 @@ export const requireAdmin = cache(async () => {
   return user;
 });
 
+/**
+ * Requires the current user to be a tenant-scoped administrator: ADMIN or
+ * SUPER_ADMIN. SUPER_ADMIN bypasses the tenant check.
+ *
+ * Returns the user augmented with a guaranteed `tenantId`. Server actions
+ * that operate on tenant-scoped resources (companies, users in a tenant,
+ * certificates, etc.) should use this and then filter all queries by the
+ * returned tenantId.
+ */
+export const requireTenantAdmin = cache(async () => {
+  const user = await requireUser();
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    throw new Error("No autorizado");
+  }
+  if (user.role !== "SUPER_ADMIN" && !user.tenantId) {
+    throw new Error("No autorizado: tenant requerido");
+  }
+  return user;
+});
+
+/**
+ * Asserts that the given resource's tenantId matches the current user's,
+ * unless the user is a SUPER_ADMIN. Throws otherwise.
+ */
+export function assertSameTenant(
+  user: { role: string; tenantId: string | null },
+  resourceTenantId: string
+): void {
+  if (user.role === "SUPER_ADMIN") return;
+  if (!user.tenantId || user.tenantId !== resourceTenantId) {
+    throw new Error("No autorizado: tenant no coincide");
+  }
+}
+
 export type Auth = typeof auth;

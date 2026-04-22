@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type Stripe from "stripe";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
@@ -9,7 +10,12 @@ import { getStripe } from "@/lib/stripe";
 // createCheckoutSession — Initiates Stripe Checkout for a course purchase
 // ---------------------------------------------------------------------------
 
-export async function createCheckoutSession(courseId: string) {
+export type StripePaymentMethod = "card" | "oxxo" | "spei";
+
+export async function createCheckoutSession(
+  courseId: string,
+  paymentMethod: StripePaymentMethod = "card"
+) {
   const user = await requireUser();
 
   // 1. Find the course (must be published)
@@ -39,8 +45,24 @@ export async function createCheckoutSession(courseId: string) {
     throw new Error("Ya estas inscrito en este curso");
   }
 
-  // 3. Free course — enroll directly, no payment needed
-  if (course.priceInCents === 0) {
+  // 3. Free course OR course assigned to the user's company — enroll directly
+  let isCompanyAssigned = false;
+  if (user.companyId) {
+    const assignment = await db.companyCourseAssignment.findUnique({
+      where: {
+        companyId_courseId: { companyId: user.companyId, courseId },
+      },
+      select: { isActive: true, expiresAt: true },
+    });
+    if (
+      assignment?.isActive &&
+      (!assignment.expiresAt || assignment.expiresAt > new Date())
+    ) {
+      isCompanyAssigned = true;
+    }
+  }
+
+  if (course.priceInCents === 0 || isCompanyAssigned) {
     await db.enrollment.create({
       data: {
         studentId: user.id,
@@ -69,9 +91,11 @@ export async function createCheckoutSession(courseId: string) {
     course.priceInCents * tenant.revenueShareRate
   );
 
-  // 6. Create Stripe Checkout Session on the platform account
-  //    using transfer_data.destination for Standard Connect
-  const session = await getStripe().checkout.sessions.create({
+  // 6. Stripe Checkout session. Method-specific configuration:
+  //    - card: instant, synchronous confirmation
+  //    - oxxo: async, hosted voucher with 3-day expiration (MX only)
+  //    - spei (customer_balance bank transfer): async, CLABE instructions
+  const baseParams: Stripe.Checkout.SessionCreateParams = {
     mode: "payment",
     line_items: [
       {
@@ -86,21 +110,49 @@ export async function createCheckoutSession(courseId: string) {
         quantity: 1,
       },
     ],
-    payment_method_types: ["card"],
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/courses/${courseId}?enrolled=true`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}`,
     metadata: {
       courseId,
       studentId: user.id,
       tenantId: course.tenantId,
+      paymentMethod,
     },
     payment_intent_data: {
       application_fee_amount: applicationFeeAmount,
-      transfer_data: {
-        destination: tenant.stripeAccountId,
-      },
+      transfer_data: { destination: tenant.stripeAccountId },
     },
-  });
+  };
+
+  let session;
+  if (paymentMethod === "oxxo") {
+    session = await getStripe().checkout.sessions.create({
+      ...baseParams,
+      payment_method_types: ["oxxo"],
+      payment_method_options: {
+        oxxo: { expires_after_days: 3 },
+      },
+      // OXXO requires the customer's email
+      customer_email: user.email,
+    });
+  } else if (paymentMethod === "spei") {
+    session = await getStripe().checkout.sessions.create({
+      ...baseParams,
+      payment_method_types: ["customer_balance"],
+      payment_method_options: {
+        customer_balance: {
+          funding_type: "bank_transfer",
+          bank_transfer: { type: "mx_bank_transfer" },
+        },
+      },
+      customer_email: user.email,
+    });
+  } else {
+    session = await getStripe().checkout.sessions.create({
+      ...baseParams,
+      payment_method_types: ["card"],
+    });
+  }
 
   return { url: session.url };
 }
