@@ -1,14 +1,23 @@
 "use client";
 
 import { forwardRef } from "react";
-import { buildCloudflareEmbedUrl, buildVimeoEmbedUrl } from "@prol/shared";
+import {
+  buildCloudflareEmbedUrl,
+  buildVimeoEmbedUrl,
+  buildYouTubeEmbedUrl,
+} from "@prol/shared";
 
-export type VideoProvider = "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD";
+export type VideoProvider =
+  | "CLOUDFLARE"
+  | "VIMEO_URL"
+  | "VIMEO_UPLOAD"
+  | "YOUTUBE";
 
 interface VideoPlayerProps {
   videoUrl: string;
   provider: VideoProvider | null;
   videoHash?: string | null;
+  startSeconds?: number | null;
   className?: string;
   title?: string;
 }
@@ -19,16 +28,25 @@ interface VideoPlayerProps {
  */
 export const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
   function VideoPlayer(
-    { videoUrl, provider, videoHash, className, title },
+    { videoUrl, provider, videoHash, startSeconds, className, title },
     ref
   ) {
-    const src =
-      provider === "VIMEO_URL" || provider === "VIMEO_UPLOAD"
-        ? buildVimeoEmbedUrl(videoUrl, videoHash)
-        : buildCloudflareEmbedUrl(videoUrl);
+    let src: string;
+    let allow: string;
 
-    const isVimeo =
-      provider === "VIMEO_URL" || provider === "VIMEO_UPLOAD";
+    if (provider === "YOUTUBE") {
+      src = buildYouTubeEmbedUrl(videoUrl, startSeconds ?? null);
+      allow =
+        "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+    } else if (provider === "VIMEO_URL" || provider === "VIMEO_UPLOAD") {
+      src = buildVimeoEmbedUrl(videoUrl, videoHash);
+      allow =
+        "autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media";
+    } else {
+      src = buildCloudflareEmbedUrl(videoUrl);
+      allow =
+        "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture";
+    }
 
     return (
       <iframe
@@ -36,11 +54,7 @@ export const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
         src={src}
         className={className ?? "h-full w-full"}
         title={title ?? "Video lesson"}
-        allow={
-          isVimeo
-            ? "autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-            : "accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-        }
+        allow={allow}
         allowFullScreen
       />
     );

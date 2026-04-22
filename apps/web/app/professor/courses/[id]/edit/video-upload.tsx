@@ -5,18 +5,23 @@ import { Upload, Loader2, Video, X, Link as LinkIcon, Check } from "lucide-react
 import {
   createVideoUploadUrl,
   checkVideoStatus,
-  setVideoFromVimeoUrl,
+  setVideoFromUrl,
   clearLessonVideo,
 } from "@/lib/actions/video";
 
 interface VideoUploadProps {
   lessonId: string;
   currentVideoUrl: string | null;
-  currentProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | null;
+  currentProvider:
+    | "CLOUDFLARE"
+    | "VIMEO_URL"
+    | "VIMEO_UPLOAD"
+    | "YOUTUBE"
+    | null;
   currentRawUrl: string | null;
 }
 
-type Tab = "cloudflare" | "vimeo";
+type Tab = "cloudflare" | "url";
 
 export function VideoUpload({
   lessonId,
@@ -26,9 +31,7 @@ export function VideoUpload({
 }: VideoUploadProps) {
   const hasVideo = !!currentVideoUrl;
   const [tab, setTab] = useState<Tab>(
-    currentProvider === "VIMEO_URL" || currentProvider === "VIMEO_UPLOAD"
-      ? "vimeo"
-      : "cloudflare"
+    currentProvider === "CLOUDFLARE" || !currentProvider ? "cloudflare" : "url"
   );
 
   return (
@@ -48,14 +51,14 @@ export function VideoUpload({
         </button>
         <button
           type="button"
-          onClick={() => setTab("vimeo")}
+          onClick={() => setTab("url")}
           className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            tab === "vimeo"
+            tab === "url"
               ? "bg-surface text-text-primary shadow-sm"
               : "text-text-tertiary hover:text-text-secondary"
           }`}
         >
-          URL de Vimeo
+          URL Vimeo / YouTube
         </button>
       </div>
 
@@ -66,12 +69,16 @@ export function VideoUpload({
         />
       )}
 
-      {tab === "vimeo" && (
-        <VimeoUrlInput
+      {tab === "url" && (
+        <UrlVideoInput
           lessonId={lessonId}
           currentRawUrl={
-            currentProvider === "VIMEO_URL" ? currentRawUrl : null
+            currentProvider === "VIMEO_URL" ||
+            currentProvider === "YOUTUBE"
+              ? currentRawUrl
+              : null
           }
+          currentProvider={currentProvider}
         />
       )}
 
@@ -272,14 +279,16 @@ function CloudflareUploader({
   );
 }
 
-// ─── Vimeo URL input ──────────────────────────────────────────────────────────
+// ─── Vimeo / YouTube URL input ────────────────────────────────────────────────
 
-function VimeoUrlInput({
+function UrlVideoInput({
   lessonId,
   currentRawUrl,
+  currentProvider,
 }: {
   lessonId: string;
   currentRawUrl: string | null;
+  currentProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | "YOUTUBE" | null;
 }) {
   const [url, setUrl] = useState(currentRawUrl ?? "");
   const [loading, setLoading] = useState(false);
@@ -291,9 +300,8 @@ function VimeoUrlInput({
     setError("");
     setLoading(true);
     setSuccess(false);
-
     try {
-      await setVideoFromVimeoUrl(lessonId, url);
+      await setVideoFromUrl(lessonId, url);
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar");
@@ -302,11 +310,18 @@ function VimeoUrlInput({
     }
   }
 
+  const providerLabel =
+    currentProvider === "YOUTUBE"
+      ? "YouTube"
+      : currentProvider === "VIMEO_URL"
+        ? "Vimeo"
+        : "video";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border border-border p-4">
       <div>
         <label className="mb-1.5 block text-xs font-medium text-text-primary">
-          URL de Vimeo
+          URL del video
         </label>
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -318,7 +333,7 @@ function VimeoUrlInput({
                 setUrl(e.target.value);
                 setSuccess(false);
               }}
-              placeholder="https://vimeo.com/123456789"
+              placeholder="https://vimeo.com/123 o https://youtu.be/dQw4w9WgXcQ"
               required
               className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
@@ -328,19 +343,19 @@ function VimeoUrlInput({
             disabled={loading || !url}
             className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
           >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              "Guardar"
-            )}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Guardar"}
           </button>
         </div>
         <p className="mt-1.5 text-xs text-text-tertiary">
-          El video debe ser publico o &quot;unlisted&quot;. Acepta links como{" "}
+          Acepta links de Vimeo y YouTube. El video debe ser publico o &quot;no
+          listado&quot;. Ejemplos:{" "}
           <code className="rounded bg-surface-secondary px-1 py-0.5 text-[10px]">
             vimeo.com/123456789
           </code>
-          .
+          {" · "}
+          <code className="rounded bg-surface-secondary px-1 py-0.5 text-[10px]">
+            youtu.be/dQw4w9WgXcQ
+          </code>
         </p>
       </div>
 
@@ -349,11 +364,10 @@ function VimeoUrlInput({
           {error}
         </div>
       )}
-
       {success && !error && (
         <div className="flex items-center gap-2 rounded-md bg-emerald-50 p-2.5 text-xs text-emerald-700">
           <Check className="h-4 w-4 shrink-0" />
-          Video de Vimeo vinculado correctamente.
+          Video de {providerLabel} vinculado correctamente.
         </div>
       )}
     </form>

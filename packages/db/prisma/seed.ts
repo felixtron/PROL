@@ -462,6 +462,234 @@ async function main() {
   );
   console.log(`   ✅ UX/UI: ${uxuiLessons.length} lessons in 2 modules\n`);
 
+  // ── 4b. Demo content for the showcase: MULTI lesson + Final Exam ──────
+  console.log("✨ Adding demo MULTI lesson + final exam…");
+
+  // Find the last module of Marketing course to append demo lessons
+  const lastMarketingModule = await prisma.module.findFirst({
+    where: { courseId: marketingCourse.id },
+    orderBy: { position: "desc" },
+  });
+
+  if (lastMarketingModule) {
+    const lastLessonInModule = await prisma.lesson.findFirst({
+      where: { moduleId: lastMarketingModule.id },
+      orderBy: { position: "desc" },
+    });
+    const nextPos = (lastLessonInModule?.position ?? 0) + 1;
+
+    // 1) MULTI lesson with video (YouTube) + PDF + text + quiz
+    const multiLesson = await prisma.lesson.create({
+      data: {
+        moduleId: lastMarketingModule.id,
+        title: "Caso de estudio: Lanzamiento end-to-end (multiformato)",
+        description:
+          "Combinacion de video (YouTube), PDF descargable, lectura y quiz integrado.",
+        position: nextPos,
+        type: "MULTI",
+        isPublished: true,
+        isFree: false,
+        content: {
+          blocks: [
+            {
+              id: "blk_demo_video",
+              type: "video",
+              title: "Repaso del marco STP (Segmentation, Targeting, Positioning)",
+              provider: "YOUTUBE",
+              videoUrl: "F0X1tsv_QpY", // CC BY video about STP marketing model
+              videoHash: null,
+            },
+            {
+              id: "blk_demo_pdf",
+              type: "pdf",
+              title: "Plantilla del plan de lanzamiento",
+              url: "/uploads/pdfs/plantilla-plan-lanzamiento.pdf",
+              filename: "plantilla-plan-lanzamiento.pdf",
+              sizeBytes: 245000,
+            },
+            {
+              id: "blk_demo_text",
+              type: "text",
+              title: "Resumen rapido",
+              content:
+                "Antes de pasar al examen, asegurate de:\n\n" +
+                "1. Haber identificado tu segmento objetivo claramente.\n" +
+                "2. Tener una propuesta de valor diferenciada.\n" +
+                "3. Haber descargado y completado la plantilla del plan.\n\n" +
+                "Si tienes dudas, regresa al video o consulta el PDF.",
+            },
+          ],
+        },
+      },
+    });
+    console.log(
+      `   ✅ MULTI lesson created: ${multiLesson.title} (${multiLesson.id})`
+    );
+
+    // 2) Quiz lesson + Quiz marked as FINAL EXAM (passingScore=80)
+    const finalExamLesson = await prisma.lesson.create({
+      data: {
+        moduleId: lastMarketingModule.id,
+        title: "Examen Final del Curso",
+        description:
+          "Examen final del curso. Necesitas >= 80% para obtener tu certificado.",
+        position: nextPos + 1,
+        type: "QUIZ",
+        isPublished: true,
+        isFree: false,
+      },
+    });
+
+    await prisma.quiz.create({
+      data: {
+        lessonId: finalExamLesson.id,
+        title: "Examen Final - Marketing Digital Avanzado",
+        passingScore: 80,
+        maxAttempts: 3,
+        timeLimit: 1800, // 30 minutes
+        isFinalExam: true,
+        questions: [
+          {
+            question:
+              "?Cual es el objetivo principal de la segmentacion de mercado?",
+            options: [
+              "Aumentar el presupuesto de publicidad",
+              "Identificar grupos de consumidores con caracteristicas similares",
+              "Reducir el numero de productos",
+              "Eliminar la competencia",
+            ],
+            correctIndex: 1,
+            explanation:
+              "La segmentacion permite dividir el mercado en grupos homogeneos para personalizar mejor las estrategias.",
+          },
+          {
+            question:
+              "En el modelo AIDA, ?que significa la 'A' inicial?",
+            options: ["Accion", "Atencion", "Adquisicion", "Analisis"],
+            correctIndex: 1,
+            explanation:
+              "AIDA = Attention, Interest, Desire, Action. La primera A es 'Attention' (Atencion).",
+          },
+          {
+            question:
+              "?Cual es una metrica clave para medir el ROI de una campana de Facebook Ads?",
+            options: [
+              "Numero de seguidores en Instagram",
+              "Costo por adquisicion (CPA)",
+              "Tamano del archivo del video",
+              "Color del fondo del anuncio",
+            ],
+            correctIndex: 1,
+            explanation:
+              "El CPA mide cuanto cuesta adquirir un cliente o conversion, fundamental para evaluar rentabilidad.",
+          },
+          {
+            question: "?Que es un buyer persona?",
+            options: [
+              "Un comprador real con nombre y apellido",
+              "Una representacion semi-ficticia de tu cliente ideal basada en datos",
+              "El equipo de ventas de tu empresa",
+              "Una herramienta de software de CRM",
+            ],
+            correctIndex: 1,
+            explanation:
+              "Un buyer persona es un perfil construido a partir de investigacion de mercado y datos reales de clientes.",
+          },
+          {
+            question:
+              "?Cual de estas NO es una etapa del funnel de marketing clasico?",
+            options: [
+              "Awareness (conciencia)",
+              "Consideration (consideracion)",
+              "Decision (decision)",
+              "Refund (reembolso)",
+            ],
+            correctIndex: 3,
+            explanation:
+              "El funnel clasico es Awareness > Consideration > Decision > (a veces) Retention. 'Refund' no es una etapa.",
+          },
+        ],
+      },
+    });
+    console.log(
+      `   ✅ Final exam quiz attached to: ${finalExamLesson.title} (passing >= 80%)`
+    );
+
+    // Update course total lessons count
+    await prisma.course.update({
+      where: { id: marketingCourse.id },
+      data: { totalLessons: { increment: 2 } },
+    });
+
+    // 3) Add 3 demo interactive stops on the FIRST video lesson of Marketing
+    const firstVideoLesson = await prisma.lesson.findFirst({
+      where: {
+        type: "VIDEO",
+        module: { courseId: marketingCourse.id },
+      },
+      orderBy: [{ module: { position: "asc" } }, { position: "asc" }],
+    });
+
+    if (firstVideoLesson) {
+      await prisma.interactiveStop.createMany({
+        data: [
+          {
+            lessonId: firstVideoLesson.id,
+            timestampSeconds: 60,
+            type: "QUESTION",
+            isRequired: true,
+            content: {
+              question:
+                "?Cual fue el principal canal de adquisicion mencionado?",
+              options: [
+                "Email marketing",
+                "Facebook Ads",
+                "SEO organico",
+                "Influencer marketing",
+              ],
+              correctIndex: 1,
+              explanation:
+                "Facebook Ads fue el canal principal por su capacidad de segmentacion fina.",
+            },
+          },
+          {
+            lessonId: firstVideoLesson.id,
+            timestampSeconds: 180,
+            type: "REFLECTION",
+            isRequired: false,
+            content: {
+              prompt:
+                "?Como aplicarias este enfoque a tu propio negocio o producto? Escribe 2-3 acciones concretas.",
+              minLength: 20,
+            },
+          },
+          {
+            lessonId: firstVideoLesson.id,
+            timestampSeconds: 300,
+            type: "POLL",
+            isRequired: false,
+            content: {
+              question:
+                "?Cual es tu mayor reto al hacer marketing digital actualmente?",
+              options: [
+                "Definir mi audiencia objetivo",
+                "Crear contenido constante",
+                "Medir el ROI de mis acciones",
+                "Convertir trafico en ventas",
+              ],
+              allowMultiple: false,
+            },
+          },
+        ],
+      });
+      console.log(
+        `   ✅ 3 interactive stops added to: ${firstVideoLesson.title}`
+      );
+    }
+  }
+
+  console.log();
+
   // ── 5. Enrollments ─────────────────────────────────────────────────────
   console.log("🎓 Creating enrollments…");
 

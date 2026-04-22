@@ -44,7 +44,7 @@ type LessonData = {
   position: number;
   videoDurationSeconds: number | null;
   videoUrl: string | null;
-  videoProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | null;
+  videoProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | "YOUTUBE" | null;
   videoRawUrl: string | null;
   content?: unknown;
   aiStatus: string | null;

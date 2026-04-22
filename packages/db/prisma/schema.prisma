@@ -49,6 +49,7 @@ enum VideoProvider {
   CLOUDFLARE
   VIMEO_URL
   VIMEO_UPLOAD
+  YOUTUBE
 }
 
 enum InteractiveStopType {

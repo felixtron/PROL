@@ -42,7 +42,7 @@ interface Lesson {
   position: number;
   videoDurationSeconds: number | null;
   videoUrl: string | null;
-  videoProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | null;
+  videoProvider: "CLOUDFLARE" | "VIMEO_URL" | "VIMEO_UPLOAD" | "YOUTUBE" | null;
   videoHash: string | null;
   content: unknown;
 }
@@ -614,7 +614,16 @@ function LessonView({
                   ref={setVideoElement}
                   videoUrl={lesson.videoUrl}
                   provider={lesson.videoProvider}
-                  videoHash={lesson.videoHash}
+                  videoHash={
+                    lesson.videoProvider === "YOUTUBE"
+                      ? null
+                      : lesson.videoHash
+                  }
+                  startSeconds={
+                    lesson.videoProvider === "YOUTUBE" && lesson.videoHash
+                      ? parseInt(lesson.videoHash, 10) || null
+                      : null
+                  }
                   title={lesson.title}
                 />
                 {/* Interactive stops overlay */}

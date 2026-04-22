@@ -110,3 +110,123 @@ export function buildVimeoEmbedUrl(
 export function buildCloudflareEmbedUrl(uid: string): string {
   return `https://iframe.videodelivery.net/${uid}`;
 }
+
+/**
+ * YouTube URL parser.
+ *
+ * Supported YouTube URL formats:
+ *   https://www.youtube.com/watch?v=dQw4w9WgXcQ
+ *   https://youtube.com/watch?v=dQw4w9WgXcQ
+ *   https://youtu.be/dQw4w9WgXcQ
+ *   https://www.youtube.com/embed/dQw4w9WgXcQ
+ *   https://www.youtube.com/shorts/dQw4w9WgXcQ
+ *   https://m.youtube.com/watch?v=dQw4w9WgXcQ
+ *   With optional `t` / `start` query params (preserved for player).
+ */
+export interface YouTubeVideoInfo {
+  videoId: string;
+  startSeconds: number | null;
+  rawUrl: string;
+}
+
+const YT_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
+
+function parseStartParam(val: string | null): number | null {
+  if (!val) return null;
+  // Supports "90", "90s", "1m30s", "1h2m3s"
+  const plain = val.match(/^(\d+)s?$/);
+  if (plain) return parseInt(plain[1]!, 10);
+  const parts = val.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+  if (!parts) return null;
+  const [, h, m, s] = parts;
+  const total =
+    (parseInt(h ?? "0", 10) * 3600) +
+    (parseInt(m ?? "0", 10) * 60) +
+    parseInt(s ?? "0", 10);
+  return total > 0 ? total : null;
+}
+
+export function parseYouTubeUrl(input: string): YouTubeVideoInfo | null {
+  if (!input) return null;
+  const url = input.trim();
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/^www\.|^m\./, "");
+  const start =
+    parseStartParam(parsed.searchParams.get("t")) ??
+    parseStartParam(parsed.searchParams.get("start"));
+
+  if (host === "youtu.be") {
+    const id = parsed.pathname.slice(1).split("/")[0] ?? "";
+    if (YT_ID_RE.test(id)) {
+      return { videoId: id, startSeconds: start, rawUrl: url };
+    }
+    return null;
+  }
+
+  if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    // /watch?v=ID
+    if (parsed.pathname === "/watch") {
+      const id = parsed.searchParams.get("v") ?? "";
+      if (YT_ID_RE.test(id)) {
+        return { videoId: id, startSeconds: start, rawUrl: url };
+      }
+      return null;
+    }
+    // /embed/ID, /shorts/ID, /live/ID
+    const match = parsed.pathname.match(/^\/(?:embed|shorts|live|v)\/([a-zA-Z0-9_-]{11})/);
+    if (match) {
+      return { videoId: match[1]!, startSeconds: start, rawUrl: url };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Build the YouTube embed URL. Uses the privacy-enhanced
+ * youtube-nocookie.com domain and disables related videos.
+ */
+export function buildYouTubeEmbedUrl(
+  videoId: string,
+  startSeconds?: number | null
+): string {
+  const params = new URLSearchParams();
+  params.set("rel", "0");
+  params.set("modestbranding", "1");
+  if (startSeconds && startSeconds > 0) {
+    params.set("start", String(startSeconds));
+  }
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
+/**
+ * Dispatch a URL to the correct parser. Returns a normalized result
+ * that callers can use to persist to the DB without branching on host.
+ */
+export type DetectedVideo =
+  | { provider: "VIMEO_URL"; videoId: string; hash: string | null; rawUrl: string }
+  | { provider: "YOUTUBE"; videoId: string; startSeconds: number | null; rawUrl: string };
+
+export function detectVideoUrl(url: string): DetectedVideo | null {
+  const v = parseVimeoUrl(url);
+  if (v) {
+    return { provider: "VIMEO_URL", videoId: v.videoId, hash: v.hash, rawUrl: v.rawUrl };
+  }
+  const y = parseYouTubeUrl(url);
+  if (y) {
+    return {
+      provider: "YOUTUBE",
+      videoId: y.videoId,
+      startSeconds: y.startSeconds,
+      rawUrl: y.rawUrl,
+    };
+  }
+  return null;
+}

@@ -16,8 +16,9 @@ export const videoBlockSchema = z.object({
   id: z.string(),
   type: z.literal("video"),
   title: z.string().optional(),
-  provider: z.enum(["CLOUDFLARE", "VIMEO_URL", "VIMEO_UPLOAD"]),
-  videoUrl: z.string(), // CF uid or Vimeo video id
+  provider: z.enum(["CLOUDFLARE", "VIMEO_URL", "VIMEO_UPLOAD", "YOUTUBE"]),
+  videoUrl: z.string(), // CF uid, Vimeo video id, or YouTube video id
+  // Vimeo: privacy hash. YouTube: serialized start offset (seconds).
   videoHash: z.string().nullable().optional(),
   durationSeconds: z.number().int().positive().nullable().optional(),
 });

@@ -5,6 +5,18 @@ import crypto from "node:crypto";
 import { requireUser } from "@/lib/auth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MIN_FILE_SIZE = 100; // bytes — reject empty/junk uploads
+// PDF magic bytes: %PDF- (0x25 0x50 0x44 0x46 0x2D)
+const PDF_MAGIC = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d]);
+
+function safeFilename(name: string): string {
+  // Strip any path traversal, keep alphanumerics, dots, hyphens.
+  const base = name.split(/[/\\]/).pop() ?? "documento";
+  return base
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 80);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +33,9 @@ export async function POST(request: NextRequest) {
     if (file.type !== "application/pdf") {
       return NextResponse.json({ error: "Solo se aceptan archivos PDF" }, { status: 400 });
     }
+    if (file.size < MIN_FILE_SIZE) {
+      return NextResponse.json({ error: "Archivo invalido o vacio" }, { status: 400 });
+    }
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "El archivo supera los 10MB" },
@@ -28,16 +43,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const filename = `${crypto.randomUUID()}.pdf`;
-    const uploadDir = join(process.cwd(), "public", "uploads", "pdfs");
-    const filePath = join(uploadDir, filename);
-    await mkdir(uploadDir, { recursive: true });
-
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Verify the file actually starts with the PDF magic header. Defense
+    // against renamed binaries (e.g. .exe with .pdf extension).
+    if (
+      buffer.length < PDF_MAGIC.length ||
+      !buffer.subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC)
+    ) {
+      return NextResponse.json(
+        { error: "El archivo no es un PDF valido" },
+        { status: 400 }
+      );
+    }
+
+    const storedName = `${crypto.randomUUID()}.pdf`;
+    const uploadDir = join(process.cwd(), "public", "uploads", "pdfs");
+    const filePath = join(uploadDir, storedName);
+    await mkdir(uploadDir, { recursive: true });
     await writeFile(filePath, buffer);
 
-    const url = `/uploads/pdfs/${filename}`;
-    return NextResponse.json({ url, filename: file.name, sizeBytes: file.size });
+    return NextResponse.json({
+      url: `/uploads/pdfs/${storedName}`,
+      filename: safeFilename(file.name),
+      sizeBytes: file.size,
+    });
   } catch (err) {
     if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });

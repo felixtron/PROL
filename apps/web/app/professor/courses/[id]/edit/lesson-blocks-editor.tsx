@@ -16,7 +16,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { LessonBlock } from "@prol/shared";
-import { parseVimeoUrl } from "@prol/shared";
+import { detectVideoUrl } from "@prol/shared";
 import {
   addBlockToLesson,
   removeBlock,
@@ -258,23 +258,28 @@ function AddVideoBlock({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = parseVimeoUrl(url);
-    if (!parsed) {
-      setError("Pega una URL valida de Vimeo");
+    const detected = detectVideoUrl(url);
+    if (!detected) {
+      setError("Pega una URL valida de Vimeo o YouTube");
       return;
     }
     setError("");
     onAdd({
       type: "video",
       title: title || undefined,
-      provider: "VIMEO_URL",
-      videoUrl: parsed.videoId,
-      videoHash: parsed.hash,
+      provider: detected.provider,
+      videoUrl: detected.videoId,
+      videoHash:
+        detected.provider === "VIMEO_URL"
+          ? detected.hash
+          : detected.startSeconds
+            ? String(detected.startSeconds)
+            : null,
     });
   }
 
   return (
-    <FormShell title="Agregar video (Vimeo URL)" onCancel={onCancel}>
+    <FormShell title="Agregar video (Vimeo / YouTube URL)" onCancel={onCancel}>
       <form onSubmit={handleSubmit} className="space-y-2">
         <input
           type="text"
@@ -290,7 +295,7 @@ function AddVideoBlock({
             required
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://vimeo.com/..."
+            placeholder="https://vimeo.com/... o https://youtu.be/..."
             className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-3 text-sm"
           />
         </div>

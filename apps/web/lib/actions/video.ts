@@ -7,7 +7,7 @@ import {
   getVideoDetails,
 } from "@/lib/cloudflare-stream";
 import { revalidatePath } from "next/cache";
-import { parseVimeoUrl } from "@prol/shared";
+import { parseVimeoUrl, parseYouTubeUrl, detectVideoUrl } from "@prol/shared";
 
 /** Helper: verify the lesson belongs to a course owned by this professor */
 async function getOwnedLesson(lessonId: string, userId: string) {
@@ -117,6 +117,72 @@ export async function setVideoFromVimeoUrl(lessonId: string, url: string) {
     videoId: parsed.videoId,
     durationSeconds,
   };
+}
+
+/**
+ * Set a YouTube video on a lesson from a pasted URL.
+ * Uses YouTube's public oEmbed endpoint to validate existence.
+ * Duration requires the YouTube Data API which needs a key — we skip it
+ * and let the embed report its own length at playback time.
+ */
+export async function setVideoFromYouTubeUrl(lessonId: string, url: string) {
+  const user = await requireUser();
+  const lesson = await getOwnedLesson(lessonId, user.id);
+
+  const parsed = parseYouTubeUrl(url);
+  if (!parsed) {
+    throw new Error("URL de YouTube invalida");
+  }
+
+  // Validate existence via YouTube oEmbed (no API key required, public only).
+  try {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(
+      `https://www.youtube.com/watch?v=${parsed.videoId}`
+    )}&format=json`;
+    const res = await fetch(oembedUrl, { headers: { Accept: "application/json" } });
+    if (res.status === 401 || res.status === 404) {
+      throw new Error(
+        "No se pudo acceder al video. Verifica que sea publico o 'no listado'."
+      );
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("No se pudo")) {
+      throw err;
+    }
+    console.warn("YouTube oEmbed failed:", err);
+  }
+
+  await db.lesson.update({
+    where: { id: lessonId },
+    data: {
+      videoUrl: parsed.videoId,
+      videoProvider: "YOUTUBE",
+      videoRawUrl: parsed.rawUrl,
+      // Reuse videoHash column to store the start offset (serialized) —
+      // avoids a schema migration and keeps the video block format clean.
+      videoHash: parsed.startSeconds ? String(parsed.startSeconds) : null,
+    },
+  });
+
+  revalidatePath(`/professor/courses/${lesson.module.course.id}/edit`);
+  return { success: true, videoId: parsed.videoId };
+}
+
+/**
+ * Unified setter that auto-detects the provider from the URL.
+ * Accepts Vimeo or YouTube; rejects unknown hosts.
+ */
+export async function setVideoFromUrl(lessonId: string, url: string) {
+  const detected = detectVideoUrl(url);
+  if (!detected) {
+    throw new Error(
+      "URL no reconocida. Usa un link publico de Vimeo o YouTube."
+    );
+  }
+  if (detected.provider === "VIMEO_URL") {
+    return setVideoFromVimeoUrl(lessonId, url);
+  }
+  return setVideoFromYouTubeUrl(lessonId, url);
 }
 
 /** Remove the video from a lesson */

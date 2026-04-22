@@ -155,7 +155,14 @@ function BlockContent({
           <VideoPlayer
             videoUrl={block.videoUrl}
             provider={block.provider}
-            videoHash={block.videoHash ?? null}
+            videoHash={
+              block.provider === "YOUTUBE" ? null : block.videoHash ?? null
+            }
+            startSeconds={
+              block.provider === "YOUTUBE" && block.videoHash
+                ? parseInt(block.videoHash, 10) || null
+                : null
+            }
             title={block.title}
           />
         </div>
