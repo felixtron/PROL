@@ -23,12 +23,18 @@ export default async function DashboardLayout({
 }>) {
   const user = await getCurrentUser();
 
-  if (user?.mustResetPassword) {
+  // Defensive: middleware should already enforce auth, but if the cookie
+  // points to a deleted user (e.g. after a re-seed), getCurrentUser returns
+  // null. Send them to sign-in to refresh their session.
+  if (!user) {
+    redirect("/sign-in?callbackUrl=/dashboard");
+  }
+  if (user.mustResetPassword) {
     redirect("/force-reset-password");
   }
 
   const unreadCount = await getUnreadNotificationCount();
-  const displayName = user?.name ?? "Estudiante";
+  const displayName = user.name ?? "Estudiante";
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-secondary">
@@ -39,8 +45,8 @@ export default async function DashboardLayout({
           <div className="min-w-0 flex-1">
             <UserMenu
               name={displayName}
-              email={user?.email ?? ""}
-              avatar={user?.avatar ?? null}
+              email={user.email}
+              avatar={user.avatar}
               roleLabel="Estudiante"
               settingsHref="/dashboard/settings"
             />
@@ -92,7 +98,7 @@ export default async function DashboardLayout({
               className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700"
               aria-label="Mi perfil"
             >
-              {user?.avatar ? (
+              {user.avatar ? (
                 <img
                   src={user.avatar}
                   alt={displayName}

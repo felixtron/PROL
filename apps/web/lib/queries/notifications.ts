@@ -1,20 +1,22 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser, requireUser } from "@/lib/auth";
 import type { Notification } from "@prol/db";
 
-// Get unread count for the bell badge
+// Get unread count for the bell badge.
+// Returns 0 (instead of throwing) when there is no authenticated user, so
+// layouts can call this safely without breaking the whole render. The auth
+// guard happens via middleware/layout redirects.
 export const getUnreadNotificationCount = cache(async (): Promise<number> => {
-  const user = await requireUser();
+  const user = await getCurrentUser();
+  if (!user) return 0;
 
-  const count = await db.notification.count({
+  return db.notification.count({
     where: {
       userId: user.id,
       isRead: false,
     },
   });
-
-  return count;
 });
 
 // Get notifications with pagination
