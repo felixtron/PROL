@@ -54,13 +54,27 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const filename = `${crypto.randomUUID()}.${ext}`;
-    const uploadDir = join(process.cwd(), "public", "uploads", "thumbnails");
-    const filePath = join(uploadDir, filename);
+    // Standalone build runs from /app while public lives at /app/apps/web/public.
+    // Falls back to <cwd>/public for `pnpm dev`.
+    const standaloneDir = join(
+      process.cwd(),
+      "apps",
+      "web",
+      "public",
+      "uploads",
+      "thumbnails"
+    );
+    const fallbackDir = join(process.cwd(), "public", "uploads", "thumbnails");
 
-    // Create directory if it doesn't exist
-    await mkdir(uploadDir, { recursive: true });
+    let targetDir = standaloneDir;
+    try {
+      await mkdir(targetDir, { recursive: true });
+    } catch {
+      targetDir = fallbackDir;
+      await mkdir(targetDir, { recursive: true });
+    }
+    const filePath = join(targetDir, filename);
 
-    // Convert file to buffer and save
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);

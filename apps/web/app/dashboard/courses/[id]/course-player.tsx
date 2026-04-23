@@ -24,6 +24,7 @@ import { QuizPlayer } from "./quiz-player";
 import { InteractiveStopOverlay } from "./interactive-stop-overlay";
 import { VideoPlayer } from "@/components/video-player";
 import { MultiLessonPlayer } from "./multi-lesson-player";
+import { AssignmentPlayer } from "./assignment-player";
 import {
   multiLessonContentSchema,
   type MultiLessonProgressMetadata,
@@ -715,12 +716,18 @@ function LessonView({
                 </div>
               </div>
             )
+          ) : lesson.type === "ASSIGNMENT" ? (
+            <AssignmentPlayer
+              enrollmentId={enrollmentId}
+              lessonId={lesson.id}
+              content={lesson.content}
+            />
           ) : (
             <div className="flex items-center justify-center rounded-xl border border-dashed border-border bg-surface p-8 md:p-12">
               <div className="text-center">
                 <ClipboardList className="mx-auto h-10 w-10 text-text-tertiary md:h-12 md:w-12" />
                 <p className="mt-2 text-sm text-text-secondary">
-                  Módulo de actividades próximamente
+                  Tipo de lección no soportado
                 </p>
               </div>
             </div>

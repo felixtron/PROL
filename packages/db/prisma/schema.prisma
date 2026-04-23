@@ -413,9 +413,10 @@ model Lesson {
   updatedAt            DateTime   @updatedAt @map("updated_at")
 
   // Relations
-  interactiveStops     InteractiveStop[]
-  quizzes              Quiz[]
-  lessonProgresses     LessonProgress[]
+  interactiveStops      InteractiveStop[]
+  quizzes               Quiz[]
+  lessonProgresses      LessonProgress[]
+  assignmentSubmissions AssignmentSubmission[]
 
   @@index([moduleId])
   @@index([moduleId, position])
@@ -492,9 +493,10 @@ model Enrollment {
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
   // Relations
-  lessonProgresses LessonProgress[]
-  quizAttempts     QuizAttempt[]
-  certificate      Certificate?
+  lessonProgresses     LessonProgress[]
+  quizAttempts         QuizAttempt[]
+  certificate          Certificate?
+  assignmentSubmissions AssignmentSubmission[]
 
   @@unique([studentId, courseId])
   @@index([tenantId])
@@ -570,6 +572,42 @@ model QuizAttempt {
   @@index([enrollmentId])
   @@index([quizId])
   @@map("quiz_attempts")
+}
+
+enum AssignmentSubmissionStatus {
+  SUBMITTED
+  REVIEWED
+  RETURNED
+}
+
+/// A student's submission for an ASSIGNMENT-type lesson.
+/// The professor configures the assignment via Lesson.content (instructions
+/// + optional PDF). Students upload their work as fileUrl + optional notes.
+model AssignmentSubmission {
+  id           String                     @id @default(cuid())
+  enrollmentId String                     @map("enrollment_id")
+  enrollment   Enrollment                 @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  lessonId     String                     @map("lesson_id")
+  lesson       Lesson                     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  fileUrl      String?                    @map("file_url")
+  fileName     String?                    @map("file_name")
+  fileSize     Int?                       @map("file_size")
+  notes        String?
+
+  status       AssignmentSubmissionStatus @default(SUBMITTED)
+  grade        Int?
+  feedback     String?
+
+  submittedAt  DateTime                   @default(now()) @map("submitted_at")
+  reviewedAt   DateTime?                  @map("reviewed_at")
+
+  @@unique([enrollmentId, lessonId])
+  @@index([lessonId])
+  @@index([enrollmentId])
+  @@index([status])
+  @@map("assignment_submissions")
 }
 
 /// Payment record for a course purchase via Stripe Connect.

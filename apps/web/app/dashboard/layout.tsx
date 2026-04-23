@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Home, BookOpen, Calendar, Award, Settings, Building2 } from "lucide-react";
+import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
+import { TenantBrand } from "@/components/tenant-brand";
 import { MobileNav } from "./mobile-nav";
 
 const navItems = [
@@ -36,6 +38,13 @@ export default async function DashboardLayout({
   const unreadCount = await getUnreadNotificationCount();
   const displayName = user.name ?? "Estudiante";
 
+  const tenant = user.tenantId
+    ? await db.tenant.findUnique({
+        where: { id: user.tenantId },
+        select: { name: true, logo: true },
+      })
+    : null;
+
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-secondary">
       {/* ─── Desktop sidebar (hidden on mobile) ─── */}
@@ -55,14 +64,15 @@ export default async function DashboardLayout({
         </div>
 
         {/* Brand */}
-        <div className="flex items-center px-6 py-4">
-          <Link
-            href="/dashboard"
-            className="font-heading text-2xl font-bold text-primary-600"
-          >
-            PROL
-          </Link>
-        </div>
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 px-6 py-4"
+        >
+          <TenantBrand
+            name={tenant?.name ?? "PROL"}
+            logo={tenant?.logo ?? null}
+          />
+        </Link>
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">

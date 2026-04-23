@@ -58,9 +58,21 @@ export async function POST(request: NextRequest) {
     }
 
     const storedName = `${crypto.randomUUID()}.pdf`;
-    const uploadDir = join(process.cwd(), "public", "uploads", "pdfs");
-    const filePath = join(uploadDir, storedName);
-    await mkdir(uploadDir, { recursive: true });
+    // Next.js standalone runs from /app while the public folder lives at
+    // /app/apps/web/public. Fall back to <cwd>/public for `pnpm dev`.
+    const uploadDir = process.env.UPLOAD_DIR
+      ? join(process.env.UPLOAD_DIR, "pdfs")
+      : join(process.cwd(), "apps", "web", "public", "uploads", "pdfs");
+    const fallbackDir = join(process.cwd(), "public", "uploads", "pdfs");
+
+    let targetDir = uploadDir;
+    try {
+      await mkdir(targetDir, { recursive: true });
+    } catch {
+      targetDir = fallbackDir;
+      await mkdir(targetDir, { recursive: true });
+    }
+    const filePath = join(targetDir, storedName);
     await writeFile(filePath, buffer);
 
     return NextResponse.json({

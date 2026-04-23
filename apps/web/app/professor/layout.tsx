@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   LayoutDashboard,
@@ -8,10 +7,13 @@ import {
   Calendar,
   Settings,
 } from "lucide-react";
+import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
+import { SidebarShell } from "@/components/sidebar-shell";
+import { TenantBrand } from "@/components/tenant-brand";
 
 const navItems = [
   { label: "Dashboard", href: "/professor", icon: LayoutDashboard },
@@ -42,11 +44,25 @@ export default async function ProfessorLayout({
   const unreadCount = await getUnreadNotificationCount();
   const displayName = user.name ?? "Profesor";
 
+  const tenant = await db.tenant.findUnique({
+    where: { id: user.tenantId },
+    select: { name: true, logo: true },
+  });
+
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
-        {/* Top: user menu + bell */}
-        <div className="flex items-center gap-2 border-b border-border px-3 py-3">
+    <SidebarShell
+      navItems={navItems}
+      mobileTitle={tenant?.name ?? "PROL · Profesor"}
+      brand={
+        <TenantBrand
+          name={tenant?.name ?? "PROL"}
+          logo={tenant?.logo ?? null}
+          badge="PRO"
+          badgeColor="bg-accent-500"
+        />
+      }
+      topSlot={
+        <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <UserMenu
               name={displayName}
@@ -58,38 +74,9 @@ export default async function ProfessorLayout({
           </div>
           <NotificationBell initialUnreadCount={unreadCount} />
         </div>
-
-        {/* Brand */}
-        <div className="flex items-center gap-2 px-6 py-4">
-          <span className="font-heading text-xl font-bold text-primary-700">
-            PROL
-          </span>
-          <span className="rounded-pill bg-accent-500 px-2 py-0.5 text-xs font-semibold text-white">
-            PRO
-          </span>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary-700"
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      <main className="flex-1 bg-surface-secondary">
-        <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">{children}</div>
-      </main>
-    </div>
+      }
+    >
+      {children}
+    </SidebarShell>
   );
 }

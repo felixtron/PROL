@@ -31,6 +31,7 @@ import { ThumbnailUpload } from "./thumbnail-upload";
 import { QuizBuilder } from "./quiz-builder";
 import { InteractiveStopEditor } from "./interactive-stop-editor";
 import { LessonBlocksEditor } from "./lesson-blocks-editor";
+import { AssignmentEditor } from "./assignment-editor";
 import type { LessonBlock } from "@prol/shared";
 
 // ---------------------------------------------------------------------------
@@ -603,6 +604,24 @@ function LessonRow({
               ((lesson.content as { blocks?: LessonBlock[] } | null)?.blocks) ?? []
             }
             availableQuizzes={availableQuizzes}
+          />
+        </div>
+      )}
+
+      {/* Assignment editor for ASSIGNMENT lessons */}
+      {lesson.type === "ASSIGNMENT" && showVideo && (
+        <div className="px-4 pb-3">
+          <AssignmentEditor
+            lessonId={lesson.id}
+            initialContent={
+              lesson.content as {
+                instructions: string;
+                fileUrl?: string | null;
+                fileName?: string | null;
+                fileSize?: number | null;
+                dueAt?: string | null;
+              } | null
+            }
           />
         </div>
       )}

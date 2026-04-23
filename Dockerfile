@@ -46,6 +46,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 # Copy Prisma artifacts needed at runtime (for db push and client)
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/prisma ./packages/db/prisma
 
+# Pre-create the uploads dir with proper ownership so the volume mount
+# from docker-compose can be written to by the nextjs user.
+RUN mkdir -p apps/web/public/uploads/pdfs \
+            apps/web/public/uploads/thumbnails \
+            apps/web/public/uploads/assignments \
+    && chown -R nextjs:nodejs apps/web/public/uploads
+
 USER nextjs
 
 EXPOSE 3000

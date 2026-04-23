@@ -56,6 +56,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY:-}
       TRIGGER_SECRET_KEY: ${TRIGGER_SECRET_KEY:-}
+    volumes:
+      # Persist uploaded files (PDFs, thumbnails, avatars) across rebuilds
+      - prol_uploads:/app/apps/web/public/uploads
     networks:
       - prol-internal
       - dokploy-network
@@ -77,6 +80,7 @@ services:
 
 volumes:
   prol_db_data:
+  prol_uploads:
 
 networks:
   prol-internal:
