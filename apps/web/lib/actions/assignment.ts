@@ -3,27 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
-
-// ─── Assignment content shape (stored in Lesson.content) ──────────────────────
-
-interface AssignmentContent {
-  instructions: string;
-  fileUrl?: string | null;
-  fileName?: string | null;
-  fileSize?: number | null;
-  dueAt?: string | null;
-}
-
-function readAssignmentContent(content: unknown): AssignmentContent {
-  if (
-    content &&
-    typeof content === "object" &&
-    typeof (content as { instructions?: unknown }).instructions === "string"
-  ) {
-    return content as AssignmentContent;
-  }
-  return { instructions: "" };
-}
+import type { AssignmentContent } from "@/lib/assignment-content";
 
 // ─── Professor: configure the assignment ──────────────────────────────────────
 
@@ -191,6 +171,3 @@ export async function gradeAssignment(
   return { success: true };
 }
 
-// Helper exported for queries
-export type { AssignmentContent };
-export { readAssignmentContent };
