@@ -3,29 +3,54 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  DollarSign,
+  Calendar,
+  Settings,
+  Building2,
+  GraduationCap,
+  Home,
+  Award,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+// Allowed icon names — keep in sync with the imports above. Using a string
+// map avoids passing React components across the server/client boundary.
+const ICONS: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  DollarSign,
+  Calendar,
+  Settings,
+  Building2,
+  GraduationCap,
+  Home,
+  Award,
+};
+
+export type SidebarIcon = keyof typeof ICONS;
 
 export interface SidebarNavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: SidebarIcon;
 }
 
 interface SidebarShellProps {
   navItems: SidebarNavItem[];
   brand: React.ReactNode;
-  topSlot?: React.ReactNode; // user menu, notification bell, etc.
-  belowBrandSlot?: React.ReactNode; // tenant context, etc.
+  topSlot?: React.ReactNode;
+  belowBrandSlot?: React.ReactNode;
   mobileTitle?: string;
   children: React.ReactNode;
 }
 
-/**
- * Reusable sidebar shell with responsive collapse on mobile.
- * Desktop: fixed 256px sidebar, content fills the rest.
- * Mobile: top bar with hamburger that opens an overlay drawer.
- */
 export function SidebarShell({
   navItems,
   brand,
@@ -37,18 +62,13 @@ export function SidebarShell({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Close drawer when route changes
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Lock body scroll when drawer is open
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (open) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -66,7 +86,7 @@ export function SidebarShell({
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {navItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = ICONS[item.icon] ?? LayoutDashboard;
           const active =
             pathname === item.href ||
             (item.href !== "/" && pathname?.startsWith(item.href + "/"));

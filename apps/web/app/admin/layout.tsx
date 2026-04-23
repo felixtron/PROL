@@ -1,23 +1,15 @@
 import { redirect } from "next/navigation";
-import {
-  LayoutDashboard,
-  Building2,
-  Users,
-  DollarSign,
-  GraduationCap,
-  Settings,
-} from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
-import { SidebarShell } from "@/components/sidebar-shell";
+import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 
-const navItems = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Tenants", href: "/admin/tenants", icon: Building2 },
-  { label: "Usuarios", href: "/admin/users", icon: Users },
-  { label: "Ingresos", href: "/admin/revenue", icon: DollarSign },
-  { label: "Profesores", href: "/admin/professors", icon: GraduationCap },
-  { label: "Configuración", href: "/admin/settings", icon: Settings },
+const navItems: SidebarNavItem[] = [
+  { label: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
+  { label: "Tenants", href: "/admin/tenants", icon: "Building2" },
+  { label: "Usuarios", href: "/admin/users", icon: "Users" },
+  { label: "Ingresos", href: "/admin/revenue", icon: "DollarSign" },
+  { label: "Profesores", href: "/admin/professors", icon: "GraduationCap" },
+  { label: "Configuración", href: "/admin/settings", icon: "Settings" },
 ];
 
 export default async function AdminLayout({

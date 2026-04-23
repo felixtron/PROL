@@ -1,27 +1,19 @@
 import { redirect } from "next/navigation";
-import {
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  DollarSign,
-  Calendar,
-  Settings,
-} from "lucide-react";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
-import { SidebarShell } from "@/components/sidebar-shell";
+import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
 
-const navItems = [
-  { label: "Dashboard", href: "/professor", icon: LayoutDashboard },
-  { label: "Cursos", href: "/professor/courses", icon: BookOpen },
-  { label: "Alumnos", href: "/professor/students", icon: Users },
-  { label: "Ingresos", href: "/professor/revenue", icon: DollarSign },
-  { label: "Workshops", href: "/professor/workshops", icon: Calendar },
-  { label: "Configuración", href: "/professor/settings", icon: Settings },
+const navItems: SidebarNavItem[] = [
+  { label: "Dashboard", href: "/professor", icon: "LayoutDashboard" },
+  { label: "Cursos", href: "/professor/courses", icon: "BookOpen" },
+  { label: "Alumnos", href: "/professor/students", icon: "Users" },
+  { label: "Ingresos", href: "/professor/revenue", icon: "DollarSign" },
+  { label: "Workshops", href: "/professor/workshops", icon: "Calendar" },
+  { label: "Configuración", href: "/professor/settings", icon: "Settings" },
 ];
 
 export default async function ProfessorLayout({

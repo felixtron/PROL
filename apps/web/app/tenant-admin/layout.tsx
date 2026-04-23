@@ -1,23 +1,16 @@
 import { redirect } from "next/navigation";
-import {
-  LayoutDashboard,
-  Building2,
-  Users,
-  Settings,
-  GraduationCap,
-} from "lucide-react";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
-import { SidebarShell } from "@/components/sidebar-shell";
+import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
 
-const navItems = [
-  { label: "Dashboard", href: "/tenant-admin", icon: LayoutDashboard },
-  { label: "Empresas", href: "/tenant-admin/companies", icon: Building2 },
-  { label: "Usuarios", href: "/tenant-admin/users", icon: Users },
-  { label: "Cursos", href: "/tenant-admin/courses", icon: GraduationCap },
-  { label: "Configuración", href: "/tenant-admin/settings", icon: Settings },
+const navItems: SidebarNavItem[] = [
+  { label: "Dashboard", href: "/tenant-admin", icon: "LayoutDashboard" },
+  { label: "Empresas", href: "/tenant-admin/companies", icon: "Building2" },
+  { label: "Usuarios", href: "/tenant-admin/users", icon: "Users" },
+  { label: "Cursos", href: "/tenant-admin/courses", icon: "GraduationCap" },
+  { label: "Configuración", href: "/tenant-admin/settings", icon: "Settings" },
 ];
 
 export default async function TenantAdminLayout({
