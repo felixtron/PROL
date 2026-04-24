@@ -427,8 +427,9 @@ function AddTextBlock({
   const [content, setContent] = useState("");
   const [loadedFile, setLoadedFile] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
 
-  const MAX_TEXT_BYTES = 1 * 1024 * 1024; // 1 MB
+  const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     setFileError(null);
@@ -436,36 +437,44 @@ function AddTextBlock({
     if (!file) return;
 
     const name = file.name.toLowerCase();
-    const isPlain =
+    const accepted =
       name.endsWith(".txt") ||
-      name.endsWith(".md") ||
-      name.endsWith(".markdown") ||
-      file.type.startsWith("text/");
-
-    if (!isPlain) {
+      name.endsWith(".pdf") ||
+      name.endsWith(".docx");
+    if (!accepted) {
       setFileError(
-        "Por ahora solo se aceptan archivos .txt o .md. Para documentos Word o PDF usa la lección PDF o Tarea.",
+        "Formato no permitido. Sube PDF, Word (.docx) o texto plano (.txt).",
       );
       e.target.value = "";
       return;
     }
-    if (file.size > MAX_TEXT_BYTES) {
-      setFileError("El archivo supera 1 MB. Divide el contenido en varias lecciones.");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setFileError("El archivo supera 10 MB.");
       e.target.value = "";
       return;
     }
 
+    setIsLoadingFile(true);
     try {
-      const text = await file.text();
-      // Prepend to existing content so we don't overwrite manual edits.
-      setContent((prev) => (prev ? `${prev}\n\n${text}` : text));
-      if (!title) setTitle(file.name.replace(/\.(txt|md|markdown)$/i, ""));
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/extract-text", {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await res.json()) as { text?: string; error?: string };
+      if (!res.ok || !data.text) {
+        throw new Error(data.error ?? "No se pudo leer el archivo");
+      }
+      setContent((prev) => (prev ? `${prev}\n\n${data.text}` : data.text!));
+      if (!title) setTitle(file.name.replace(/\.(txt|pdf|docx)$/i, ""));
       setLoadedFile(file.name);
     } catch (err) {
       setFileError(
         err instanceof Error ? err.message : "No se pudo leer el archivo",
       );
     } finally {
+      setIsLoadingFile(false);
       e.target.value = "";
     }
   }
@@ -494,12 +503,14 @@ function AddTextBlock({
           <label className="flex cursor-pointer items-center gap-2 text-text-secondary hover:text-primary-700">
             <input
               type="file"
-              accept=".txt,.md,.markdown,text/plain,text/markdown"
+              accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFile}
+              disabled={isLoadingFile}
               className="sr-only"
             />
-            <span className="rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
-              Subir .txt o .md
+            <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
+              {isLoadingFile && <Loader2 className="h-3 w-3 animate-spin" />}
+              Subir PDF, Word o .txt
             </span>
             <span>
               {loadedFile
