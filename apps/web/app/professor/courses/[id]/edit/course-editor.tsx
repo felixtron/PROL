@@ -23,6 +23,7 @@ import {
   createLesson,
   deleteLesson,
   publishCourse,
+  updateLesson,
 } from "@/lib/actions/module";
 import { updateCourse } from "@/lib/actions/course";
 import { VideoUpload } from "./video-upload";
@@ -474,6 +475,7 @@ function LessonRow({
   const [isDeleting, startTransition] = useTransition();
   const [showVideo, setShowVideo] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [showText, setShowText] = useState(false);
   const [quizData, setQuizData] = useState<any>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
   const Icon = lessonTypeIcons[lesson.type] ?? Video;
@@ -545,6 +547,16 @@ function LessonRow({
             {isLoadingQuiz ? "Cargando..." : showQuiz ? "Ocultar Quiz" : "Configurar Quiz"}
           </button>
         )}
+        {lesson.type === "TEXT" && (
+          <button
+            type="button"
+            onClick={() => setShowText(!showText)}
+            className="shrink-0 rounded-md bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 hover:bg-primary-100 transition-colors"
+            title="Editar contenido de la lección"
+          >
+            {showText ? "Ocultar texto" : "Editar texto"}
+          </button>
+        )}
         <AILessonActions
           lessonId={lesson.id}
           lessonType={lesson.type}
@@ -604,6 +616,24 @@ function LessonRow({
               ((lesson.content as { blocks?: LessonBlock[] } | null)?.blocks) ?? []
             }
             availableQuizzes={availableQuizzes}
+          />
+        </div>
+      )}
+
+      {/* Text editor for TEXT lessons */}
+      {lesson.type === "TEXT" && showText && (
+        <div className="px-4 pb-3">
+          <TextLessonEditor
+            lessonId={lesson.id}
+            initialContent={
+              typeof lesson.content === "string"
+                ? lesson.content
+                : lesson.content &&
+                    typeof (lesson.content as { content?: unknown }).content ===
+                      "string"
+                  ? ((lesson.content as { content: string }).content)
+                  : ""
+            }
           />
         </div>
       )}
@@ -990,6 +1020,138 @@ function CourseStatsCard({ course }: { course: CourseData }) {
           </dd>
         </div>
       </dl>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Text Lesson Editor — lets the professor edit the textual content of a TEXT
+// lesson and optionally load a .txt/.md file from disk. The file is parsed
+// in-browser (FileReader) and concatenated to the existing content.
+// ---------------------------------------------------------------------------
+
+function TextLessonEditor({
+  lessonId,
+  initialContent,
+}: {
+  lessonId: string;
+  initialContent: string;
+}) {
+  const [content, setContent] = useState(initialContent);
+  const [loadedFile, setLoadedFile] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isSaving, startSaving] = useTransition();
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const MAX_TEXT_BYTES = 1 * 1024 * 1024; // 1 MB
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    setFileError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const name = file.name.toLowerCase();
+    const isPlain =
+      name.endsWith(".txt") ||
+      name.endsWith(".md") ||
+      name.endsWith(".markdown") ||
+      file.type.startsWith("text/");
+
+    if (!isPlain) {
+      setFileError(
+        "Por ahora solo se aceptan archivos .txt o .md. Para Word o PDF usa una lección tipo PDF o Tarea.",
+      );
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_TEXT_BYTES) {
+      setFileError("El archivo supera 1 MB. Divide el contenido en varias lecciones.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      setContent((prev) => (prev ? `${prev}\n\n${text}` : text));
+      setLoadedFile(file.name);
+    } catch (err) {
+      setFileError(
+        err instanceof Error ? err.message : "No se pudo leer el archivo",
+      );
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  function handleSave() {
+    setSaveError(null);
+    setSaved(false);
+    startSaving(async () => {
+      try {
+        await updateLesson(lessonId, { content });
+        setSaved(true);
+      } catch (err) {
+        setSaveError(
+          err instanceof Error ? err.message : "No se pudo guardar la lección",
+        );
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-3">
+      <div className="mb-2 rounded-lg border border-dashed border-border bg-surface-secondary p-2 text-xs">
+        <label className="flex cursor-pointer items-center gap-2 text-text-secondary hover:text-primary-700">
+          <input
+            type="file"
+            accept=".txt,.md,.markdown,text/plain,text/markdown"
+            onChange={handleFile}
+            className="sr-only"
+          />
+          <span className="rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
+            Subir .txt o .md
+          </span>
+          <span>
+            {loadedFile
+              ? `Cargado: ${loadedFile}`
+              : "o escribe directamente abajo"}
+          </span>
+        </label>
+        {fileError && (
+          <p className="mt-1 text-[11px] text-red-700">{fileError}</p>
+        )}
+      </div>
+      <textarea
+        value={content}
+        onChange={(e) => {
+          setContent(e.target.value);
+          setSaved(false);
+        }}
+        rows={8}
+        placeholder="Contenido de la lección (soporta markdown)"
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+      />
+      <div className="mt-2 flex items-center justify-end gap-2">
+        {saveError && (
+          <span className="text-xs text-red-700">{saveError}</span>
+        )}
+        {saved && !saveError && (
+          <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+            <CheckCircle className="h-3.5 w-3.5" />
+            Guardado
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving || !content.trim()}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+        >
+          {isSaving && <Loader2 className="h-3 w-3 animate-spin" />}
+          Guardar texto
+        </button>
+      </div>
     </div>
   );
 }
