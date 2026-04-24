@@ -107,6 +107,25 @@ export const requireTenantAdmin = cache(async () => {
 });
 
 /**
+ * Requires the current user to be allowed to author evaluations: a
+ * PROFESSOR, ADMIN or SUPER_ADMIN with a tenant (SUPER_ADMIN bypasses).
+ */
+export const requireEvaluationAuthor = cache(async () => {
+  const user = await requireUser();
+  if (
+    user.role !== "PROFESSOR" &&
+    user.role !== "ADMIN" &&
+    user.role !== "SUPER_ADMIN"
+  ) {
+    throw new Error("No autorizado");
+  }
+  if (user.role !== "SUPER_ADMIN" && !user.tenantId) {
+    throw new Error("No autorizado: tenant requerido");
+  }
+  return user;
+});
+
+/**
  * Asserts that the given resource's tenantId matches the current user's,
  * unless the user is a SUPER_ADMIN. Throws otherwise.
  */

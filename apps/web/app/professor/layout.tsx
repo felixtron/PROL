@@ -7,13 +7,12 @@ import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
 
-const navItems: SidebarNavItem[] = [
+const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/professor", icon: "LayoutDashboard" },
   { label: "Cursos", href: "/professor/courses", icon: "BookOpen" },
   { label: "Alumnos", href: "/professor/students", icon: "Users" },
   { label: "Ingresos", href: "/professor/revenue", icon: "DollarSign" },
   { label: "Sesiones y Talleres", href: "/professor/workshops", icon: "Calendar" },
-  { label: "Configuración", href: "/professor/settings", icon: "Settings" },
 ];
 
 export default async function ProfessorLayout({
@@ -38,8 +37,16 @@ export default async function ProfessorLayout({
 
   const tenant = await db.tenant.findUnique({
     where: { id: user.tenantId },
-    select: { name: true, logo: true },
+    select: { name: true, logo: true, evaluationsEnabled: true },
   });
+
+  const navItems: SidebarNavItem[] = [
+    ...baseNavItems,
+    ...(tenant?.evaluationsEnabled
+      ? [{ label: "Evaluaciones", href: "/professor/evaluations", icon: "ClipboardCheck" as const }]
+      : []),
+    { label: "Configuración", href: "/professor/settings", icon: "Settings" },
+  ];
 
   return (
     <SidebarShell
