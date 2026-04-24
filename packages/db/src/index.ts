@@ -11,4 +11,13 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export * from "@prisma/client";
+export {
+  consumeCredits,
+  grantCredits,
+  refundCredits,
+  getCreditsBalance,
+  reconcileBalance,
+  InsufficientCreditsError,
+} from "./credits";
+export type { CreditReason, ConsumeCreditsInput, GrantCreditsInput } from "./credits";
 export default db;

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
-import { issueCertificateForEnrollment } from "@/lib/actions/certificate";
+import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 import { createNotification } from "@/lib/notifications";
 
 // ---------------------------------------------------------------------------

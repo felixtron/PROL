@@ -2,12 +2,7 @@
 
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
-import crypto from "crypto";
-import {
-  generateCertificateFolio,
-  canonicalCertificateString,
-  sha256Hex,
-} from "@/lib/certificates";
+import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 
 /**
  * Issues a certificate for a completed enrollment.
@@ -29,124 +24,14 @@ export async function issueCertificate(enrollmentId: string) {
       studentId: user.id,
       status: "COMPLETED",
     },
-    include: {
-      course: {
-        include: {
-          professor: { select: { name: true } },
-        },
-      },
-      tenant: { select: { name: true, certificatePrefix: true } },
-    },
+    select: { id: true },
   });
 
   if (!enrollment) {
     throw new Error("Inscripción no encontrada o no completada");
   }
 
-  const existing = await db.certificate.findUnique({ where: { enrollmentId } });
-  if (existing) {
-    return {
-      success: true,
-      certificateId: existing.id,
-      folio: existing.folio,
-      message: "El certificado ya existe",
-    };
-  }
-
   return issueCertificateForEnrollment(enrollmentId);
-}
-
-/**
- * System-level issuer (no auth check). Safe to call from server actions
- * that have already validated authorization (e.g. the quiz submission flow
- * when the student passes the final exam).
- *
- * Returns the existing certificate if one already exists for this enrollment.
- */
-export async function issueCertificateForEnrollment(
-  enrollmentId: string,
-  opts?: { finalExamScore?: number }
-) {
-  const enrollment = await db.enrollment.findUnique({
-    where: { id: enrollmentId },
-    include: {
-      student: { select: { name: true } },
-      course: { include: { professor: { select: { name: true } } } },
-      tenant: { select: { name: true, certificatePrefix: true } },
-    },
-  });
-
-  if (!enrollment) {
-    throw new Error("Inscripción no encontrada");
-  }
-
-  // Idempotent
-  const existing = await db.certificate.findUnique({ where: { enrollmentId } });
-  if (existing) {
-    return {
-      success: true,
-      certificateId: existing.id,
-      folio: existing.folio,
-      message: "El certificado ya existe",
-    };
-  }
-
-  const issuedAt = new Date();
-  const year = issuedAt.getUTCFullYear();
-  const prefix = enrollment.tenant.certificatePrefix ?? "PROL";
-
-  // Reserve a sequential folio for (tenantId, year) using a counter row.
-  // Using a transaction with upsert + increment avoids race conditions.
-  const folio = await db.$transaction(async (tx) => {
-    const counter = await tx.certificateCounter.upsert({
-      where: { tenantId_year: { tenantId: enrollment.tenantId, year } },
-      create: { tenantId: enrollment.tenantId, year, lastSeq: 1 },
-      update: { lastSeq: { increment: 1 } },
-    });
-    return generateCertificateFolio(prefix, year, counter.lastSeq);
-  });
-
-  const studentName = enrollment.student.name ?? "Estudiante";
-  const courseName = enrollment.course.title;
-  const professorName = enrollment.course.professor.name ?? "Profesor";
-  const tenantName = enrollment.tenant.name;
-
-  const hash = crypto.randomBytes(16).toString("hex");
-  const sha256 = sha256Hex(
-    canonicalCertificateString({
-      folio,
-      studentName,
-      courseName,
-      professorName,
-      tenantName,
-      issuedAt,
-    })
-  );
-
-  const certificate = await db.certificate.create({
-    data: {
-      enrollmentId,
-      tenantId: enrollment.tenantId,
-      studentName,
-      courseName,
-      professorName,
-      folio,
-      hash,
-      sha256,
-      status: "ACTIVE",
-      issuedAt,
-      ...(opts?.finalExamScore !== undefined
-        ? { finalExamScore: opts.finalExamScore }
-        : {}),
-    },
-  });
-
-  return {
-    success: true,
-    certificateId: certificate.id,
-    folio: certificate.folio,
-    message: "Certificado emitido exitosamente",
-  };
 }
 
 /**

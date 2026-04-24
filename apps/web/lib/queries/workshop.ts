@@ -60,6 +60,26 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
 
   if (!workshop) return null;
 
+  // Resolve recurring series: load all siblings (same parent or rooted at the
+  // current workshop if it IS the parent), ordered by start time, so the UI
+  // can render "Sesión X de Y" + sibling navigation.
+  let series: { id: string; startTime: Date; status: string }[] = [];
+  const rootId = workshop.parentWorkshopId ?? workshop.id;
+  const isPartOfSeries =
+    workshop.parentWorkshopId !== null ||
+    workshop.recurrenceFrequency !== null;
+  if (isPartOfSeries) {
+    const siblings = await db.workshop.findMany({
+      where: {
+        OR: [{ id: rootId }, { parentWorkshopId: rootId }],
+        professorId: user.id,
+      },
+      orderBy: { startTime: "asc" },
+      select: { id: true, startTime: true, status: true },
+    });
+    series = siblings;
+  }
+
   return {
     id: workshop.id,
     title: workshop.title,
@@ -79,6 +99,9 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
     isRequired: workshop.isRequired,
     prerequisite: workshop.prerequisite,
     cancellationHrs: workshop.cancellationHrs,
+    parentWorkshopId: workshop.parentWorkshopId,
+    recurrenceFrequency: workshop.recurrenceFrequency,
+    series,
     bookings: workshop.bookings.map((b) => ({
       id: b.id,
       student: b.student,

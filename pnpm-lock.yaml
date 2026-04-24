@@ -20,6 +20,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@prol/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@prol/content-factory':
+        specifier: workspace:*
+        version: link:../../packages/content-factory
       '@prol/db':
         specifier: workspace:*
         version: link:../../packages/db

@@ -5,7 +5,7 @@ import { db } from "@prol/db";
 import { sendEmail, enrollmentConfirmation } from "@prol/email";
 import { requireUser } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
-import { issueCertificateForEnrollment } from "@/lib/actions/certificate";
+import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 import crypto from "crypto";
 
 export async function enrollInCourse(courseId: string) {

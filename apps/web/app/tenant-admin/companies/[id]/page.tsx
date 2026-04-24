@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Building2, Users, GraduationCap, Mail } from "lucide-react";
+import { ArrowLeft, Building2, Users, GraduationCap, Mail, Crown } from "lucide-react";
 import {
   getCompanyDetail,
   listAssignableUsersForTenant,
@@ -67,6 +67,18 @@ export default async function CompanyDetailPage({
                 : `${company._count.members} miembros`}
               {company.allowMemberInvitations && " · auto-invitaciones activas"}
             </p>
+            {company.leaderId &&
+              (() => {
+                const leader = company.members.find(
+                  (m) => m.id === company.leaderId
+                );
+                return leader ? (
+                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-800">
+                    <Crown className="h-3 w-3" />
+                    Líder: {leader.name ?? leader.email}
+                  </p>
+                ) : null;
+              })()}
           </div>
         </div>
       </div>
@@ -109,6 +121,7 @@ export default async function CompanyDetailPage({
             members={company.members}
             assignableUsers={assignableUsers}
             seatsLimit={company.seatsLimit}
+            leaderId={company.leaderId}
           />
         )}
         {tab === "courses" && (

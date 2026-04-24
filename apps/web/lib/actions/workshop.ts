@@ -1,8 +1,35 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@prol/db";
+import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const RECURRENCE_VALUES = ["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"] as const;
+type RecurrenceLiteral = (typeof RECURRENCE_VALUES)[number];
+
+const MAX_OCCURRENCES = 26;
+
+/** Add one period of the given frequency to a Date (returns a new Date). */
+function addRecurrence(date: Date, freq: RecurrenceLiteral): Date {
+  const next = new Date(date);
+  switch (freq) {
+    case "DAILY":
+      next.setDate(next.getDate() + 1);
+      break;
+    case "WEEKLY":
+      next.setDate(next.getDate() + 7);
+      break;
+    case "BIWEEKLY":
+      next.setDate(next.getDate() + 14);
+      break;
+    case "MONTHLY":
+      next.setMonth(next.getMonth() + 1);
+      break;
+  }
+  return next;
+}
 
 // ─── Professor actions ────────────────────────────────────────────────────────
 
@@ -30,28 +57,65 @@ export async function createWorkshop(formData: FormData) {
     throw new Error("Faltan campos obligatorios");
   }
 
-  const workshop = await db.workshop.create({
+  // Recurrence is optional. When set, generate `occurrences` workshops total
+  // (the first one is the "parent", the rest are children that link back).
+  const recurrenceRaw = (formData.get("recurrence") as string | null)?.trim();
+  const recurrence: RecurrenceLiteral | null =
+    recurrenceRaw && RECURRENCE_VALUES.includes(recurrenceRaw as RecurrenceLiteral)
+      ? (recurrenceRaw as RecurrenceLiteral)
+      : null;
+  const occurrencesRaw = Number(formData.get("occurrences") || 1);
+  const occurrences = recurrence
+    ? Math.min(MAX_OCCURRENCES, Math.max(1, Math.floor(occurrencesRaw) || 1))
+    : 1;
+
+  const baseStart = new Date(startTime);
+  const baseEnd = new Date(endTime);
+
+  const sharedData = {
+    tenantId: user.tenantId!,
+    professorId: user.id,
+    courseId,
+    moduleId,
+    title,
+    description,
+    type: type as "IN_PERSON" | "VIRTUAL" | "HYBRID",
+    locationName,
+    locationAddress,
+    locationMapUrl,
+    meetingUrl,
+    maxAttendees,
+    minAttendees,
+    recurrenceFrequency: recurrence as RecurrenceFrequency | null,
+  };
+
+  const parent = await db.workshop.create({
     data: {
-      tenantId: user.tenantId!,
-      professorId: user.id,
-      courseId,
-      moduleId,
-      title,
-      description,
-      type: type as "IN_PERSON" | "VIRTUAL" | "HYBRID",
-      locationName,
-      locationAddress,
-      locationMapUrl,
-      meetingUrl,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-      maxAttendees,
-      minAttendees,
+      ...sharedData,
+      startTime: baseStart,
+      endTime: baseEnd,
     },
   });
 
+  if (recurrence && occurrences > 1) {
+    let currentStart = baseStart;
+    let currentEnd = baseEnd;
+    const children = [];
+    for (let i = 1; i < occurrences; i++) {
+      currentStart = addRecurrence(currentStart, recurrence);
+      currentEnd = addRecurrence(currentEnd, recurrence);
+      children.push({
+        ...sharedData,
+        parentWorkshopId: parent.id,
+        startTime: currentStart,
+        endTime: currentEnd,
+      });
+    }
+    await db.workshop.createMany({ data: children });
+  }
+
   revalidatePath("/professor/workshops");
-  return { success: true, workshopId: workshop.id };
+  return { success: true, workshopId: parent.id };
 }
 
 export async function updateWorkshop(workshopId: string, formData: FormData) {
@@ -149,6 +213,68 @@ export async function checkInStudent(workshopId: string, studentId: string) {
 
   revalidatePath(`/professor/workshops/${workshopId}`);
   return { success: true };
+}
+
+/**
+ * Bulk-grade attendance for a workshop. The professor passes one entry per
+ * student, where `attended=true` records an attendance row and clears any
+ * NO_SHOW flag, and `attended=false` removes the attendance (if any) and
+ * marks the booking as NO_SHOW.
+ *
+ * Only the workshop's professor can grade.
+ */
+export async function bulkMarkAttendance(
+  workshopId: string,
+  entries: { studentId: string; attended: boolean }[]
+) {
+  const user = await requireUser();
+
+  const workshop = await db.workshop.findFirst({
+    where: { id: workshopId, professorId: user.id },
+    select: { id: true },
+  });
+  if (!workshop) throw new Error("Workshop no encontrado");
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return { success: true, updated: 0 };
+  }
+
+  const now = new Date();
+  await db.$transaction(async (tx) => {
+    for (const { studentId, attended } of entries) {
+      if (attended) {
+        await tx.workshopAttendance.upsert({
+          where: { workshopId_studentId: { workshopId, studentId } },
+          create: {
+            workshopId,
+            studentId,
+            checkedInAt: now,
+            checkedInBy: user.id,
+          },
+          update: {
+            checkedInAt: now,
+            checkedInBy: user.id,
+          },
+        });
+        // If a previous "no-show" flag was set, restore the booking.
+        await tx.workshopBooking.updateMany({
+          where: { workshopId, studentId, status: "NO_SHOW" },
+          data: { status: "CONFIRMED" },
+        });
+      } else {
+        await tx.workshopAttendance.deleteMany({
+          where: { workshopId, studentId },
+        });
+        await tx.workshopBooking.updateMany({
+          where: { workshopId, studentId, status: { not: "CANCELLED" } },
+          data: { status: "NO_SHOW" },
+        });
+      }
+    }
+  });
+
+  revalidatePath(`/professor/workshops/${workshopId}`);
+  return { success: true, updated: entries.length };
 }
 
 export async function markNoShow(workshopId: string, studentId: string) {

@@ -4,14 +4,20 @@ import {
   Users,
   GraduationCap,
   ArrowRight,
+  Crown,
 } from "lucide-react";
-import { getMyCompany } from "@/lib/queries/company";
+import { getCurrentUser } from "@/lib/auth";
+import { getMyCompany, getCompanyTeamReport } from "@/lib/queries/company";
 import { InviteMemberForm } from "./invite-member-form";
+import { TeamReport } from "./team-report";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyCompanyPage() {
-  const company = await getMyCompany();
+  const [user, company] = await Promise.all([
+    getCurrentUser(),
+    getMyCompany(),
+  ]);
 
   if (!company) {
     return (
@@ -29,6 +35,10 @@ export default async function MyCompanyPage() {
     );
   }
 
+  const isLeader = user?.id === company.leaderId;
+  const canInvite = isLeader || company.allowMemberInvitations;
+  const teamReport = isLeader ? await getCompanyTeamReport(company.id) : null;
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
       {/* Header */}
@@ -45,14 +55,31 @@ export default async function MyCompanyPage() {
           </div>
         )}
         <div className="flex-1">
-          <h1 className="font-heading text-2xl font-bold text-text-primary">
-            {company.name}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-heading text-2xl font-bold text-text-primary">
+              {company.name}
+            </h1>
+            {isLeader && (
+              <span className="inline-flex items-center gap-1 rounded-pill bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                <Crown className="h-3 w-3" />
+                Líder
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-text-tertiary">
             {company._count.members} miembro{company._count.members !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
+
+      {/* Team report — only for the company leader */}
+      {teamReport && (
+        <TeamReport
+          members={teamReport.members}
+          assignments={teamReport.assignments}
+          workshopsByCourse={teamReport.workshopsByCourse}
+        />
+      )}
 
       {/* Cursos disponibles */}
       <section className="rounded-xl border border-border bg-surface">
@@ -152,7 +179,16 @@ export default async function MyCompanyPage() {
         )}
       </section>
 
-      <InviteMemberForm companyId={company.id} />
+      {canInvite && (
+        <InviteMemberForm
+          companyId={company.id}
+          hint={
+            isLeader
+              ? "Como líder de la empresa puedes invitar a nuevos compañeros."
+              : "Tu empresa permite que sus miembros inviten a más personas."
+          }
+        />
+      )}
     </div>
   );
 }

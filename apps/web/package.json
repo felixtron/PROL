@@ -11,6 +11,8 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@prol/ai": "workspace:*",
+    "@prol/content-factory": "workspace:*",
     "@prol/db": "workspace:*",
     "@prol/email": "workspace:*",
     "@prol/shared": "workspace:*",

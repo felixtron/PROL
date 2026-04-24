@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { Mail, Send, Loader2 } from "lucide-react";
 import { inviteToCompany } from "@/lib/actions/company";
 
-export function InviteMemberForm({ companyId }: { companyId: string }) {
+export function InviteMemberForm({
+  companyId,
+  hint,
+}: {
+  companyId: string;
+  hint?: string;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pending, startTransition] = useTransition();
@@ -36,9 +42,7 @@ export function InviteMemberForm({ companyId }: { companyId: string }) {
       <h3 className="font-heading text-base font-semibold text-text-primary">
         Invitar a un compañero
       </h3>
-      <p className="mt-1 text-xs text-text-tertiary">
-        Solo si tu empresa tiene activadas las auto-invitaciones.
-      </p>
+      {hint && <p className="mt-1 text-xs text-text-tertiary">{hint}</p>}
       <div className="mt-3 flex gap-2">
         <div className="relative flex-1">
           <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />

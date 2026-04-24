@@ -169,7 +169,8 @@ export const listAssignableCoursesForCompany = cache(
 
 /**
  * For a student dashboard: returns the company they belong to (if any),
- * its members and the active course assignments.
+ * its members and the active course assignments. Also exposes leaderId so
+ * the page can render the leader-only sections (invite form, team report).
  */
 export const getMyCompany = cache(async () => {
   const user = await requireUser();
@@ -210,6 +211,97 @@ export const getMyCompany = cache(async () => {
   });
 
   return company;
+});
+
+/**
+ * Team progress report for the company leader. Returns one row per member
+ * and a list of the company's active course assignments, plus per-member
+ * enrollment progress for each of those courses.
+ *
+ * Authorization: caller must be the company's leader, an ADMIN of the
+ * same tenant, or SUPER_ADMIN.
+ */
+export const getCompanyTeamReport = cache(async (companyId: string) => {
+  const user = await requireUser();
+
+  const company = await db.company.findUnique({
+    where: { id: companyId },
+    select: { id: true, name: true, tenantId: true, leaderId: true },
+  });
+  if (!company) throw new Error("Empresa no encontrada");
+
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
+  const isTenantAdmin =
+    user.role === "ADMIN" && user.tenantId === company.tenantId;
+  const isLeader =
+    company.leaderId === user.id && user.tenantId === company.tenantId;
+  if (!isSuperAdmin && !isTenantAdmin && !isLeader) {
+    throw new Error("No autorizado");
+  }
+
+  const [members, assignments] = await Promise.all([
+    db.user.findMany({
+      where: { companyId },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        lastLoginAt: true,
+        enrollments: {
+          select: {
+            id: true,
+            courseId: true,
+            progress: true,
+            status: true,
+            completedAt: true,
+          },
+        },
+        workshopAttendances: {
+          select: { workshopId: true },
+        },
+      },
+    }),
+    db.companyCourseAssignment.findMany({
+      where: { companyId, isActive: true },
+      orderBy: { assignedAt: "desc" },
+      select: {
+        id: true,
+        courseId: true,
+        course: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            thumbnail: true,
+            totalLessons: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  // Per-course workshops that already happened (so attendance is meaningful).
+  // Single tenant-scoped query, then group by courseId in memory.
+  const courseIds = assignments.map((a) => a.courseId);
+  const pastWorkshops = courseIds.length
+    ? await db.workshop.findMany({
+        where: {
+          courseId: { in: courseIds },
+          tenantId: company.tenantId,
+          startTime: { lt: new Date() },
+          status: { not: "CANCELLED" },
+        },
+        select: { id: true, courseId: true },
+      })
+    : [];
+  const workshopsByCourse: Record<string, string[]> = {};
+  for (const w of pastWorkshops) {
+    (workshopsByCourse[w.courseId] ??= []).push(w.id);
+  }
+
+  return { company, members, assignments, workshopsByCourse };
 });
 
 /**

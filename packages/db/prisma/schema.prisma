@@ -113,6 +113,13 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
 enum NotificationType {
   ENROLLMENT
   PAYMENT
@@ -147,6 +154,33 @@ enum AIJobType {
   VIDEO_TRANSCRIPTION
   LESSON_CONTENT
   COURSE_ENRICHMENT
+  DRAFT_REFINEMENT
+  LESSON_REGENERATION
+  MODULE_REGENERATION
+  COHERENCE_CHECK
+}
+
+enum CourseDraftStatus {
+  BRIEFING
+  REFINING
+  GENERATING
+  READY
+  PUBLISHED
+  ABANDONED
+}
+
+enum DraftOperationType {
+  BRIEFING_SUBMITTED
+  REFINEMENT_GENERATED
+  REFINEMENT_EDITED
+  OUTLINE_GENERATED
+  OUTLINE_ACCEPTED
+  LESSON_REGENERATED
+  MODULE_REGENERATED
+  LESSON_SPLIT
+  LESSONS_MERGED
+  COHERENCE_CHECKED
+  MANUAL_EDIT
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -184,6 +218,12 @@ model Tenant {
   aiEnabled        Boolean      @default(false) @map("ai_enabled")
   companiesEnabled Boolean      @default(true) @map("companies_enabled")
 
+  // AI billing — plan and credit balance (prices defined later, structure ready)
+  aiPlan             String    @default("none") @map("ai_plan")
+  aiCreditsBalance   Int       @default(0) @map("ai_credits_balance")
+  aiMonthlyAllotment Int       @default(0) @map("ai_monthly_allotment")
+  aiAllotmentResetAt DateTime? @map("ai_allotment_reset_at")
+
   // Certificate folio prefix (e.g. "PROL", "ACME", etc.)
   certificatePrefix String      @default("PROL") @map("certificate_prefix")
 
@@ -202,6 +242,8 @@ model Tenant {
   aiGenerationJobs AIGenerationJob[]
   companies          Company[]
   certificateCounters CertificateCounter[]
+  courseDrafts       CourseDraft[]
+  aiCreditsLedger    AICreditsLedger[]
 
   @@index([slug])
   @@index([status])
@@ -250,6 +292,8 @@ model User {
   aiGenerationJobs      AIGenerationJob[]
   invitationsSent       CompanyInvitation[]   @relation("InvitationsSent")
   assignmentsMade       CompanyCourseAssignment[] @relation("AssignmentsMade")
+  courseDrafts          CourseDraft[]
+  companyLed            Company?              @relation("CompanyLeader")
 
   @@index([tenantId])
   @@index([companyId])
@@ -685,6 +729,15 @@ model Workshop {
   cancellationHrs Int                  @default(24) @map("cancellation_hrs")
   recurringRule   String?              @map("recurring_rule")
 
+  // Recurring series: a "parent" workshop is the first occurrence; each
+  // additional occurrence is created as a child pointing back to the parent
+  // via parentWorkshopId. The frequency is informational and stored on every
+  // member of the series (parent + children) for easy filtering.
+  parentWorkshopId    String?           @map("parent_workshop_id")
+  parentWorkshop      Workshop?         @relation("WorkshopRecurrence", fields: [parentWorkshopId], references: [id], onDelete: Cascade)
+  childWorkshops      Workshop[]        @relation("WorkshopRecurrence")
+  recurrenceFrequency RecurrenceFrequency? @map("recurrence_frequency")
+
   status          WorkshopStatus       @default(SCHEDULED)
 
   createdAt       DateTime             @default(now()) @map("created_at")
@@ -700,6 +753,7 @@ model Workshop {
   @@index([status])
   @@index([startTime])
   @@index([tenantId, status])
+  @@index([parentWorkshopId])
   @@map("workshops")
 }
 
@@ -819,8 +873,15 @@ model Company {
   seatsLimit               Int?     @map("seats_limit")
 
   // When true, current members can invite new users to the company.
-  // When false, only ADMIN/SUPER_ADMIN can add members.
+  // When false, only ADMIN/SUPER_ADMIN (and the company leader, if any)
+  // can add members.
   allowMemberInvitations   Boolean  @default(false) @map("allow_member_invitations")
+
+  // Optional company leader: a regular STUDENT member granted two extra
+  // capabilities — invite new members and view a team progress report.
+  // Set/unset by tenant admins.
+  leaderId                 String?  @unique @map("leader_id")
+  leader                   User?    @relation("CompanyLeader", fields: [leaderId], references: [id], onDelete: SetNull)
 
   createdAt                DateTime @default(now()) @map("created_at")
   updatedAt                DateTime @updatedAt @map("updated_at")
@@ -954,4 +1015,125 @@ model AIGenerationJob {
   @@index([userId])
   @@index([status])
   @@map("ai_generation_jobs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Course Builder — multi-step course draft generation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Draft of a course being built through the 4-step AI flow
+/// (briefing → refinement → generation → editing). Persists between sessions.
+/// When accepted, spawns a real Course and gets marked PUBLISHED.
+model CourseDraft {
+  id                String            @id @default(cuid())
+  tenantId          String            @map("tenant_id")
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  professorId       String            @map("professor_id")
+  professor         User              @relation(fields: [professorId], references: [id], onDelete: Cascade)
+
+  status            CourseDraftStatus @default(BRIEFING)
+
+  // Step 1: briefing
+  topic             String
+  audience          String
+  level             String            @default("intermediate")
+  moduleCount       Int               @map("module_count")
+  lessonsPerModule  Int               @map("lessons_per_module")
+  language          String            @default("es")
+
+  // Step 2: refinement — { inferences: {...}, userAnswers: {...}, warnings: [...] }
+  refinement        Json?
+
+  // Step 3: generated outline (see CourseOutlineV2 type in app code)
+  outline           Json?
+  outlineModel      String?           @map("outline_model")
+  outlineTokens     Int?              @map("outline_tokens")
+
+  // Cumulative cost in USD cents (for internal billing + quota enforcement)
+  totalCostCents    Int               @default(0) @map("total_cost_cents")
+  creditsConsumed   Int               @default(0) @map("credits_consumed")
+
+  // Link to the real Course spawned on acceptance
+  publishedCourseId String?           @unique @map("published_course_id")
+
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  publishedAt       DateTime?         @map("published_at")
+
+  versions          CourseDraftVersion[]
+  operations        CourseDraftOperation[]
+
+  @@index([tenantId])
+  @@index([professorId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@map("course_drafts")
+}
+
+/// Immutable snapshot of a draft outline at a point in time. Enables rollback.
+model CourseDraftVersion {
+  id        String      @id @default(cuid())
+  draftId   String      @map("draft_id")
+  draft     CourseDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  version   Int
+  snapshot  Json
+  reason    String?
+
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@unique([draftId, version])
+  @@index([draftId])
+  @@map("course_draft_versions")
+}
+
+/// Per-operation log for audit, analytics, and cost tracking.
+model CourseDraftOperation {
+  id         String             @id @default(cuid())
+  draftId    String             @map("draft_id")
+  draft      CourseDraft        @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  type       DraftOperationType
+  target     String?
+  input      Json?
+  output     Json?
+  model      String?
+  tokensIn   Int?               @map("tokens_in")
+  tokensOut  Int?               @map("tokens_out")
+  costCents  Int?               @map("cost_cents")
+  credits    Int?
+  durationMs Int?               @map("duration_ms")
+
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  @@index([draftId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("course_draft_operations")
+}
+
+/// Append-only ledger of AI credit movements per tenant. Positive = grant,
+/// negative = consumption. Source of truth for billing; Tenant.aiCreditsBalance
+/// is a cached sum maintained transactionally alongside this table.
+model AICreditsLedger {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  delta           Int
+  reason          String
+  balance         Int
+
+  draftId         String?  @map("draft_id")
+  operationId     String?  @map("operation_id")
+  stripePaymentId String?  @map("stripe_payment_id")
+
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([draftId])
+  @@map("ai_credits_ledger")
 }

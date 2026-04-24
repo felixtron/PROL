@@ -35,3 +35,5 @@ export type {
   CourseEnrichmentResult,
   EnrichmentSuggestion,
 } from "./pipelines/course-enrichment";
+
+export * from "./pipelines/course-draft";

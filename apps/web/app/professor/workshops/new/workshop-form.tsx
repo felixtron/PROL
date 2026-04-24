@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MapPin, Video, Calendar } from "lucide-react";
+import { Loader2, MapPin, Video, Calendar, Repeat } from "lucide-react";
 import { createWorkshop } from "@/lib/actions/workshop";
 
 interface Course {
@@ -22,6 +22,7 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
   const [isPending, startTransition] = useTransition();
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [workshopType, setWorkshopType] = useState("IN_PERSON");
+  const [recurrence, setRecurrence] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
@@ -194,6 +195,59 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
           />
         </div>
       </div>
+
+      {/* Recurrence (optional) */}
+      <fieldset className="space-y-3 rounded-lg border border-border p-4">
+        <legend className="flex items-center gap-1.5 px-2 text-sm font-medium text-text-primary">
+          <Repeat className="h-4 w-4" />
+          Recurrencia (opcional)
+        </legend>
+        <p className="text-xs text-text-tertiary">
+          Si la sesión se repite, generaremos una serie con el mismo horario y
+          configuración. Cada ocurrencia se gestiona por separado.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="recurrence"
+              className="mb-1.5 block text-sm font-medium text-text-secondary"
+            >
+              Frecuencia
+            </label>
+            <select
+              id="recurrence"
+              name="recurrence"
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value)}
+              className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+            >
+              <option value="">Sesión única</option>
+              <option value="DAILY">Diaria</option>
+              <option value="WEEKLY">Semanal</option>
+              <option value="BIWEEKLY">Cada dos semanas</option>
+              <option value="MONTHLY">Mensual</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="occurrences"
+              className="mb-1.5 block text-sm font-medium text-text-secondary"
+            >
+              Número de ocurrencias
+            </label>
+            <input
+              type="number"
+              id="occurrences"
+              name="occurrences"
+              min={1}
+              max={26}
+              defaultValue={1}
+              disabled={!recurrence}
+              className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
+            />
+          </div>
+        </div>
+      </fieldset>
 
       {/* Capacity */}
       <div className="grid gap-4 sm:grid-cols-2">

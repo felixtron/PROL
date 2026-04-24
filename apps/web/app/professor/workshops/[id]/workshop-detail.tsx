@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,12 +16,23 @@ import {
   ExternalLink,
   UserCheck,
   UserX,
+  Repeat,
+  Save,
+  Loader2,
 } from "lucide-react";
 import {
+  bulkMarkAttendance,
   cancelWorkshop,
   checkInStudent,
   markNoShow,
 } from "@/lib/actions/workshop";
+
+const RECURRENCE_LABEL: Record<string, string> = {
+  DAILY: "diaria",
+  WEEKLY: "semanal",
+  BIWEEKLY: "quincenal",
+  MONTHLY: "mensual",
+};
 
 interface Workshop {
   id: string;
@@ -42,6 +53,9 @@ interface Workshop {
   isRequired: boolean;
   prerequisite: string;
   cancellationHrs: number;
+  parentWorkshopId: string | null;
+  recurrenceFrequency: string | null;
+  series: { id: string; startTime: Date; status: string }[];
   bookings: {
     id: string;
     student: {
@@ -147,19 +161,67 @@ function getInitials(name: string): string {
 export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [gradingMode, setGradingMode] = useState(false);
+  const [gradeError, setGradeError] = useState<string | null>(null);
   const status = statusConfig[workshop.status] ?? {
     label: workshop.status,
     color: "text-text-secondary",
     bg: "bg-surface-secondary",
   };
+  const gradableBookings = workshop.bookings.filter(
+    (b) => b.status === "CONFIRMED" || b.status === "NO_SHOW",
+  );
   const confirmedBookings = workshop.bookings.filter(
     (b) => b.status === "CONFIRMED",
   );
-  const checkedInIds = new Set(workshop.attendances.map((a) => a.studentId));
+  const checkedInIds = useMemo(
+    () => new Set(workshop.attendances.map((a) => a.studentId)),
+    [workshop.attendances],
+  );
   const canManageAttendance =
     workshop.status === "SCHEDULED" ||
     workshop.status === "CONFIRMED" ||
     workshop.status === "IN_PROGRESS";
+
+  // Local state for grading mode: studentId -> attended (boolean).
+  // Initialised from current attendance records each time grading is opened.
+  const initialGrades = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const b of gradableBookings) {
+      map[b.student.id] = checkedInIds.has(b.student.id);
+    }
+    return map;
+  }, [gradableBookings, checkedInIds]);
+  const [grades, setGrades] = useState<Record<string, boolean>>(initialGrades);
+
+  function startGrading() {
+    setGrades(initialGrades);
+    setGradeError(null);
+    setGradingMode(true);
+  }
+
+  function handleSaveGrades() {
+    setGradeError(null);
+    const entries = gradableBookings.map((b) => ({
+      studentId: b.student.id,
+      attended: !!grades[b.student.id],
+    }));
+    startTransition(async () => {
+      try {
+        await bulkMarkAttendance(workshop.id, entries);
+        setGradingMode(false);
+        router.refresh();
+      } catch (err) {
+        setGradeError(
+          err instanceof Error ? err.message : "Error al guardar asistencia",
+        );
+      }
+    });
+  }
+
+  // Series metadata
+  const seriesIndex = workshop.series.findIndex((s) => s.id === workshop.id);
+  const isInSeries = workshop.series.length > 1;
 
   function handleCancel() {
     if (!confirm("¿Estás seguro de cancelar este workshop?")) return;
@@ -293,6 +355,46 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
         </div>
       </div>
 
+      {/* Recurring series */}
+      {isInSeries && (
+        <div className="rounded-lg border border-border bg-surface p-5">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-text-primary">
+            <Repeat className="h-4 w-4 text-primary-600" />
+            Sesión {seriesIndex + 1} de {workshop.series.length}
+            {workshop.recurrenceFrequency && (
+              <span className="font-normal text-text-tertiary">
+                · serie {RECURRENCE_LABEL[workshop.recurrenceFrequency] ?? ""}
+              </span>
+            )}
+          </h3>
+          <ul className="-mx-1 flex flex-wrap gap-1 text-xs">
+            {workshop.series.map((s, idx) => {
+              const isCurrent = s.id === workshop.id;
+              return (
+                <li key={s.id}>
+                  <Link
+                    href={`/professor/workshops/${s.id}`}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors ${
+                      isCurrent
+                        ? "bg-primary-100 font-semibold text-primary-700"
+                        : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    #{idx + 1}
+                    <span className="text-text-tertiary">
+                      {new Intl.DateTimeFormat("es-MX", {
+                        day: "2-digit",
+                        month: "short",
+                      }).format(new Date(s.startTime))}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {/* Description */}
       {workshop.description && (
         <div className="rounded-lg border border-border bg-surface p-5">
@@ -307,17 +409,60 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
 
       {/* Attendees */}
       <div className="rounded-lg border border-border bg-surface">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
             <Users className="h-4 w-4 text-primary-600" />
             Asistentes ({confirmedBookings.length} / {workshop.maxAttendees})
           </h3>
-          {confirmedBookings.length < workshop.minAttendees && (
-            <span className="text-xs text-accent-600">
-              Mínimo {workshop.minAttendees} asistentes
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {confirmedBookings.length < workshop.minAttendees && (
+              <span className="text-xs text-accent-600">
+                Mínimo {workshop.minAttendees} asistentes
+              </span>
+            )}
+            {gradableBookings.length > 0 && !gradingMode && (
+              <button
+                type="button"
+                onClick={startGrading}
+                disabled={isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50"
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                Calificar asistencia
+              </button>
+            )}
+            {gradingMode && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGradingMode(false)}
+                  disabled={isPending}
+                  className="text-xs font-medium text-text-secondary hover:text-text-primary disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveGrades}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5" />
+                  )}
+                  Guardar
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+        {gradeError && (
+          <div className="border-b border-border bg-red-50 px-5 py-2 text-xs text-red-700">
+            {gradeError}
+          </div>
+        )}
 
         {workshop.bookings.length === 0 ? (
           <div className="p-8 text-center">
@@ -362,39 +507,60 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
                     </p>
                   </div>
 
-                  {/* Status */}
-                  <span
-                    className={`inline-flex items-center gap-1 text-xs font-medium ${bStatus.color}`}
-                  >
-                    <StatusIcon className="h-3.5 w-3.5" />
-                    {isCheckedIn ? "Asistió" : bStatus.label}
-                  </span>
+                  {gradingMode &&
+                  (booking.status === "CONFIRMED" ||
+                    booking.status === "NO_SHOW") ? (
+                    <label className="inline-flex items-center gap-2 text-xs font-medium text-text-secondary">
+                      <input
+                        type="checkbox"
+                        checked={!!grades[booking.student.id]}
+                        onChange={(e) =>
+                          setGrades((g) => ({
+                            ...g,
+                            [booking.student.id]: e.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
+                      />
+                      Asistió
+                    </label>
+                  ) : (
+                    <>
+                      {/* Status */}
+                      <span
+                        className={`inline-flex items-center gap-1 text-xs font-medium ${bStatus.color}`}
+                      >
+                        <StatusIcon className="h-3.5 w-3.5" />
+                        {isCheckedIn ? "Asistió" : bStatus.label}
+                      </span>
 
-                  {/* Actions */}
-                  {canManageAttendance &&
-                    booking.status === "CONFIRMED" &&
-                    !isCheckedIn && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleCheckIn(booking.student.id)}
-                          disabled={isPending}
-                          className="rounded-md p-1.5 text-emerald-600 transition-colors hover:bg-emerald-50 disabled:opacity-50"
-                          title="Registrar asistencia"
-                        >
-                          <UserCheck className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleNoShow(booking.student.id)}
-                          disabled={isPending}
-                          className="rounded-md p-1.5 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                          title="Marcar como no asistió"
-                        >
-                          <UserX className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
+                      {/* Actions */}
+                      {canManageAttendance &&
+                        booking.status === "CONFIRMED" &&
+                        !isCheckedIn && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleCheckIn(booking.student.id)}
+                              disabled={isPending}
+                              className="rounded-md p-1.5 text-emerald-600 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+                              title="Registrar asistencia"
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleNoShow(booking.student.id)}
+                              disabled={isPending}
+                              className="rounded-md p-1.5 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                              title="Marcar como no asistió"
+                            >
+                              <UserX className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                    </>
+                  )}
                 </li>
               );
             })}

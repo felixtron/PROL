@@ -51,10 +51,12 @@ export async function generateText(options: GenerateTextOptions): Promise<string
 
 /**
  * Generate a JSON response from Claude with Zod schema validation.
+ * Uses ZodTypeAny so schemas with `.default()` / `.optional()` (input != output)
+ * work correctly; the return type is inferred from the parsed output.
  */
-export async function generateJSON<T>(
-  options: GenerateTextOptions & { schema: import("zod").ZodType<T> }
-): Promise<T> {
+export async function generateJSON<S extends import("zod").ZodTypeAny>(
+  options: GenerateTextOptions & { schema: S }
+): Promise<import("zod").infer<S>> {
   const { schema, ...textOptions } = options;
 
   const enhancedPrompt = `${textOptions.userPrompt}\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown, no code fences, no explanation.`;

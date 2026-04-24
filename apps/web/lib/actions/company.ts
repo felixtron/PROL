@@ -186,12 +186,78 @@ export async function removeMemberFromCompany(companyId: string, userId: string)
     throw new Error("El usuario no pertenece a esta empresa");
   }
 
-  await db.user.update({
-    where: { id: userId },
-    data: { companyId: null },
+  // If the removed user was the company leader, clear the leader slot.
+  await db.$transaction([
+    ...(company.leaderId === userId
+      ? [
+          db.company.update({
+            where: { id: companyId },
+            data: { leaderId: null },
+          }),
+        ]
+      : []),
+    db.user.update({
+      where: { id: userId },
+      data: { companyId: null },
+    }),
+  ]);
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  return { success: true };
+}
+
+// ─── Leader ───────────────────────────────────────────────────────────────────
+
+/**
+ * Designate a company member as the company leader. Tenant admin only.
+ *
+ * The leader is a regular STUDENT member with two extra capabilities:
+ *  - invite new members (regardless of the allowMemberInvitations flag)
+ *  - access a team progress report on /dashboard/company
+ *
+ * Replaces any existing leader (Company.leaderId is @unique).
+ */
+export async function setCompanyLeader(companyId: string, userId: string) {
+  const admin = await requireTenantAdmin();
+
+  const [company, target] = await Promise.all([
+    db.company.findUnique({ where: { id: companyId } }),
+    db.user.findUnique({ where: { id: userId } }),
+  ]);
+  if (!company) throw new Error("Empresa no encontrada");
+  if (!target) throw new Error("Usuario no encontrado");
+  assertSameTenant(admin, company.tenantId);
+  if (target.companyId !== companyId) {
+    throw new Error("El usuario no pertenece a esta empresa");
+  }
+  if (target.role !== "STUDENT") {
+    throw new Error("El líder debe ser un usuario tipo estudiante");
+  }
+
+  await db.company.update({
+    where: { id: companyId },
+    data: { leaderId: userId },
   });
 
   revalidatePath(`/tenant-admin/companies/${companyId}`);
+  revalidatePath("/dashboard/company");
+  return { success: true };
+}
+
+export async function unsetCompanyLeader(companyId: string) {
+  const admin = await requireTenantAdmin();
+
+  const company = await db.company.findUnique({ where: { id: companyId } });
+  if (!company) throw new Error("Empresa no encontrada");
+  assertSameTenant(admin, company.tenantId);
+
+  await db.company.update({
+    where: { id: companyId },
+    data: { leaderId: null },
+  });
+
+  revalidatePath(`/tenant-admin/companies/${companyId}`);
+  revalidatePath("/dashboard/company");
   return { success: true };
 }
 
@@ -212,15 +278,20 @@ export async function inviteToCompany(companyId: string, email: string) {
   if (!company) throw new Error("Empresa no encontrada");
 
   // Authorization: ADMIN/SUPER_ADMIN of the company's tenant can always invite.
-  // Members can invite only if the company has allowMemberInvitations = true.
+  // The company leader can also always invite, regardless of the
+  // allowMemberInvitations flag. Other members can invite only if that flag
+  // is enabled.
   const isAdmin =
     inviter.role === "SUPER_ADMIN" ||
     (inviter.role === "ADMIN" && inviter.tenantId === company.tenantId);
+  const isLeader =
+    company.leaderId === inviter.id &&
+    inviter.tenantId === company.tenantId;
   const isMember =
     inviter.companyId === companyId &&
     inviter.tenantId === company.tenantId;
 
-  if (!isAdmin && !(isMember && company.allowMemberInvitations)) {
+  if (!isAdmin && !isLeader && !(isMember && company.allowMemberInvitations)) {
     throw new Error("No autorizado para invitar a esta empresa");
   }
 

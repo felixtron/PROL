@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, X, Loader2 } from "lucide-react";
+import { UserPlus, X, Loader2, Crown } from "lucide-react";
 import {
   addMemberToCompany,
   removeMemberFromCompany,
+  setCompanyLeader,
+  unsetCompanyLeader,
 } from "@/lib/actions/company";
 
 interface Member {
@@ -32,17 +34,51 @@ export function MembersTab({
   members,
   assignableUsers,
   seatsLimit,
+  leaderId,
 }: {
   companyId: string;
   members: Member[];
   assignableUsers: AssignableUser[];
   seatsLimit: number | null;
+  leaderId: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [addingId, setAddingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [leaderTogglingId, setLeaderTogglingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  function handleSetLeader(userId: string) {
+    setError("");
+    setLeaderTogglingId(userId);
+    startTransition(async () => {
+      try {
+        await setCompanyLeader(companyId, userId);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error");
+      } finally {
+        setLeaderTogglingId(null);
+      }
+    });
+  }
+
+  function handleUnsetLeader() {
+    if (!confirm("Quitar al líder actual de la empresa?")) return;
+    setError("");
+    setLeaderTogglingId(leaderId);
+    startTransition(async () => {
+      try {
+        await unsetCompanyLeader(companyId);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error");
+      } finally {
+        setLeaderTogglingId(null);
+      }
+    });
+  }
 
   const atCapacity = seatsLimit !== null && members.length >= seatsLimit;
 
@@ -106,29 +142,73 @@ export function MembersTab({
                         100
                     )
                   : 0;
+              const isLeader = m.id === leaderId;
+              const togglingThis = leaderTogglingId === m.id;
               return (
-                <li key={m.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-text-primary">
-                      {m.name ?? m.email}
-                    </p>
+                <li key={m.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-text-primary">
+                        {m.name ?? m.email}
+                      </p>
+                      {isLeader && (
+                        <span className="inline-flex items-center gap-1 rounded-pill bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                          <Crown className="h-3 w-3" />
+                          Líder
+                        </span>
+                      )}
+                    </div>
                     <p className="truncate text-xs text-text-tertiary">
                       {m.email} · {m.enrollments.length} curso(s) · {totalProgress}% promedio
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(m.id)}
-                    disabled={pending && removingId === m.id}
-                    className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                    title="Quitar de la empresa"
-                  >
-                    {pending && removingId === m.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <X className="h-4 w-4" />
+                  <div className="flex shrink-0 items-center gap-1">
+                    {m.role === "STUDENT" && (
+                      isLeader ? (
+                        <button
+                          type="button"
+                          onClick={handleUnsetLeader}
+                          disabled={pending && togglingThis}
+                          className="rounded-lg px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-50 disabled:opacity-50"
+                          title="Quitar como líder"
+                        >
+                          {pending && togglingThis ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            "Quitar líder"
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetLeader(m.id)}
+                          disabled={pending && togglingThis}
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-amber-50 hover:text-amber-800 disabled:opacity-50"
+                          title="Designar como líder de la empresa"
+                        >
+                          {pending && togglingThis ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Crown className="h-3.5 w-3.5" />
+                          )}
+                          Hacer líder
+                        </button>
+                      )
                     )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(m.id)}
+                      disabled={pending && removingId === m.id}
+                      className="rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                      title="Quitar de la empresa"
+                    >
+                      {pending && removingId === m.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </li>
               );
             })}
