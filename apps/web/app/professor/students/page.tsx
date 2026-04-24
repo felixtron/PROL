@@ -1,4 +1,4 @@
-import { Users } from "lucide-react";
+import { Users, Calendar } from "lucide-react";
 import { getProfessorStudents } from "@/lib/queries/students";
 
 function getInitials(name: string): string {
@@ -63,12 +63,15 @@ export default async function StudentsPage() {
                     Progreso Prom.
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Workshops Asistidos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Miembro Desde
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {students.map(({ student, enrollments }) => {
+                {students.map(({ student, enrollments, workshops }) => {
                   const avgProgress =
                     enrollments.length > 0
                       ? Math.round(
@@ -140,6 +143,25 @@ export default async function StudentsPage() {
                             {avgProgress}%
                           </span>
                         </div>
+                      </td>
+
+                      {/* Workshops attended */}
+                      <td className="whitespace-nowrap px-6 py-4">
+                        {workshops.total === 0 ? (
+                          <span className="text-sm text-text-tertiary">
+                            Sin workshops
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
+                            <Calendar className="h-3.5 w-3.5 text-primary-600" />
+                            <span className="font-medium text-text-primary">
+                              {workshops.attended}
+                            </span>
+                            <span className="text-text-tertiary">
+                              / {workshops.total}
+                            </span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Member Since */}
