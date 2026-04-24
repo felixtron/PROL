@@ -120,6 +120,23 @@ enum RecurrenceFrequency {
   MONTHLY
 }
 
+enum EvaluationSectionType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum EvaluationAnswerValue {
+  POSITIVE
+  NEGATIVE
+  NOT_APPLICABLE
+}
+
+enum EvaluationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 enum NotificationType {
   ENROLLMENT
   PAYMENT
@@ -214,9 +231,10 @@ model Tenant {
   socialLinks      Json?        @map("social_links")
 
   // Feature flags
-  workshopsEnabled Boolean      @default(false) @map("workshops_enabled")
-  aiEnabled        Boolean      @default(false) @map("ai_enabled")
-  companiesEnabled Boolean      @default(true) @map("companies_enabled")
+  workshopsEnabled   Boolean    @default(false) @map("workshops_enabled")
+  aiEnabled          Boolean    @default(false) @map("ai_enabled")
+  companiesEnabled   Boolean    @default(true) @map("companies_enabled")
+  evaluationsEnabled Boolean    @default(false) @map("evaluations_enabled")
 
   // AI billing — plan and credit balance (prices defined later, structure ready)
   aiPlan             String    @default("none") @map("ai_plan")
@@ -244,6 +262,7 @@ model Tenant {
   certificateCounters CertificateCounter[]
   courseDrafts       CourseDraft[]
   aiCreditsLedger    AICreditsLedger[]
+  evaluations        Evaluation[]
 
   @@index([slug])
   @@index([status])
@@ -294,6 +313,11 @@ model User {
   assignmentsMade       CompanyCourseAssignment[] @relation("AssignmentsMade")
   courseDrafts          CourseDraft[]
   companyLed            Company?              @relation("CompanyLeader")
+  evaluationsCreated    Evaluation[]          @relation("EvaluationAuthor")
+  evaluationAssignmentsMade   EvaluationAssignment[]  @relation("EvaluationAssignedBy")
+  evaluationParticipations    EvaluationParticipant[] @relation("EvaluationParticipantUser")
+  evaluationParticipantsAdded EvaluationParticipant[] @relation("EvaluationParticipantAddedBy")
+  evaluationSubmissions       EvaluationSubmission[]
 
   @@index([tenantId])
   @@index([companyId])
@@ -890,6 +914,7 @@ model Company {
   members                  User[]
   invitations              CompanyInvitation[]
   courseAssignments        CompanyCourseAssignment[]
+  evaluationAssignments    EvaluationAssignment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1136,4 +1161,154 @@ model AICreditsLedger {
   @@index([tenantId, createdAt])
   @@index([draftId])
   @@map("ai_credits_ledger")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Evaluations (DAFO-style assessments)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Template for a recurring assessment (e.g. SWOT/DAFO). Authored by a
+/// professor or tenant admin. Assigned to one or more companies; inside
+/// each company, the leader designates which members must answer.
+model Evaluation {
+  id          String            @id @default(cuid())
+  tenantId    String            @map("tenant_id")
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdById String            @map("created_by")
+  createdBy   User              @relation("EvaluationAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+
+  title       String
+  description String?
+  methodology String?
+  status      EvaluationStatus  @default(DRAFT)
+
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  sections    EvaluationSection[]
+  assignments EvaluationAssignment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("evaluations")
+}
+
+/// A section inside an evaluation template. Determines how positive vs.
+/// negative answers are interpreted in the consolidated report
+/// (INTERNAL → Fortaleza/Debilidad, EXTERNAL → Oportunidad/Amenaza).
+model EvaluationSection {
+  id           String                @id @default(cuid())
+  evaluationId String                @map("evaluation_id")
+  evaluation   Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  title        String
+  type         EvaluationSectionType
+  position     Int                   @default(0)
+
+  questions    EvaluationQuestion[]
+
+  @@index([evaluationId])
+  @@map("evaluation_sections")
+}
+
+/// A single question inside a section.
+model EvaluationQuestion {
+  id          String              @id @default(cuid())
+  sectionId   String              @map("section_id")
+  section     EvaluationSection   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  code        String?             // e.g. "1.1"
+  label       String
+  description String?
+  position    Int                 @default(0)
+
+  answers     EvaluationAnswer[]
+
+  @@index([sectionId])
+  @@map("evaluation_questions")
+}
+
+/// Assignment of an evaluation template to a specific company. The
+/// assignedBy user is the professor/admin who published it for that company.
+model EvaluationAssignment {
+  id           String                   @id @default(cuid())
+  evaluationId String                   @map("evaluation_id")
+  evaluation   Evaluation               @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  companyId    String                   @map("company_id")
+  company      Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  assignedById String                   @map("assigned_by")
+  assignedBy   User                     @relation("EvaluationAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  assignedAt   DateTime                 @default(now()) @map("assigned_at")
+
+  participants EvaluationParticipant[]
+
+  @@unique([evaluationId, companyId])
+  @@index([evaluationId])
+  @@index([companyId])
+  @@map("evaluation_assignments")
+}
+
+/// A specific user who must answer a given assignment. Initially the
+/// company's leader(s) are added automatically; the leader can later add
+/// other members from the team.
+model EvaluationParticipant {
+  id           String                 @id @default(cuid())
+  assignmentId String                 @map("assignment_id")
+  assignment   EvaluationAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  userId       String                 @map("user_id")
+  user         User                   @relation("EvaluationParticipantUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  addedById    String                 @map("added_by")
+  addedBy      User                   @relation("EvaluationParticipantAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  addedAt      DateTime               @default(now()) @map("added_at")
+
+  submissions  EvaluationSubmission[]
+
+  @@unique([assignmentId, userId])
+  @@index([assignmentId])
+  @@index([userId])
+  @@map("evaluation_participants")
+}
+
+/// One complete submission of answers by a participant. Every time the
+/// participant hits "Enviar" we create a new row (incrementing version);
+/// the latest submission is what counts for consolidated reports.
+model EvaluationSubmission {
+  id             String                 @id @default(cuid())
+  participantId  String                 @map("participant_id")
+  participant    EvaluationParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  submittedById  String                 @map("submitted_by")
+  submittedBy    User                   @relation(fields: [submittedById], references: [id], onDelete: Restrict)
+
+  version        Int                    @default(1)
+  submittedAt    DateTime               @default(now()) @map("submitted_at")
+
+  answers        EvaluationAnswer[]
+
+  @@unique([participantId, version])
+  @@index([participantId])
+  @@map("evaluation_submissions")
+}
+
+/// A single answer to one question inside a submission.
+model EvaluationAnswer {
+  id           String                @id @default(cuid())
+  submissionId String                @map("submission_id")
+  submission   EvaluationSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  questionId   String                @map("question_id")
+  question     EvaluationQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  value        EvaluationAnswerValue
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+  @@index([questionId])
+  @@map("evaluation_answers")
 }

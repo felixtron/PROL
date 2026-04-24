@@ -72,7 +72,7 @@ export async function updateTenant(
 
 export async function toggleTenantFeature(
   tenantId: string,
-  feature: "aiEnabled" | "workshopsEnabled",
+  feature: "aiEnabled" | "workshopsEnabled" | "evaluationsEnabled",
   enabled: boolean
 ) {
   await requireAdmin();

@@ -194,6 +194,17 @@ export default async function AdminTenantDetailPage({
               label="Sesiones y Talleres"
             />
           </div>
+          <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
+            <span className="text-sm font-medium text-text-primary">
+              Evaluaciones
+            </span>
+            <TenantFeaturesToggle
+              tenantId={tenant.id}
+              feature="evaluationsEnabled"
+              enabled={tenant.evaluationsEnabled}
+              label="Evaluaciones"
+            />
+          </div>
         </div>
       </div>
 
