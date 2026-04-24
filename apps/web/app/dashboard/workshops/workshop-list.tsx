@@ -85,7 +85,7 @@ export function WorkshopList({
   );
 
   const tabs = [
-    { id: "upcoming" as const, label: "Mis Workshops", count: upcoming.length },
+    { id: "upcoming" as const, label: "Mis Sesiones", count: upcoming.length },
     { id: "available" as const, label: "Disponibles", count: available.length },
     { id: "past" as const, label: "Pasados", count: past.length },
   ];
@@ -125,7 +125,7 @@ export function WorkshopList({
       {activeTab === "upcoming" && (
         <div className="space-y-3">
           {upcoming.length === 0 ? (
-            <EmptyState message="No tienes workshops reservados" />
+            <EmptyState message="No tienes sesiones reservadas" />
           ) : (
             upcoming.map((item) => (
               <BookedWorkshopCard key={item.bookingId} booking={item} />
@@ -137,7 +137,7 @@ export function WorkshopList({
       {activeTab === "available" && (
         <div className="space-y-3">
           {available.length === 0 ? (
-            <EmptyState message="No hay workshops disponibles en este momento" />
+            <EmptyState message="No hay sesiones disponibles en este momento" />
           ) : (
             available.map((w) => (
               <AvailableWorkshopCard key={w.id} workshop={w} />
@@ -149,7 +149,7 @@ export function WorkshopList({
       {activeTab === "past" && (
         <div className="space-y-3">
           {past.length === 0 ? (
-            <EmptyState message="No tienes workshops pasados" />
+            <EmptyState message="No tienes sesiones pasadas" />
           ) : (
             past.map((item) => (
               <BookedWorkshopCard key={item.bookingId} booking={item} isPast />

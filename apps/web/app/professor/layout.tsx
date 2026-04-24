@@ -12,7 +12,7 @@ const navItems: SidebarNavItem[] = [
   { label: "Cursos", href: "/professor/courses", icon: "BookOpen" },
   { label: "Alumnos", href: "/professor/students", icon: "Users" },
   { label: "Ingresos", href: "/professor/revenue", icon: "DollarSign" },
-  { label: "Workshops", href: "/professor/workshops", icon: "Calendar" },
+  { label: "Sesiones y Talleres", href: "/professor/workshops", icon: "Calendar" },
   { label: "Configuración", href: "/professor/settings", icon: "Settings" },
 ];
 

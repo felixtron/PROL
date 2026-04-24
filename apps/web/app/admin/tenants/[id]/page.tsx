@@ -185,13 +185,13 @@ export default async function AdminTenantDetailPage({
           </div>
           <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
             <span className="text-sm font-medium text-text-primary">
-              Workshops
+              Sesiones y Talleres
             </span>
             <TenantFeaturesToggle
               tenantId={tenant.id}
               feature="workshopsEnabled"
               enabled={tenant.workshopsEnabled}
-              label="Workshops"
+              label="Sesiones y Talleres"
             />
           </div>
         </div>

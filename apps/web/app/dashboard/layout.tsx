@@ -13,7 +13,7 @@ const navItems = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/dashboard/courses", label: "Mis Cursos", icon: BookOpen },
   { href: "/dashboard/company", label: "Mi Empresa", icon: Building2 },
-  { href: "/dashboard/workshops", label: "Workshops", icon: Calendar },
+  { href: "/dashboard/workshops", label: "Sesiones y Talleres", icon: Calendar },
   { href: "/dashboard/certificates", label: "Certificados", icon: Award },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
 ];

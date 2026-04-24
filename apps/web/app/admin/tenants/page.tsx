@@ -68,7 +68,7 @@ export default async function AdminTenantsPage() {
                     AI
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Workshops
+                    Sesiones
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Acciones
@@ -118,7 +118,7 @@ export default async function AdminTenantsPage() {
                         tenantId={tenant.id}
                         feature="workshopsEnabled"
                         enabled={tenant.workshopsEnabled}
-                        label="Workshops"
+                        label="Sesiones y Talleres"
                       />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">

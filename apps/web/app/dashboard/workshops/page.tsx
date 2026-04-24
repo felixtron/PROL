@@ -25,7 +25,7 @@ export default async function StudentWorkshopsPage() {
       {/* Header */}
       <div className="mb-4 md:mb-6">
         <h1 className="font-heading text-xl font-bold text-text-primary md:text-2xl">
-          Workshops
+          Sesiones y Talleres
         </h1>
         <p className="mt-0.5 text-sm text-text-secondary">
           Sesiones presenciales y virtuales con tus profesores.
@@ -36,7 +36,7 @@ export default async function StudentWorkshopsPage() {
         <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center md:p-12">
           <Calendar className="mx-auto h-8 w-8 text-text-tertiary md:h-10 md:w-10" />
           <p className="mt-2 text-sm font-medium text-text-secondary">
-            No hay workshops disponibles
+            No hay sesiones disponibles
           </p>
           <p className="mt-1 text-xs text-text-tertiary">
             Cuando tus profesores programen sesiones, aparecerán aquí.

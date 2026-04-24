@@ -425,6 +425,50 @@ function AddTextBlock({
 }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [loadedFile, setLoadedFile] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  const MAX_TEXT_BYTES = 1 * 1024 * 1024; // 1 MB
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    setFileError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const name = file.name.toLowerCase();
+    const isPlain =
+      name.endsWith(".txt") ||
+      name.endsWith(".md") ||
+      name.endsWith(".markdown") ||
+      file.type.startsWith("text/");
+
+    if (!isPlain) {
+      setFileError(
+        "Por ahora solo se aceptan archivos .txt o .md. Para documentos Word o PDF usa la lección PDF o Tarea.",
+      );
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_TEXT_BYTES) {
+      setFileError("El archivo supera 1 MB. Divide el contenido en varias lecciones.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      // Prepend to existing content so we don't overwrite manual edits.
+      setContent((prev) => (prev ? `${prev}\n\n${text}` : text));
+      if (!title) setTitle(file.name.replace(/\.(txt|md|markdown)$/i, ""));
+      setLoadedFile(file.name);
+    } catch (err) {
+      setFileError(
+        err instanceof Error ? err.message : "No se pudo leer el archivo",
+      );
+    } finally {
+      e.target.value = "";
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -446,6 +490,27 @@ function AddTextBlock({
           placeholder="Título (opcional)"
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
         />
+        <div className="rounded-lg border border-dashed border-border bg-surface-secondary p-2 text-xs">
+          <label className="flex cursor-pointer items-center gap-2 text-text-secondary hover:text-primary-700">
+            <input
+              type="file"
+              accept=".txt,.md,.markdown,text/plain,text/markdown"
+              onChange={handleFile}
+              className="sr-only"
+            />
+            <span className="rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
+              Subir .txt o .md
+            </span>
+            <span>
+              {loadedFile
+                ? `Cargado: ${loadedFile}`
+                : "o escribe directamente abajo"}
+            </span>
+          </label>
+          {fileError && (
+            <p className="mt-1 text-[11px] text-red-700">{fileError}</p>
+          )}
+        </div>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}

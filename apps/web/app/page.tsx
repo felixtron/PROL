@@ -37,7 +37,7 @@ const features = [
   },
   {
     icon: Users,
-    title: "Workshops",
+    title: "Sesiones y Talleres",
     description:
       "Sesiones presenciales y virtuales. Gestiona asistentes, horarios y materiales.",
   },
