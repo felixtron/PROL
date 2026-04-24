@@ -1,10 +1,11 @@
-import { BarChart3, CheckCircle2, Clock } from "lucide-react";
+import { BarChart3, Calendar, Users } from "lucide-react";
 
 interface Member {
   id: string;
   name: string | null;
   email: string;
   avatar: string | null;
+  createdAt: Date;
   lastLoginAt: Date | null;
   enrollments: {
     id: string;
@@ -12,6 +13,7 @@ interface Member {
     progress: number;
     status: string;
     completedAt: Date | null;
+    course: { id: string; title: string };
   }[];
   workshopAttendances: { workshopId: string }[];
 }
@@ -28,6 +30,15 @@ interface Assignment {
   };
 }
 
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function TeamReport({
   members,
   assignments,
@@ -39,8 +50,8 @@ export function TeamReport({
 }) {
   const courseIds = assignments.map((a) => a.courseId);
 
-  // KPIs across the team for assigned courses only.
-  let totalSlots = 0; // member × course pairs
+  // Team-level KPIs scoped to assigned courses only.
+  let totalSlots = 0;
   let totalEnrolled = 0;
   let totalCompleted = 0;
   let progressSum = 0;
@@ -58,27 +69,29 @@ export function TeamReport({
       }
     }
   }
-
   const avgProgress =
     progressCount > 0 ? Math.round((progressSum / progressCount) * 100) : 0;
   const enrollmentRate =
     totalSlots > 0 ? Math.round((totalEnrolled / totalSlots) * 100) : 0;
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-surface">
-      <div className="border-b border-border px-5 py-3">
-        <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
-          <BarChart3 className="h-4 w-4 text-primary-600" />
-          Reporte de avance del equipo
-        </h2>
-        <p className="mt-0.5 text-xs text-text-tertiary">
-          Como líder de la empresa puedes ver el progreso de todos tus
-          compañeros en los cursos asignados.
-        </p>
+    <section className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <BarChart3 className="h-5 w-5 text-primary-600" />
+        <div>
+          <h2 className="font-heading text-lg font-semibold text-text-primary">
+            Avance del equipo
+          </h2>
+          <p className="text-xs text-text-tertiary">
+            Como líder de la empresa puedes ver el progreso de cada compañero
+            en los cursos asignados.
+          </p>
+        </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 gap-3 px-5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Kpi label="Avance promedio" value={`${avgProgress}%`} />
         <Kpi
           label="Inscripciones"
@@ -88,108 +101,159 @@ export function TeamReport({
         <Kpi label="Cursos completados" value={String(totalCompleted)} />
       </div>
 
-      {/* Matrix */}
-      {assignments.length === 0 ? (
-        <p className="px-5 pb-5 text-sm text-text-tertiary">
-          La empresa aún no tiene cursos asignados.
-        </p>
-      ) : members.length === 0 ? (
-        <p className="px-5 pb-5 text-sm text-text-tertiary">
-          Aún no hay miembros en la empresa.
-        </p>
+      {/* Team table — mirrors /professor/students layout */}
+      {members.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-surface p-10 text-center">
+          <Users className="mx-auto h-8 w-8 text-text-tertiary" />
+          <p className="mt-2 text-sm text-text-secondary">
+            Aún no hay miembros en la empresa.
+          </p>
+        </div>
       ) : (
-        <div className="overflow-x-auto px-2 pb-3">
-          <table className="w-full min-w-[600px] text-sm">
-            <thead>
-              <tr className="text-left text-xs text-text-tertiary">
-                <th className="px-3 py-2 font-medium">Compañero</th>
-                {assignments.map((a) => (
-                  <th
-                    key={a.id}
-                    className="px-3 py-2 font-medium"
-                    title={a.course.title}
-                  >
-                    <span className="line-clamp-2">{a.course.title}</span>
+        <div className="rounded-lg border border-border bg-surface shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface-secondary">
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Compañero
                   </th>
-                ))}
-                <th className="px-3 py-2 text-right font-medium">Promedio</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {members.map((m) => {
-                let memberProgressSum = 0;
-                let memberProgressCount = 0;
-                for (const c of courseIds) {
-                  const e = m.enrollments.find((x) => x.courseId === c);
-                  if (e) {
-                    memberProgressSum += e.progress;
-                    memberProgressCount += 1;
-                  }
-                }
-                const memberAvg =
-                  memberProgressCount > 0
-                    ? Math.round((memberProgressSum / memberProgressCount) * 100)
-                    : 0;
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Correo
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Cursos Inscritos
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Progreso Prom.
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Sesiones y Talleres
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Miembro Desde
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {members.map((m) => {
+                  // Progress only over courses the company has assigned.
+                  const enrollmentsInScope = m.enrollments.filter((e) =>
+                    courseIds.includes(e.courseId),
+                  );
+                  const memberAvg =
+                    enrollmentsInScope.length > 0
+                      ? Math.round(
+                          (enrollmentsInScope.reduce(
+                            (sum, e) => sum + e.progress,
+                            0,
+                          ) /
+                            enrollmentsInScope.length) *
+                            100,
+                        )
+                      : 0;
 
-                return (
-                  <tr key={m.id}>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        {m.avatar ? (
-                          <img
-                            src={m.avatar}
-                            alt={m.name ?? m.email}
-                            className="h-7 w-7 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-                            {(m.name ?? m.email).slice(0, 1).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-text-primary">
-                            {m.name ?? m.email}
-                          </p>
-                          <p className="truncate text-xs text-text-tertiary">
-                            {m.email}
-                          </p>
+                  const courseTitles = enrollmentsInScope
+                    .map((e) => e.course.title)
+                    .join(", ");
+
+                  // Workshop attendance across the member's enrolled courses.
+                  const attendedSet = new Set(
+                    m.workshopAttendances.map((x) => x.workshopId),
+                  );
+                  const seenW = new Set<string>();
+                  let wAttended = 0;
+                  let wTotal = 0;
+                  for (const e of enrollmentsInScope) {
+                    for (const wId of workshopsByCourse[e.courseId] ?? []) {
+                      if (seenW.has(wId)) continue;
+                      seenW.add(wId);
+                      wTotal += 1;
+                      if (attendedSet.has(wId)) wAttended += 1;
+                    }
+                  }
+
+                  const memberSince = new Date(m.createdAt).toLocaleDateString(
+                    "es-MX",
+                    { year: "numeric", month: "short", day: "numeric" },
+                  );
+
+                  return (
+                    <tr key={m.id} className="hover:bg-surface-secondary">
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          {m.avatar ? (
+                            <img
+                              src={m.avatar}
+                              alt={m.name ?? m.email}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                              {getInitials(m.name ?? m.email)}
+                            </div>
+                          )}
+                          <span className="text-sm font-medium text-text-primary">
+                            {m.name ?? "Sin nombre"}
+                          </span>
                         </div>
-                      </div>
-                    </td>
-                    {assignments.map((a) => {
-                      const e = m.enrollments.find(
-                        (x) => x.courseId === a.courseId
-                      );
-                      const courseWorkshopIds =
-                        workshopsByCourse[a.courseId] ?? [];
-                      const totalWorkshops = courseWorkshopIds.length;
-                      const attendedSet = new Set(
-                        m.workshopAttendances.map((x) => x.workshopId)
-                      );
-                      const attendedCount = courseWorkshopIds.filter((id) =>
-                        attendedSet.has(id)
-                      ).length;
-                      return (
-                        <td key={a.id} className="px-3 py-2">
-                          <ProgressCell
-                            enrollment={e ?? null}
-                            attendance={
-                              totalWorkshops > 0
-                                ? { attended: attendedCount, total: totalWorkshops }
-                                : null
-                            }
-                          />
-                        </td>
-                      );
-                    })}
-                    <td className="px-3 py-2 text-right text-sm font-semibold text-text-primary">
-                      {memberProgressCount > 0 ? `${memberAvg}%` : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-text-secondary">
+                        {m.email}
+                      </td>
+                      <td className="max-w-xs px-5 py-4">
+                        {enrollmentsInScope.length === 0 ? (
+                          <span className="text-xs text-text-tertiary">
+                            Sin inscripciones
+                          </span>
+                        ) : (
+                          <p
+                            className="truncate text-sm text-text-secondary"
+                            title={courseTitles}
+                          >
+                            {courseTitles}
+                          </p>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-16 overflow-hidden rounded-full bg-surface-tertiary">
+                            <div
+                              className="h-full rounded-full bg-primary-600"
+                              style={{ width: `${memberAvg}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-text-secondary">
+                            {memberAvg}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4">
+                        {wTotal === 0 ? (
+                          <span className="text-sm text-text-tertiary">
+                            Sin sesiones
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
+                            <Calendar className="h-3.5 w-3.5 text-primary-600" />
+                            <span className="font-medium text-text-primary">
+                              {wAttended}
+                            </span>
+                            <span className="text-text-tertiary">
+                              / {wTotal}
+                            </span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-text-tertiary">
+                        {memberSince}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>
@@ -206,69 +270,12 @@ function Kpi({
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-surface-secondary p-3">
+    <div className="rounded-lg border border-border bg-surface p-4">
       <p className="text-xs text-text-tertiary">{label}</p>
       <p className="mt-0.5 font-heading text-2xl font-bold text-text-primary">
         {value}
       </p>
       {hint && <p className="mt-0.5 text-xs text-text-tertiary">{hint}</p>}
-    </div>
-  );
-}
-
-function ProgressCell({
-  enrollment,
-  attendance,
-}: {
-  enrollment: { progress: number; status: string } | null;
-  attendance: { attended: number; total: number } | null;
-}) {
-  if (!enrollment && !attendance) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs text-text-tertiary">
-        <Clock className="h-3 w-3" />
-        Sin inscribir
-      </span>
-    );
-  }
-
-  const pct = enrollment ? Math.round(enrollment.progress * 100) : 0;
-  const completed = enrollment?.status === "COMPLETED";
-
-  return (
-    <div className="min-w-[140px] space-y-1">
-      {enrollment ? (
-        <>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-text-secondary">{pct}%</span>
-            {completed && (
-              <span className="inline-flex items-center gap-1 text-emerald-700">
-                <CheckCircle2 className="h-3 w-3" />
-                Completado
-              </span>
-            )}
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-tertiary">
-            <div
-              className={`h-full rounded-full ${
-                completed ? "bg-emerald-500" : "bg-primary-500"
-              }`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </>
-      ) : (
-        <span className="inline-flex items-center gap-1 text-xs text-text-tertiary">
-          <Clock className="h-3 w-3" />
-          Sin inscribir
-        </span>
-      )}
-      {attendance && (
-        <p className="text-[11px] text-text-tertiary">
-          Asistió a {attendance.attended}/{attendance.total} workshop
-          {attendance.total !== 1 ? "s" : ""}
-        </p>
-      )}
     </div>
   );
 }

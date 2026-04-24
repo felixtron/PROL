@@ -248,6 +248,7 @@ export const getCompanyTeamReport = cache(async (companyId: string) => {
         name: true,
         email: true,
         avatar: true,
+        createdAt: true,
         lastLoginAt: true,
         enrollments: {
           select: {
@@ -256,6 +257,7 @@ export const getCompanyTeamReport = cache(async (companyId: string) => {
             progress: true,
             status: true,
             completedAt: true,
+            course: { select: { id: true, title: true } },
           },
         },
         workshopAttendances: {
