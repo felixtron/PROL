@@ -35,6 +35,20 @@ export default async function DashboardLayout({
     redirect("/force-reset-password");
   }
 
+  // Route non-students to their own dashboard. The student dashboard is the
+  // generic landing for /sign-in (and the middleware sends authenticated
+  // users here regardless of role), so we re-dispatch by role here so an
+  // ADMIN/SUPER_ADMIN/PROFESSOR never sees the student UI by accident.
+  if (user.role === "SUPER_ADMIN") {
+    redirect("/admin");
+  }
+  if (user.role === "ADMIN") {
+    redirect(user.tenantId ? "/tenant-admin" : "/admin");
+  }
+  if (user.role === "PROFESSOR") {
+    redirect(user.onboardingCompleted ? "/professor" : "/onboarding");
+  }
+
   const unreadCount = await getUnreadNotificationCount();
   const displayName = user.name ?? "Estudiante";
 
