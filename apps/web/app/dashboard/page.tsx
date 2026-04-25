@@ -1,18 +1,28 @@
 import Link from "next/link";
-import { BookOpen, CheckCircle, Clock, Award, Play } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle,
+  Clock,
+  Award,
+  Play,
+  ClipboardCheck,
+  ArrowRight,
+} from "lucide-react";
 import {
   getStudentDashboardStats,
   getStudentCourses,
   getLastActiveCourse,
 } from "@/lib/queries/student";
+import { listMyPendingEvaluations } from "@/lib/queries/evaluation";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const [stats, courses, lastActive] = await Promise.all([
+  const [stats, courses, lastActive, evaluations] = await Promise.all([
     getStudentDashboardStats(),
     getStudentCourses("all"),
     getLastActiveCourse(),
+    listMyPendingEvaluations(),
   ]);
 
   const statCards = [
@@ -60,6 +70,50 @@ export default async function DashboardPage() {
           Continúa donde lo dejaste.
         </p>
       </div>
+
+      {/* ─── Pending evaluations ─── */}
+      {evaluations.length > 0 && (
+        <section className="mb-5 md:mb-8">
+          <h2 className="mb-2 flex items-center gap-2 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
+            <ClipboardCheck className="h-4 w-4" />
+            Evaluaciones asignadas
+          </h2>
+          <div className="space-y-2">
+            {evaluations.map((p) => {
+              const latest = p.submissions[0];
+              return (
+                <Link
+                  key={p.id}
+                  href={`/dashboard/evaluations/${p.id}`}
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary-300 hover:bg-primary-50/30"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-text-primary">
+                      {p.assignment.evaluation.title}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-text-tertiary">
+                      {p.assignment.company.name}
+                      {latest
+                        ? ` · Última versión: v${latest.version}`
+                        : " · Pendiente"}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium ${
+                      latest
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {latest ? "Editar" : "Contestar"}
+                    <ArrowRight className="h-3 w-3" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ─── Continue learning card ─── */}
       {lastActive && (

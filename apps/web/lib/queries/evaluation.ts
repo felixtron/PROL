@@ -121,6 +121,71 @@ export const getCompanyEvaluations = cache(async (companyId: string) => {
   return { company, assignments };
 });
 
+/**
+ * Evaluations the current user must answer (one per EvaluationParticipant
+ * row where userId = current user). Used by the dashboard card.
+ */
+export const listMyPendingEvaluations = cache(async () => {
+  const user = await requireUser();
+  const rows = await db.evaluationParticipant.findMany({
+    where: { userId: user.id },
+    orderBy: { addedAt: "desc" },
+    include: {
+      assignment: {
+        include: {
+          evaluation: {
+            select: { id: true, title: true, description: true },
+          },
+          company: { select: { id: true, name: true } },
+        },
+      },
+      submissions: {
+        orderBy: { version: "desc" },
+        take: 1,
+        select: { id: true, version: true, submittedAt: true },
+      },
+    },
+  });
+  return rows;
+});
+
+/**
+ * Detail of a single participation: the evaluation template (sections +
+ * questions) and the participant's most recent submission, used to
+ * pre-fill the form on edit. Authz: caller must be the participant user.
+ */
+export const getMyParticipantDetail = cache(async (participantId: string) => {
+  const user = await requireUser();
+  const participant = await db.evaluationParticipant.findUnique({
+    where: { id: participantId },
+    include: {
+      assignment: {
+        include: {
+          evaluation: {
+            include: {
+              sections: {
+                orderBy: { position: "asc" },
+                include: {
+                  questions: { orderBy: { position: "asc" } },
+                },
+              },
+            },
+          },
+          company: { select: { id: true, name: true } },
+        },
+      },
+      submissions: {
+        orderBy: { version: "desc" },
+        take: 1,
+        include: { answers: true },
+      },
+    },
+  });
+  if (!participant) throw new Error("Participación no encontrada");
+  if (participant.userId !== user.id) throw new Error("No autorizado");
+  return participant;
+});
+
 /** Companies of the user's tenant, lean shape for the assign picker. */
 export const listAssignableCompaniesForEvaluation = cache(
   async (evaluationId: string) => {

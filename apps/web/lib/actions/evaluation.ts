@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db, type EvaluationSectionType, type EvaluationStatus } from "@prol/db";
+import {
+  db,
+  type EvaluationSectionType,
+  type EvaluationStatus,
+  type EvaluationAnswerValue,
+} from "@prol/db";
 import {
   requireUser,
   requireEvaluationAuthor,
@@ -401,4 +406,91 @@ export async function removeEvaluationParticipant(
   revalidatePath("/dashboard/company");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+// ─── Submission (participant) ────────────────────────────────────────────────
+
+/**
+ * Submit (or re-submit) the participant's answers for one assignment.
+ * Each call creates a new EvaluationSubmission with an incrementing
+ * version. The latest version is what counts for consolidated reports.
+ *
+ * The caller must be the EvaluationParticipant.user themselves.
+ *
+ * Answers must cover every question of the evaluation. Extra answers
+ * (questions that don't belong) are rejected.
+ */
+export async function submitEvaluationAnswers(
+  participantId: string,
+  answers: { questionId: string; value: EvaluationAnswerValue }[],
+) {
+  const caller = await requireUser();
+
+  const participant = await db.evaluationParticipant.findUnique({
+    where: { id: participantId },
+    include: {
+      assignment: {
+        include: {
+          evaluation: {
+            include: {
+              sections: { include: { questions: { select: { id: true } } } },
+            },
+          },
+          company: { select: { id: true, tenantId: true } },
+        },
+      },
+    },
+  });
+  if (!participant) throw new Error("Participación no encontrada");
+  if (participant.userId !== caller.id) {
+    throw new Error("No autorizado");
+  }
+
+  // Validate answers cover exactly the evaluation's questions.
+  const allQuestionIds = participant.assignment.evaluation.sections.flatMap(
+    (s) => s.questions.map((q) => q.id),
+  );
+  const provided = new Map<string, EvaluationAnswerValue>();
+  for (const a of answers) provided.set(a.questionId, a.value);
+
+  const missing = allQuestionIds.filter((id) => !provided.has(id));
+  if (missing.length > 0) {
+    throw new Error(`Faltan ${missing.length} respuesta(s) por contestar`);
+  }
+  const extra = [...provided.keys()].filter(
+    (id) => !allQuestionIds.includes(id),
+  );
+  if (extra.length > 0) {
+    throw new Error("Respuestas inválidas");
+  }
+
+  // Determine next version number.
+  const last = await db.evaluationSubmission.findFirst({
+    where: { participantId },
+    orderBy: { version: "desc" },
+    select: { version: true },
+  });
+  const nextVersion = (last?.version ?? 0) + 1;
+
+  await db.$transaction(async (tx) => {
+    const submission = await tx.evaluationSubmission.create({
+      data: {
+        participantId,
+        submittedById: caller.id,
+        version: nextVersion,
+      },
+    });
+    await tx.evaluationAnswer.createMany({
+      data: allQuestionIds.map((qId) => ({
+        submissionId: submission.id,
+        questionId: qId,
+        value: provided.get(qId)!,
+      })),
+    });
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/company");
+  revalidatePath(`/dashboard/evaluations/${participantId}`);
+  return { success: true, version: nextVersion };
 }
