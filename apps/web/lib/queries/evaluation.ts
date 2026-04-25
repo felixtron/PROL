@@ -186,6 +186,162 @@ export const getMyParticipantDetail = cache(async (participantId: string) => {
   return participant;
 });
 
+/**
+ * Compute the consolidated DAFO-style results for one assignment
+ * (evaluation × company). For each question we take the LATEST submission
+ * of every participant and use the majority as the question's verdict
+ * (Fortaleza/Debilidad for INTERNAL sections, Oportunidad/Amenaza for
+ * EXTERNAL). NOT_APPLICABLE responses are counted separately and excluded
+ * from the percentage denominator (a question is "not applicable" only if
+ * every responder marked it that way).
+ *
+ * Authorization: company leader, tenant ADMIN of the same tenant, or
+ * SUPER_ADMIN. Also accepted: an evaluation author (PROFESSOR/ADMIN of
+ * the tenant) viewing a company they assigned to.
+ */
+export const getEvaluationResults = cache(async (assignmentId: string) => {
+  const caller = await requireUser();
+
+  const assignment = await db.evaluationAssignment.findUnique({
+    where: { id: assignmentId },
+    include: {
+      evaluation: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          tenantId: true,
+          sections: {
+            orderBy: { position: "asc" },
+            include: {
+              questions: { orderBy: { position: "asc" } },
+            },
+          },
+        },
+      },
+      company: {
+        select: { id: true, name: true, tenantId: true, leaderId: true },
+      },
+      participants: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, avatar: true },
+          },
+          submissions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            include: { answers: true },
+          },
+        },
+      },
+    },
+  });
+  if (!assignment) throw new Error("Asignación no encontrada");
+
+  const isSuperAdmin = caller.role === "SUPER_ADMIN";
+  const isTenantAdmin =
+    (caller.role === "ADMIN" || caller.role === "PROFESSOR") &&
+    caller.tenantId === assignment.evaluation.tenantId;
+  const isLeader =
+    assignment.company.leaderId === caller.id &&
+    caller.tenantId === assignment.company.tenantId;
+  if (!isSuperAdmin && !isTenantAdmin && !isLeader) {
+    throw new Error("No autorizado");
+  }
+
+  // Index latest submissions and count answers per question.
+  const latestSubmissions = assignment.participants
+    .map((p) => p.submissions[0])
+    .filter((s): s is NonNullable<typeof s> => !!s);
+
+  type Counts = { POSITIVE: number; NEGATIVE: number; NOT_APPLICABLE: number };
+  const perQuestion = new Map<string, Counts>();
+  for (const sub of latestSubmissions) {
+    for (const ans of sub.answers) {
+      const c = perQuestion.get(ans.questionId) ?? {
+        POSITIVE: 0,
+        NEGATIVE: 0,
+        NOT_APPLICABLE: 0,
+      };
+      c[ans.value] += 1;
+      perQuestion.set(ans.questionId, c);
+    }
+  }
+
+  type Verdict = "POSITIVE" | "NEGATIVE" | "NOT_APPLICABLE" | "NO_RESPONSE";
+  function verdictOf(counts: Counts | undefined): Verdict {
+    if (!counts) return "NO_RESPONSE";
+    const total = counts.POSITIVE + counts.NEGATIVE + counts.NOT_APPLICABLE;
+    if (total === 0) return "NO_RESPONSE";
+    // If everyone marked it not-applicable, the question is NOT_APPLICABLE.
+    if (counts.NOT_APPLICABLE === total) return "NOT_APPLICABLE";
+    // Otherwise compare positive vs negative; ties favor positive.
+    if (counts.POSITIVE >= counts.NEGATIVE) return "POSITIVE";
+    return "NEGATIVE";
+  }
+
+  const sections = assignment.evaluation.sections.map((s) => {
+    const questions = s.questions.map((q) => {
+      const counts = perQuestion.get(q.id) ?? {
+        POSITIVE: 0,
+        NEGATIVE: 0,
+        NOT_APPLICABLE: 0,
+      };
+      return {
+        id: q.id,
+        code: q.code,
+        label: q.label,
+        counts,
+        verdict: verdictOf(counts),
+      };
+    });
+    const considered = questions.filter((q) => q.verdict !== "NOT_APPLICABLE");
+    const positives = considered.filter((q) => q.verdict === "POSITIVE").length;
+    const negatives = considered.filter((q) => q.verdict === "NEGATIVE").length;
+    const denom = considered.length;
+    const positivePct = denom > 0 ? Math.round((positives / denom) * 1000) / 10 : 0;
+    const negativePct = denom > 0 ? Math.round((negatives / denom) * 1000) / 10 : 0;
+    return {
+      id: s.id,
+      title: s.title,
+      type: s.type,
+      questions,
+      positives,
+      negatives,
+      positivePct,
+      negativePct,
+    };
+  });
+
+  const totalParticipants = assignment.participants.length;
+  const respondents = latestSubmissions.length;
+
+  return {
+    assignment: {
+      id: assignment.id,
+      assignedAt: assignment.assignedAt,
+    },
+    evaluation: {
+      id: assignment.evaluation.id,
+      title: assignment.evaluation.title,
+      description: assignment.evaluation.description,
+    },
+    company: {
+      id: assignment.company.id,
+      name: assignment.company.name,
+    },
+    sections,
+    participants: assignment.participants.map((p) => ({
+      id: p.id,
+      user: p.user,
+      respondedAt: p.submissions[0]?.submittedAt ?? null,
+      version: p.submissions[0]?.version ?? null,
+    })),
+    totalParticipants,
+    respondents,
+  };
+});
+
 /** Companies of the user's tenant, lean shape for the assign picker. */
 export const listAssignableCompaniesForEvaluation = cache(
   async (evaluationId: string) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -9,6 +10,7 @@ import {
   Building2,
   ArrowRight,
   FileQuestion,
+  BarChart3,
 } from "lucide-react";
 import {
   updateEvaluation,
@@ -272,23 +274,33 @@ export function EvaluationEditor({
                     })}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!confirm("¿Quitar la asignación de esta empresa?")) return;
-                    runAction(async () => {
-                      await unassignEvaluationFromCompany(
-                        evaluation.id,
-                        a.company.id,
-                      );
-                    });
-                  }}
-                  disabled={pending}
-                  className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                  title="Quitar asignación"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Link
+                    href={`/professor/evaluations/${evaluation.id}/results/${a.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-primary-700 hover:bg-primary-50"
+                    title="Ver resultados"
+                  >
+                    <BarChart3 className="h-3 w-3" />
+                    Resultados
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirm("¿Quitar la asignación de esta empresa?")) return;
+                      runAction(async () => {
+                        await unassignEvaluationFromCompany(
+                          evaluation.id,
+                          a.company.id,
+                        );
+                      });
+                    }}
+                    disabled={pending}
+                    className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    title="Quitar asignación"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

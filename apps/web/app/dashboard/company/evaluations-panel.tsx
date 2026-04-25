@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ClipboardCheck,
@@ -12,6 +13,7 @@ import {
   Crown,
   ChevronDown,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import {
   addEvaluationParticipant,
@@ -188,9 +190,18 @@ function AssignmentDetail({
         </div>
       )}
 
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-tertiary">
-        Participantes ({assignment.participants.length})
-      </p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wider text-text-tertiary">
+          Participantes ({assignment.participants.length})
+        </p>
+        <Link
+          href={`/dashboard/company/evaluations/${assignment.id}`}
+          className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border hover:bg-primary-50"
+        >
+          <BarChart3 className="h-3 w-3" />
+          Ver resultados
+        </Link>
+      </div>
 
       {assignment.participants.length === 0 ? (
         <p className="mb-3 text-xs text-text-tertiary">
