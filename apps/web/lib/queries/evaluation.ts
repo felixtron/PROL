@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireEvaluationAuthor } from "@/lib/auth";
+import { requireEvaluationAuthor, requireUser } from "@/lib/auth";
 
 /** List all evaluation templates for the current user's tenant. */
 export const listEvaluationsForTenant = cache(async () => {
@@ -45,6 +45,80 @@ export const getEvaluationDetail = cache(async (evaluationId: string) => {
     throw new Error("No autorizado");
   }
   return ev;
+});
+
+/**
+ * Evaluations assigned to a given company, with participant status per
+ * member. Only callable by the company's leader, a tenant admin or
+ * SUPER_ADMIN.
+ *
+ * For each participant we also include whether they've already submitted
+ * and the latest version so the UI can show Pendiente / Respondido /
+ * Actualizado.
+ */
+export const getCompanyEvaluations = cache(async (companyId: string) => {
+  const caller = await requireUser();
+
+  const company = await db.company.findUnique({
+    where: { id: companyId },
+    select: { id: true, tenantId: true, leaderId: true, name: true },
+  });
+  if (!company) throw new Error("Empresa no encontrada");
+
+  const isSuperAdmin = caller.role === "SUPER_ADMIN";
+  const isTenantAdmin =
+    caller.role === "ADMIN" && caller.tenantId === company.tenantId;
+  const isLeader =
+    company.leaderId === caller.id && caller.tenantId === company.tenantId;
+  if (!isSuperAdmin && !isTenantAdmin && !isLeader) {
+    throw new Error("No autorizado");
+  }
+
+  const assignments = await db.evaluationAssignment.findMany({
+    where: { companyId },
+    orderBy: { assignedAt: "desc" },
+    include: {
+      evaluation: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          status: true,
+          sections: {
+            orderBy: { position: "asc" },
+            select: {
+              id: true,
+              _count: { select: { questions: true } },
+            },
+          },
+        },
+      },
+      participants: {
+        orderBy: { addedAt: "asc" },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true,
+            },
+          },
+          submissions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              version: true,
+              submittedAt: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return { company, assignments };
 });
 
 /** Companies of the user's tenant, lean shape for the assign picker. */

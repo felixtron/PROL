@@ -6,10 +6,13 @@ import {
   ArrowRight,
   Crown,
 } from "lucide-react";
+import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getMyCompany, getCompanyTeamReport } from "@/lib/queries/company";
+import { getCompanyEvaluations } from "@/lib/queries/evaluation";
 import { InviteMemberForm } from "./invite-member-form";
 import { TeamReport } from "./team-report";
+import { EvaluationsPanel } from "./evaluations-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +41,29 @@ export default async function MyCompanyPage() {
   const isLeader = user?.id === company.leaderId;
   const canInvite = isLeader || company.allowMemberInvitations;
   const teamReport = isLeader ? await getCompanyTeamReport(company.id) : null;
+
+  // Evaluations panel: only shown to the leader and when the tenant has
+  // the feature flag enabled. We also need the full member roster (leader
+  // included) so the picker can add/remove.
+  let evaluationsData: Awaited<ReturnType<typeof getCompanyEvaluations>> | null =
+    null;
+  let allMembers: { id: string; name: string | null; email: string; avatar: string | null }[] = [];
+  if (isLeader && user?.tenantId) {
+    const tenantFlag = await db.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { evaluationsEnabled: true },
+    });
+    if (tenantFlag?.evaluationsEnabled) {
+      [evaluationsData, allMembers] = await Promise.all([
+        getCompanyEvaluations(company.id),
+        db.user.findMany({
+          where: { companyId: company.id },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true, email: true, avatar: true },
+        }),
+      ]);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
@@ -78,6 +104,16 @@ export default async function MyCompanyPage() {
           members={teamReport.members}
           assignments={teamReport.assignments}
           workshopsByCourse={teamReport.workshopsByCourse}
+        />
+      )}
+
+      {/* Evaluations panel — leader only, tenant-gated */}
+      {evaluationsData && (
+        <EvaluationsPanel
+          companyId={company.id}
+          leaderId={company.leaderId}
+          assignments={evaluationsData.assignments}
+          members={allMembers}
         />
       )}
 
