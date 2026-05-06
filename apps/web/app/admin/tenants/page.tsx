@@ -94,8 +94,13 @@ export default async function AdminTenantsPage() {
                     key={tenant.id}
                     className="transition-colors hover:bg-surface-secondary"
                   >
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-text-primary">
-                      {tenant.name}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
+                      <Link
+                        href={`/admin/tenants/${tenant.id}`}
+                        className="text-text-primary hover:text-primary-700 hover:underline"
+                      >
+                        {tenant.name}
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-text-secondary">
                       <code className="rounded bg-surface-secondary px-1.5 py-0.5 text-xs">
