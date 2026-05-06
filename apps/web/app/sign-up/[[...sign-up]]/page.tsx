@@ -38,9 +38,16 @@ export default function SignUpPage() {
       return;
     }
 
-    // Check for callback URL from middleware redirect
+    // Check for callback URL from middleware redirect. Restrict to
+    // same-origin relative paths to prevent open-redirect abuse.
     const params = new URLSearchParams(window.location.search);
-    const callbackUrl = params.get("callbackUrl");
+    const callbackUrlRaw = params.get("callbackUrl");
+    const callbackUrl =
+      callbackUrlRaw &&
+      callbackUrlRaw.startsWith("/") &&
+      !callbackUrlRaw.startsWith("//")
+        ? callbackUrlRaw
+        : null;
 
     if (callbackUrl) {
       router.push(callbackUrl);

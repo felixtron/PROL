@@ -99,6 +99,40 @@ export function middleware(req: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-DNS-Prefetch-Control", "on");
 
+  // HSTS: only emit over HTTPS (forwarded by Traefik) so we don't break
+  // local dev. 1 year + subdomains; no preload yet so we can opt out.
+  const proto = req.headers.get("x-forwarded-proto");
+  if (proto === "https") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
+  }
+
+  // Content Security Policy. We allow inline styles (Tailwind/Next runtime)
+  // and inline scripts (Next hydration) but block remote scripts. Images,
+  // media and connect default to self with explicit allowances for the
+  // providers actually used (Cloudflare Stream, Vimeo, YouTube, Stripe).
+  // Tightening further requires moving to nonce-based CSP.
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' https://videodelivery.net https://customer-*.cloudflarestream.com https://*.vimeocdn.com",
+      "font-src 'self' data:",
+      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://player.vimeo.com https://www.youtube.com https://iframe.cloudflarestream.com",
+      "connect-src 'self' https://api.stripe.com https://upload.cloudflarestream.com https://api.cloudflare.com https://api.assemblyai.com https://api.anthropic.com",
+    ].join("; "),
+  );
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
   // Add rate limit headers if applicable
   if (rateLimitResult) {
     const limit = pathname.startsWith("/api/auth") ? "20" : "60";

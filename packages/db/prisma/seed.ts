@@ -168,6 +168,19 @@ const uxuiModules: ModuleDef[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function main() {
+  // Production guard: seeding wipes every table before reinserting demo
+  // data. Running it against a real database would erase all customer
+  // data. Force opt-in with SEED_FORCE=1 to bypass.
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.SEED_FORCE !== "1"
+  ) {
+    console.error(
+      "Seed aborted: NODE_ENV=production. Set SEED_FORCE=1 to override.",
+    );
+    process.exit(1);
+  }
+
   console.log("🌱 Starting PROL seed…\n");
 
   // ── 0. Clean existing data (respect FK order) ──────────────────────────

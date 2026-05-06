@@ -8,6 +8,20 @@ import type Stripe from "stripe";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  // Refuse to process webhooks if the signing secret isn't configured.
+  // Returning 503 (vs 500) tells Stripe to keep the event in its retry
+  // queue without flagging the endpoint as broken indefinitely.
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error(
+      "[stripe-webhook] STRIPE_WEBHOOK_SECRET no configurado; rechazando entrega.",
+    );
+    return NextResponse.json(
+      { error: "Webhook no configurado" },
+      { status: 503 },
+    );
+  }
+
   const body = await request.text();
   const signature = request.headers.get("stripe-signature");
 
@@ -24,7 +38,7 @@ export async function POST(request: NextRequest) {
     event = getStripe().webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      webhookSecret,
     );
   } catch (err) {
     const message =
