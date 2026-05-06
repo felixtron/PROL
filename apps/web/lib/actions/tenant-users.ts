@@ -90,7 +90,10 @@ export async function createTenantUser(formData: FormData) {
   const userId = result.user?.id;
   if (!userId) throw new Error("No se pudo crear el usuario");
 
-  // Set tenant + role + company + force password reset
+  // Set tenant + role + company + force password reset.
+  // onboardingCompleted=true: this user already has a tenant (we just
+  // assigned it), so they should skip the self-service /onboarding wizard
+  // that exists only for users creating their own academy from scratch.
   await db.user.update({
     where: { id: userId },
     data: {
@@ -98,6 +101,7 @@ export async function createTenantUser(formData: FormData) {
       role,
       companyId,
       mustResetPassword: true,
+      onboardingCompleted: true,
     },
   });
 
@@ -172,6 +176,7 @@ export async function createUserInTenant(
       role,
       companyId,
       mustResetPassword: true,
+      onboardingCompleted: true,
     },
   });
 
@@ -448,6 +453,7 @@ export async function bulkImportUsers(
           role: roleRaw,
           companyId,
           mustResetPassword: true,
+          onboardingCompleted: true,
         },
       });
 
