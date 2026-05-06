@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
+import { TenantThemeStyle } from "@/components/tenant-theme";
 
 const navItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/tenant-admin", icon: "LayoutDashboard" },
@@ -34,13 +35,18 @@ export default async function TenantAdminLayout({
   const tenant = user.tenantId
     ? await db.tenant.findUnique({
         where: { id: user.tenantId },
-        select: { name: true, logo: true },
+        select: { name: true, logo: true, primaryColor: true, accentColor: true },
       })
     : null;
   const tenantName = tenant?.name ?? user.tenant?.name ?? "Plataforma";
 
   return (
-    <SidebarShell
+    <>
+      <TenantThemeStyle
+        primaryColor={tenant?.primaryColor}
+        accentColor={tenant?.accentColor}
+      />
+      <SidebarShell
       navItems={navItems}
       mobileTitle={tenantName}
       brand={
@@ -73,5 +79,6 @@ export default async function TenantAdminLayout({
     >
       {children}
     </SidebarShell>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
+import { TenantThemeStyle } from "@/components/tenant-theme";
 
 const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/professor", icon: "LayoutDashboard" },
@@ -37,7 +38,13 @@ export default async function ProfessorLayout({
 
   const tenant = await db.tenant.findUnique({
     where: { id: user.tenantId },
-    select: { name: true, logo: true, evaluationsEnabled: true },
+    select: {
+      name: true,
+      logo: true,
+      evaluationsEnabled: true,
+      primaryColor: true,
+      accentColor: true,
+    },
   });
 
   const navItems: SidebarNavItem[] = [
@@ -49,7 +56,12 @@ export default async function ProfessorLayout({
   ];
 
   return (
-    <SidebarShell
+    <>
+      <TenantThemeStyle
+        primaryColor={tenant?.primaryColor}
+        accentColor={tenant?.accentColor}
+      />
+      <SidebarShell
       navItems={navItems}
       mobileTitle={tenant?.name ?? "PROL · Profesor"}
       brand={
@@ -77,5 +89,6 @@ export default async function ProfessorLayout({
     >
       {children}
     </SidebarShell>
+    </>
   );
 }

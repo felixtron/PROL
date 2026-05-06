@@ -7,6 +7,7 @@ import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { TenantBrand } from "@/components/tenant-brand";
+import { TenantThemeStyle } from "@/components/tenant-theme";
 import { MobileNav } from "./mobile-nav";
 
 const navItems = [
@@ -55,12 +56,16 @@ export default async function DashboardLayout({
   const tenant = user.tenantId
     ? await db.tenant.findUnique({
         where: { id: user.tenantId },
-        select: { name: true, logo: true },
+        select: { name: true, logo: true, primaryColor: true, accentColor: true },
       })
     : null;
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-secondary">
+      <TenantThemeStyle
+        primaryColor={tenant?.primaryColor}
+        accentColor={tenant?.accentColor}
+      />
       {/* ─── Desktop sidebar (hidden on mobile) ─── */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex">
         {/* Top: user menu + bell */}
