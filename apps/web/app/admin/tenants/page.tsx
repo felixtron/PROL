@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Building2, ExternalLink, Plus } from "lucide-react";
 import { getAdminTenants } from "@/lib/queries/admin";
 import { TenantFeaturesToggle } from "./tenant-features-toggle";
+import { RevenueShareEditor } from "./[id]/revenue-share-editor";
 
 const statusColors: Record<string, string> = {
   TRIAL: "bg-amber-50 text-amber-700",
@@ -115,7 +116,10 @@ export default async function AdminTenantsPage() {
                       {tenant._count.courses}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-text-secondary">
-                      {Math.round(tenant.revenueShareRate * 100)}%
+                      <RevenueShareEditor
+                        tenantId={tenant.id}
+                        current={tenant.revenueShareRate}
+                      />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <TenantFeaturesToggle

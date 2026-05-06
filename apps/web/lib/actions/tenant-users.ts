@@ -113,6 +113,80 @@ export async function createTenantUser(formData: FormData) {
   return { success: true, userId };
 }
 
+/**
+ * Super-admin variant: create a user in the specified tenant. Mirrors
+ * createTenantUser but takes the target tenantId explicitly so SUPER_ADMIN
+ * can populate any tenant from /admin/tenants/[id]. ADMIN role is allowed
+ * here (this is the only entry point for it).
+ */
+export async function createUserInTenant(
+  targetTenantId: string,
+  formData: FormData,
+) {
+  const caller = await requireTenantAdmin();
+  if (caller.role !== "SUPER_ADMIN") {
+    throw new Error("Solo SUPER_ADMIN puede crear usuarios en otros tenants");
+  }
+
+  const tenant = await db.tenant.findUnique({
+    where: { id: targetTenantId },
+    select: { id: true, name: true },
+  });
+  if (!tenant) throw new Error("Tenant no encontrado");
+
+  const email = (formData.get("email") as string | null)?.trim().toLowerCase();
+  const name = (formData.get("name") as string | null)?.trim();
+  const role = (formData.get("role") as string | null) ?? "STUDENT";
+  const companyId = (formData.get("companyId") as string | null) || null;
+
+  if (!email || !isValidEmail(email)) throw new Error("Email inválido");
+  if (!name || name.length < 2) throw new Error("Nombre requerido (mín 2 caracteres)");
+  if (!isValidRole(role)) throw new Error("Rol inválido");
+
+  if (companyId) {
+    const company = await db.company.findUnique({ where: { id: companyId } });
+    if (!company || company.tenantId !== tenant.id) {
+      throw new Error("Empresa inválida");
+    }
+  }
+
+  const existing = await db.user.findUnique({ where: { email } });
+  if (existing) throw new Error("El email ya está registrado");
+
+  const tempPassword = generateTempPassword();
+  const reqHeaders = await headers();
+
+  const result = await auth.api.signUpEmail({
+    body: { email, name, password: tempPassword },
+    headers: reqHeaders,
+    asResponse: false,
+  });
+
+  const userId = result.user?.id;
+  if (!userId) throw new Error("No se pudo crear el usuario");
+
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      tenantId: tenant.id,
+      role,
+      companyId,
+      mustResetPassword: true,
+    },
+  });
+
+  await sendInvitationEmail({
+    email,
+    name,
+    tempPassword,
+    tenantName: tenant.name,
+  });
+
+  revalidatePath(`/admin/tenants/${tenant.id}`);
+  revalidatePath("/admin/users");
+  return { success: true, userId };
+}
+
 export async function updateTenantUser(
   userId: string,
   data: {

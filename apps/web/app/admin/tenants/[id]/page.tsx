@@ -7,9 +7,11 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { db } from "@prol/db";
 import { getAdminTenantDetail } from "@/lib/queries/admin";
 import { TenantFeaturesToggle } from "../tenant-features-toggle";
 import { RevenueShareEditor } from "./revenue-share-editor";
+import { NewUserForm } from "./new-user-form";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -70,6 +72,11 @@ export default async function AdminTenantDetailPage({
 }) {
   const { id } = await params;
   const tenant = await getAdminTenantDetail(id);
+  const companies = await db.company.findMany({
+    where: { tenantId: id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
 
   return (
     <div className="space-y-6">
@@ -209,6 +216,9 @@ export default async function AdminTenantDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Create user (super admin only) */}
+      <NewUserForm tenantId={tenant.id} companies={companies} />
 
       {/* Users List */}
       <div className="rounded-xl border border-border bg-surface shadow-sm">
