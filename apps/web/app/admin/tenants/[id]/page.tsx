@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getAdminTenantDetail } from "@/lib/queries/admin";
 import { TenantFeaturesToggle } from "../tenant-features-toggle";
+import { RevenueShareEditor } from "./revenue-share-editor";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -170,9 +171,10 @@ export default async function AdminTenantDetailPage({
             <span className="text-sm font-medium text-text-primary">
               Revenue Share
             </span>
-            <span className="text-sm font-bold text-text-primary">
-              {Math.round(tenant.revenueShareRate * 100)}%
-            </span>
+            <RevenueShareEditor
+              tenantId={tenant.id}
+              current={tenant.revenueShareRate}
+            />
           </div>
           <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
             <span className="text-sm font-medium text-text-primary">AI</span>
