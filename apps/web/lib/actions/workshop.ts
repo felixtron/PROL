@@ -56,6 +56,23 @@ export async function createWorkshop(formData: FormData) {
   if (!courseId || !title || !startTime || !endTime) {
     throw new Error("Faltan campos obligatorios");
   }
+  if (title.length < 3 || title.length > 120) {
+    throw new Error("El título debe tener entre 3 y 120 caracteres");
+  }
+  const startDate = new Date(startTime);
+  const endDate = new Date(endTime);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error("Fechas inválidas");
+  }
+  if (endDate.getTime() <= startDate.getTime()) {
+    throw new Error("La hora de fin debe ser posterior a la de inicio");
+  }
+  if (!Number.isFinite(maxAttendees) || maxAttendees < 1 || maxAttendees > 1000) {
+    throw new Error("Cupo máximo inválido");
+  }
+  if (!Number.isFinite(minAttendees) || minAttendees < 0 || minAttendees > maxAttendees) {
+    throw new Error("Mínimo de asistentes inválido");
+  }
 
   // Recurrence is optional. When set, generate `occurrences` workshops total
   // (the first one is the "parent", the rest are children that link back).
@@ -137,6 +154,23 @@ export async function updateWorkshop(workshopId: string, formData: FormData) {
   const endTime = formData.get("endTime") as string;
   const maxAttendees = Number(formData.get("maxAttendees") || existing.maxAttendees);
   const status = (formData.get("status") as string) || undefined;
+
+  // Coherent time range — required because both fields default to undefined
+  // when the form omits them, so we only validate what was sent.
+  const effectiveStart = startTime ? new Date(startTime) : existing.startTime;
+  const effectiveEnd = endTime ? new Date(endTime) : existing.endTime;
+  if (Number.isNaN(effectiveStart.getTime()) || Number.isNaN(effectiveEnd.getTime())) {
+    throw new Error("Fechas inválidas");
+  }
+  if (effectiveEnd.getTime() <= effectiveStart.getTime()) {
+    throw new Error("La hora de fin debe ser posterior a la de inicio");
+  }
+  if (title !== undefined && (title.length < 3 || title.length > 120)) {
+    throw new Error("El título debe tener entre 3 y 120 caracteres");
+  }
+  if (!Number.isFinite(maxAttendees) || maxAttendees < 1 || maxAttendees > 1000) {
+    throw new Error("Cupo máximo inválido");
+  }
 
   await db.workshop.update({
     where: { id: workshopId },

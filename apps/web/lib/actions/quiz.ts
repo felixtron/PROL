@@ -312,35 +312,50 @@ export async function submitQuizAttempt(
   const score = Math.round((correctCount / questions.length) * 100);
   const passed = score >= quiz.passingScore;
 
-  // Save attempt
-  const attempt = await db.quizAttempt.create({
-    data: {
-      quizId,
-      enrollmentId,
-      answers,
-      score,
-      passed,
-      completedAt: new Date(),
-    },
-  });
+  // Atomically: persist the attempt, mark the lesson as completed (if
+  // passed), and update enrollment progress. Certificate issuance lives
+  // OUTSIDE the transaction because issueCertificateForEnrollment opens
+  // its own $transaction (Prisma does not support nesting). The certificate
+  // helper is idempotent, so a transient failure here doesn't lose the
+  // attempt — the student's next visit will see they passed.
+  const lessonForQuiz = passed
+    ? await db.lesson.findFirst({
+        where: { quizzes: { some: { id: quizId } } },
+        select: { id: true },
+      })
+    : null;
+  const courseForEnrollment = passed
+    ? await db.course.findFirst({
+        where: { id: enrollment.course.id },
+        select: { totalLessons: true },
+      })
+    : null;
+  // Whether the final-exam side-effects (mark COMPLETED + cert) apply.
+  const isFinalAndPassed = passed && quiz.isFinalExam && score >= 80;
 
-  // If passed, mark lesson as completed
-  if (passed) {
-    const lesson = await db.lesson.findFirst({
-      where: { quizzes: { some: { id: quizId } } },
+  const attempt = await db.$transaction(async (tx) => {
+    const created = await tx.quizAttempt.create({
+      data: {
+        quizId,
+        enrollmentId,
+        answers,
+        score,
+        passed,
+        completedAt: new Date(),
+      },
     });
 
-    if (lesson) {
-      await db.lessonProgress.upsert({
+    if (passed && lessonForQuiz) {
+      await tx.lessonProgress.upsert({
         where: {
           enrollmentId_lessonId: {
             enrollmentId,
-            lessonId: lesson.id,
+            lessonId: lessonForQuiz.id,
           },
         },
         create: {
           enrollmentId,
-          lessonId: lesson.id,
+          lessonId: lessonForQuiz.id,
           status: "COMPLETED",
           completedAt: new Date(),
         },
@@ -350,26 +365,15 @@ export async function submitQuizAttempt(
         },
       });
 
-      // Recalculate enrollment progress
-      const completedCount = await db.lessonProgress.count({
-        where: { enrollmentId, status: "COMPLETED" },
-      });
-
-      const course = await db.course.findFirst({
-        where: { id: enrollment.course.id },
-        select: { totalLessons: true },
-      });
-
-      if (course) {
-        const newProgress = course.totalLessons > 0
-          ? completedCount / course.totalLessons
-          : 0;
-
-        // If this quiz is the course's final exam and the student passed
-        // with >= 80%, mark the enrollment completed and issue the certificate.
-        const isFinalAndPassed = quiz.isFinalExam && passed && score >= 80;
-
-        await db.enrollment.update({
+      if (courseForEnrollment) {
+        const completedCount = await tx.lessonProgress.count({
+          where: { enrollmentId, status: "COMPLETED" },
+        });
+        const newProgress =
+          courseForEnrollment.totalLessons > 0
+            ? completedCount / courseForEnrollment.totalLessons
+            : 0;
+        await tx.enrollment.update({
           where: { id: enrollmentId },
           data: {
             progress: newProgress,
@@ -378,27 +382,30 @@ export async function submitQuizAttempt(
               : {}),
           },
         });
-
-        if (isFinalAndPassed) {
-          try {
-            const result = await issueCertificateForEnrollment(enrollmentId, {
-              finalExamScore: score,
-            });
-            if (result.folio) {
-              await createNotification({
-                userId: user.id,
-                tenantId: enrollment.tenantId,
-                type: "CERTIFICATE",
-                title: "Certificado emitido",
-                message: `Aprobaste el examen final con ${score}%. Tu certificado está listo.`,
-                link: `/verify/${result.folio}`,
-              });
-            }
-          } catch (err) {
-            console.error("Error emitiendo certificado tras examen final:", err);
-          }
-        }
       }
+    }
+
+    return created;
+  });
+
+  // Side-effects after the consistent state is committed.
+  if (isFinalAndPassed) {
+    try {
+      const result = await issueCertificateForEnrollment(enrollmentId, {
+        finalExamScore: score,
+      });
+      if (result.folio) {
+        await createNotification({
+          userId: user.id,
+          tenantId: enrollment.tenantId,
+          type: "CERTIFICATE",
+          title: "Certificado emitido",
+          message: `Aprobaste el examen final con ${score}%. Tu certificado está listo.`,
+          link: `/verify/${result.folio}`,
+        });
+      }
+    } catch (err) {
+      console.error("Error emitiendo certificado tras examen final:", err);
     }
   }
 

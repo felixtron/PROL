@@ -17,13 +17,15 @@ export async function updateProfile(data: {
     }
   }
 
-  // Avatar is expected to be a URL from /api/upload (validated there).
-  // Defensive: reject anything that isn't a relative /uploads/... path or https URL.
+  // Avatar must come from our own /api/upload pipeline. Allowing arbitrary
+  // https URLs lets a user embed a remote tracking pixel that renders in
+  // every other user's sidebar (and bypasses our content-type validation).
   if (data.avatar !== undefined && data.avatar !== null) {
-    const ok =
-      data.avatar.startsWith("/uploads/") ||
-      data.avatar.startsWith("https://");
-    if (!ok) throw new Error("URL de avatar inválida");
+    if (!data.avatar.startsWith("/uploads/")) {
+      throw new Error(
+        "El avatar debe subirse desde el perfil (no se permiten URLs externas)",
+      );
+    }
   }
 
   await db.user.update({

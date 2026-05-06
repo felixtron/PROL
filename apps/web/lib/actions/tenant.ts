@@ -29,9 +29,14 @@ export async function updateTenantBranding(data: {
     }
   }
   if (data.logo !== undefined && data.logo !== null) {
-    const ok =
-      data.logo.startsWith("/uploads/") || data.logo.startsWith("https://");
-    if (!ok) throw new Error("URL del logotipo inválida");
+    // Only accept logos uploaded through our own /api/upload pipeline.
+    // Allowing arbitrary https:// URLs lets a tenant admin embed a remote
+    // tracking pixel into every page that renders the brand.
+    if (!data.logo.startsWith("/uploads/")) {
+      throw new Error(
+        "El logotipo debe subirse desde el panel (no se permiten URLs externas)",
+      );
+    }
   }
   if (data.primaryColor !== undefined && !HEX_COLOR_RE.test(data.primaryColor)) {
     throw new Error("Color primario inválido (usa formato #RRGGBB)");

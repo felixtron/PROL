@@ -18,7 +18,13 @@ function slugify(text: string): string {
 export async function createTenant(formData: FormData) {
   const user = await requireUser();
 
-  // Only users without a tenant can create one
+  // SECURITY NOTE: this is a *self-service* onboarding endpoint. Anyone
+  // who signs up and lacks a tenant can create one and is implicitly
+  // promoted to PROFESSOR (see role assignment below). That's intentional
+  // for the marketing flow ("create your academy"), but it means a
+  // malicious user could automate tenant creation. Mitigations to add
+  // before scaling: CAPTCHA, email verification gating, or moving tenant
+  // creation behind an explicit invite from a SUPER_ADMIN.
   if (user.tenantId) {
     throw new Error("Ya tienes una academia asociada");
   }

@@ -87,34 +87,42 @@ export async function updateLessonProgress(
   });
   if (!enrollment) throw new Error("Inscripción no encontrada");
 
-  const progress = await db.lessonProgress.upsert({
-    where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
-    create: {
-      enrollmentId,
-      lessonId,
-      status: data.status ?? "IN_PROGRESS",
-      videoPositionSeconds: data.videoPositionSeconds ?? 0,
-      ...(data.status === "COMPLETED" ? { completedAt: new Date() } : {}),
-    },
-    update: {
-      status: data.status,
-      videoPositionSeconds: data.videoPositionSeconds,
-      ...(data.status === "COMPLETED" ? { completedAt: new Date() } : {}),
-    },
-  });
+  // Atomically: upsert lesson progress and recompute enrollment progress
+  // (and mark COMPLETED if all lessons done). Certificate issuance + the
+  // notification are post-commit side-effects: issueCertificateForEnrollment
+  // opens its own $transaction and is idempotent, so a transient failure
+  // does not leave inconsistent state.
+  const { progress, becameCompleted } = await db.$transaction(async (tx) => {
+    const upserted = await tx.lessonProgress.upsert({
+      where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
+      create: {
+        enrollmentId,
+        lessonId,
+        status: data.status ?? "IN_PROGRESS",
+        videoPositionSeconds: data.videoPositionSeconds ?? 0,
+        ...(data.status === "COMPLETED" ? { completedAt: new Date() } : {}),
+      },
+      update: {
+        status: data.status,
+        videoPositionSeconds: data.videoPositionSeconds,
+        ...(data.status === "COMPLETED" ? { completedAt: new Date() } : {}),
+      },
+    });
 
-  // Recalculate enrollment progress
-  if (data.status === "COMPLETED") {
-    const completedCount = await db.lessonProgress.count({
+    if (data.status !== "COMPLETED") {
+      return { progress: upserted, becameCompleted: false };
+    }
+
+    const completedCount = await tx.lessonProgress.count({
       where: { enrollmentId, status: "COMPLETED" },
     });
-    const newProgress = enrollment.course.totalLessons > 0
-      ? completedCount / enrollment.course.totalLessons
-      : 0;
+    const newProgress =
+      enrollment.course.totalLessons > 0
+        ? completedCount / enrollment.course.totalLessons
+        : 0;
 
-    // Update enrollment status if all lessons are completed
     if (newProgress >= 1.0) {
-      await db.enrollment.update({
+      await tx.enrollment.update({
         where: { id: enrollmentId },
         data: {
           status: "COMPLETED",
@@ -122,46 +130,47 @@ export async function updateLessonProgress(
           progress: newProgress,
         },
       });
+      return { progress: upserted, becameCompleted: true };
+    }
 
-      // Auto-issue certificate upon course completion (fallback for courses
-      // without a final exam). When a final exam exists, the certificate is
-      // issued by the quiz submission flow when the student passes it.
-      try {
-        const courseHasFinalExam = await db.quiz.findFirst({
-          where: {
-            isFinalExam: true,
-            lesson: { module: { courseId: enrollment.course.id } },
-          },
-          select: { id: true },
-        });
+    await tx.enrollment.update({
+      where: { id: enrollmentId },
+      data: { progress: newProgress },
+    });
+    return { progress: upserted, becameCompleted: false };
+  });
 
-        if (!courseHasFinalExam) {
-          const result = await issueCertificateForEnrollment(enrollmentId);
-          if (result.folio) {
-            try {
-              await createNotification({
-                userId: user.id,
-                tenantId: enrollment.tenantId,
-                type: "CERTIFICATE",
-                title: "Certificado emitido",
-                message: `Has completado el curso y tu certificado está listo.`,
-                link: `/verify/${result.folio}`,
-              });
-            } catch (notifError) {
-              console.error("Error creando notificación de certificado:", notifError);
-            }
+  // Side-effect after commit: auto-issue certificate when the course just
+  // became fully completed AND there's no final exam (the quiz flow handles
+  // certificates when there is one).
+  if (becameCompleted) {
+    try {
+      const courseHasFinalExam = await db.quiz.findFirst({
+        where: {
+          isFinalExam: true,
+          lesson: { module: { courseId: enrollment.course.id } },
+        },
+        select: { id: true },
+      });
+      if (!courseHasFinalExam) {
+        const result = await issueCertificateForEnrollment(enrollmentId);
+        if (result.folio) {
+          try {
+            await createNotification({
+              userId: user.id,
+              tenantId: enrollment.tenantId,
+              type: "CERTIFICATE",
+              title: "Certificado emitido",
+              message: `Has completado el curso y tu certificado está listo.`,
+              link: `/verify/${result.folio}`,
+            });
+          } catch (notifError) {
+            console.error("Error creando notificación de certificado:", notifError);
           }
         }
-      } catch (certError) {
-        // Log error but don't fail the lesson completion
-        console.error("Error emitiendo certificado:", certError);
       }
-    } else {
-      // Just update progress if not completed yet
-      await db.enrollment.update({
-        where: { id: enrollmentId },
-        data: { progress: newProgress },
-      });
+    } catch (certError) {
+      console.error("Error emitiendo certificado:", certError);
     }
   }
 

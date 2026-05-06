@@ -85,11 +85,19 @@ export async function toggleTenantFeature(
   return { success: true };
 }
 
+const TENANT_STATUSES = ["TRIAL", "ACTIVE", "PAUSED", "CHURNED"] as const;
+const USER_ROLES = ["STUDENT", "PROFESSOR", "ADMIN", "SUPER_ADMIN"] as const;
+type TenantStatus = (typeof TENANT_STATUSES)[number];
+type UserRoleLiteral = (typeof USER_ROLES)[number];
+
 export async function updateTenantStatus(tenantId: string, status: string) {
   await requireAdmin();
+  if (!TENANT_STATUSES.includes(status as TenantStatus)) {
+    throw new Error("Estado inválido");
+  }
   await db.tenant.update({
     where: { id: tenantId },
-    data: { status: status as any },
+    data: { status: status as TenantStatus },
   });
   revalidatePath("/admin/tenants");
   return { success: true };
@@ -97,9 +105,12 @@ export async function updateTenantStatus(tenantId: string, status: string) {
 
 export async function updateUserRole(userId: string, newRole: string) {
   await requireAdmin();
+  if (!USER_ROLES.includes(newRole as UserRoleLiteral)) {
+    throw new Error("Rol inválido");
+  }
   await db.user.update({
     where: { id: userId },
-    data: { role: newRole as any },
+    data: { role: newRole as UserRoleLiteral },
   });
   revalidatePath("/admin/users");
   return { success: true };

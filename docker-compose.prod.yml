@@ -59,6 +59,12 @@ services:
     volumes:
       # Persist uploaded files (PDFs, thumbnails, avatars) across rebuilds
       - prol_uploads:/app/apps/web/public/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - prol-internal
       - dokploy-network

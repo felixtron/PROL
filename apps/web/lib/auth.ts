@@ -74,7 +74,7 @@ export const getCurrentUser = cache(async () => {
 
 export const requireUser = cache(async () => {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new Error("Sesión expirada. Inicia sesión de nuevo.");
   return user;
 });
 
