@@ -2,20 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
-
-async function requireAIEnabled() {
-  const user = await requireUser();
-  if (!user.tenantId) throw new Error("Sin tenant asignado");
-
-  const tenant = await db.tenant.findUnique({
-    where: { id: user.tenantId },
-    select: { aiEnabled: true },
-  });
-
-  if (!tenant?.aiEnabled) throw new Error("Módulo de AI no habilitado");
-  return user;
-}
+import { requireAIEnabled, requireUser } from "@/lib/auth";
 
 export async function startCourseOutlineGeneration(formData: FormData) {
   const user = await requireAIEnabled();

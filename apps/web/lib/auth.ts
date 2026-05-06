@@ -126,6 +126,28 @@ export const requireEvaluationAuthor = cache(async () => {
 });
 
 /**
+ * Requires the AI module to be enabled for the user's tenant. By default
+ * any authenticated user with a tenant is acceptable; pass `roles` to
+ * additionally restrict the caller (e.g. only PROFESSOR/ADMIN may author
+ * AI-generated drafts).
+ */
+export const requireAIEnabled = cache(
+  async (roles?: ("PROFESSOR" | "ADMIN" | "SUPER_ADMIN")[]) => {
+    const user = await requireUser();
+    if (roles && !roles.includes(user.role as (typeof roles)[number])) {
+      throw new Error("No autorizado");
+    }
+    if (!user.tenantId) throw new Error("Sin tenant asignado");
+    const tenant = await db.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { aiEnabled: true },
+    });
+    if (!tenant?.aiEnabled) throw new Error("Módulo de IA no habilitado");
+    return user as typeof user & { tenantId: string };
+  },
+);
+
+/**
  * Asserts that the given resource's tenantId matches the current user's,
  * unless the user is a SUPER_ADMIN. Throws otherwise.
  */

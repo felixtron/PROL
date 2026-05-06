@@ -13,9 +13,10 @@ export async function sendEmail({ to, subject, html, from, replyTo }: SendEmailP
   // skip sending instead of throwing so the caller's server action can
   // continue. The omission is logged so the operator notices.
   if (!process.env.RESEND_API_KEY) {
-    console.warn(
-      `[email] RESEND_API_KEY no configurada; se omitió envío a ${to} ("${subject}")`,
-    );
+    logRecord("warn", "RESEND_API_KEY no configurada; envío omitido", {
+      to,
+      subject,
+    });
     return null;
   }
 
@@ -31,13 +32,40 @@ export async function sendEmail({ to, subject, html, from, replyTo }: SendEmailP
     });
 
     if (error) {
-      console.error("[email] Failed to send email:", error);
+      logRecord("error", "Failed to send email", {
+        to,
+        subject,
+        error: error.message ?? String(error),
+      });
       return null;
     }
 
     return data;
   } catch (err) {
-    console.error("[email] Unexpected error sending email:", err);
+    logRecord("error", "Unexpected error sending email", {
+      to,
+      subject,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
+  }
+}
+
+/** Local structured log helper. We don't pull `@/lib/logger` here because
+ * this package is consumed by both the web app and edge code paths and we
+ * keep it dependency-free. */
+function logRecord(
+  level: "warn" | "error",
+  msg: string,
+  fields: Record<string, unknown>,
+) {
+  const record = { ts: new Date().toISOString(), level, component: "email", msg, ...fields };
+  if (process.env.NODE_ENV === "production") {
+    (level === "error" ? console.error : console.warn)(JSON.stringify(record));
+  } else {
+    (level === "error" ? console.error : console.warn)(
+      `[${level.toUpperCase()}] [email] ${msg}`,
+      fields,
+    );
   }
 }

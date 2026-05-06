@@ -25,26 +25,14 @@ import {
   type ModuleV2,
   type RefinementAnswers,
 } from "@prol/content-factory";
-import { requireUser } from "@/lib/auth";
+import { requireAIEnabled } from "@/lib/auth";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Authorization helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function requireAIProfessor() {
-  const user = await requireUser();
-  if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
-    throw new Error("No autorizado");
-  }
-  if (!user.tenantId) throw new Error("Sin tenant asignado");
-
-  const tenant = await db.tenant.findUnique({
-    where: { id: user.tenantId },
-    select: { aiEnabled: true },
-  });
-  if (!tenant?.aiEnabled) throw new Error("Módulo de IA no habilitado");
-
-  return user as typeof user & { tenantId: string };
+  return requireAIEnabled(["PROFESSOR", "ADMIN", "SUPER_ADMIN"]);
 }
 
 async function loadOwnedDraft(draftId: string, userId: string) {

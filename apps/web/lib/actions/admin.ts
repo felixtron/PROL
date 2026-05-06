@@ -48,16 +48,44 @@ export async function createTenantAdmin(formData: FormData) {
   return { success: true, tenantId: tenant.id };
 }
 
+// Hostname per RFC 1123 (no protocol, no path, optional sub-labels). We
+// also reject anything ending in our base domain to avoid hijacks of
+// "tenant-x.prol.prosuite.pro" by a different tenant.
+const DOMAIN_RE = /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+
 export async function updateTenant(
   tenantId: string,
-  data: { name?: string; contactEmail?: string; customDomain?: string }
+  data: { name?: string; contactEmail?: string; customDomain?: string },
 ) {
   await requireAdmin();
+
+  if (data.name !== undefined) {
+    const trimmed = data.name.trim();
+    if (trimmed.length < 2 || trimmed.length > 80) {
+      throw new Error("Nombre inválido (2-80 caracteres)");
+    }
+  }
+  if (data.contactEmail) {
+    if (!/^\S+@\S+\.\S+$/.test(data.contactEmail)) {
+      throw new Error("Email de contacto inválido");
+    }
+  }
+  if (data.customDomain) {
+    const cd = data.customDomain.trim().toLowerCase();
+    if (!DOMAIN_RE.test(cd)) {
+      throw new Error("Dominio inválido (use formato ejemplo.com)");
+    }
+    const baseDomain = (process.env.NEXT_PUBLIC_DOMAIN ?? "").toLowerCase();
+    if (baseDomain && cd.endsWith(`.${baseDomain}`)) {
+      throw new Error("No se permite un subdominio de la plataforma como dominio personalizado");
+    }
+    data.customDomain = cd;
+  }
 
   await db.tenant.update({
     where: { id: tenantId },
     data: {
-      ...(data.name ? { name: data.name } : {}),
+      ...(data.name ? { name: data.name.trim() } : {}),
       ...(data.contactEmail ? { contactEmail: data.contactEmail } : {}),
       ...(data.customDomain !== undefined
         ? { customDomain: data.customDomain || null }

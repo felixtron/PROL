@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@prol/db";
 import { sendEmail, paymentConfirmation, enrollmentConfirmation } from "@prol/email";
 import { getStripe } from "@/lib/stripe";
+import { createLogger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import type Stripe from "stripe";
+
+const log = createLogger("stripe-webhook");
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +16,7 @@ export async function POST(request: NextRequest) {
   // queue without flagging the endpoint as broken indefinitely.
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error(
-      "[stripe-webhook] STRIPE_WEBHOOK_SECRET no configurado; rechazando entrega.",
-    );
+    log.error("STRIPE_WEBHOOK_SECRET no configurado; rechazando entrega");
     return NextResponse.json(
       { error: "Webhook no configurado" },
       { status: 503 },
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Error de verificación de firma";
-    console.error(`Webhook signature verification failed: ${message}`);
+    log.error("Signature verification failed", { error: message });
     return NextResponse.json(
       { error: "Firma de webhook invalida" },
       { status: 400 }
@@ -85,13 +86,13 @@ export async function POST(request: NextRequest) {
       }
 
       default: {
-        console.log(`Evento de Stripe no manejado: ${event.type}`);
+        log.warn("Unhandled event", { type: event.type });
       }
     }
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Error procesando el webhook";
-    console.error(`Error procesando webhook ${event.type}: ${message}`);
+    log.error("Webhook handler error", { type: event.type, error: message });
     return NextResponse.json(
       { error: "Error procesando el evento" },
       { status: 500 }
@@ -111,13 +112,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const tenantId = session.metadata?.tenantId;
 
   if (!courseId || !studentId || !tenantId) {
-    console.error("Metadata incompleta en la sesion de checkout:", session.id);
+    log.error("Missing metadata on checkout session", { sessionId: session.id });
     return;
   }
 
   // Validate payment_intent exists
   if (!session.payment_intent) {
-    console.error("payment_intent missing from checkout session:", session.id);
+    log.error("payment_intent missing on checkout session", { sessionId: session.id });
     return;
   }
 
@@ -175,7 +176,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         voucherUrl = na.display_bank_transfer_instructions.hosted_instructions_url ?? null;
       }
     } catch (err) {
-      console.error("No se pudo recuperar next_action del PaymentIntent:", err);
+      log.error("Failed to fetch PaymentIntent next_action", {
+        paymentIntentId,
+        error: String(err),
+      });
     }
   }
 
@@ -199,9 +203,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         update: {},
       });
     } else {
-      console.log(
-        `Pago ya registrado (status=${existingPayment.status}) para ${paymentIntentId}`
-      );
+      log.info("Payment already recorded; skipping", {
+        status: existingPayment.status,
+        paymentIntentId,
+      });
     }
     revalidatePath("/dashboard");
     return;
@@ -293,7 +298,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       ]);
     }
   } catch (emailError) {
-    console.error("Error enviando emails de confirmacion:", emailError);
+    log.error("Failed to send confirmation emails", { error: String(emailError) });
   }
 }
 
@@ -342,9 +347,9 @@ async function handleCheckoutAsyncFailed(session: Stripe.Checkout.Session) {
   });
 
   if (!existingPayment) {
-    console.warn(
-      `async_payment_failed for unknown payment_intent: ${paymentIntentId}`
-    );
+    log.warn("async_payment_failed for unknown payment_intent", {
+      paymentIntentId,
+    });
     return;
   }
 
