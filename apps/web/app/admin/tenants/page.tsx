@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, ExternalLink } from "lucide-react";
+import { Building2, ExternalLink, Plus } from "lucide-react";
 import { getAdminTenants } from "@/lib/queries/admin";
 import { TenantFeaturesToggle } from "./tenant-features-toggle";
 
@@ -23,13 +23,22 @@ export default async function AdminTenantsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Tenants
-        </h1>
-        <p className="mt-1 text-text-secondary">
-          Gestiona todas las academias registradas en la plataforma.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-text-primary">
+            Tenants
+          </h1>
+          <p className="mt-1 text-text-secondary">
+            Gestiona todas las academias registradas en la plataforma.
+          </p>
+        </div>
+        <Link
+          href="/admin/tenants/new"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Tenant
+        </Link>
       </div>
 
       {/* Table */}
