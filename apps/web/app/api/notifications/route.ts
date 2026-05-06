@@ -5,8 +5,14 @@ import { markAsRead, markAllAsRead } from "@/lib/actions/notifications";
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
+    const pageRaw = parseInt(searchParams.get("page") || "1", 10);
+    const pageSizeRaw = parseInt(searchParams.get("pageSize") || "10", 10);
+    // Clamp to reasonable bounds: a malicious pageSize=999999 would
+    // load the entire notifications history into memory.
+    const page = Number.isFinite(pageRaw) ? Math.max(1, pageRaw) : 1;
+    const pageSize = Number.isFinite(pageSizeRaw)
+      ? Math.min(100, Math.max(1, pageSizeRaw))
+      : 10;
 
     const data = await getNotifications(page, pageSize);
 

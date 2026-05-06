@@ -21,6 +21,23 @@ async function loadEvaluationOrThrow(id: string) {
   return ev;
 }
 
+/**
+ * Refuses the call if the tenant has the evaluations feature flag disabled.
+ * SUPER_ADMIN bypasses (they may need to author across tenants). For other
+ * roles we look up the tenant and reject with a clear error so a malicious
+ * client invoking the action directly can't bypass the UI gating.
+ */
+async function assertEvaluationsEnabled(tenantId: string, userRole: string) {
+  if (userRole === "SUPER_ADMIN") return;
+  const tenant = await db.tenant.findUnique({
+    where: { id: tenantId },
+    select: { evaluationsEnabled: true },
+  });
+  if (!tenant?.evaluationsEnabled) {
+    throw new Error("Evaluaciones no están habilitadas para este tenant");
+  }
+}
+
 // ─── Template CRUD (PROFESSOR / ADMIN / SUPER_ADMIN) ─────────────────────────
 
 export async function createEvaluation(input: {
@@ -36,6 +53,7 @@ export async function createEvaluation(input: {
   if (!user.tenantId) {
     throw new Error("El SUPER_ADMIN debe especificar tenantId");
   }
+  await assertEvaluationsEnabled(user.tenantId, user.role);
 
   const ev = await db.evaluation.create({
     data: {
@@ -63,6 +81,7 @@ export async function updateEvaluation(
   const user = await requireEvaluationAuthor();
   const ev = await loadEvaluationOrThrow(evaluationId);
   assertSameTenant(user, ev.tenantId);
+  await assertEvaluationsEnabled(ev.tenantId, user.role);
 
   await db.evaluation.update({
     where: { id: evaluationId },
@@ -87,6 +106,7 @@ export async function deleteEvaluation(evaluationId: string) {
   const user = await requireEvaluationAuthor();
   const ev = await loadEvaluationOrThrow(evaluationId);
   assertSameTenant(user, ev.tenantId);
+  await assertEvaluationsEnabled(ev.tenantId, user.role);
 
   await db.evaluation.delete({ where: { id: evaluationId } });
   revalidatePath("/professor/evaluations");
@@ -102,6 +122,7 @@ export async function createSection(
   const user = await requireEvaluationAuthor();
   const ev = await loadEvaluationOrThrow(evaluationId);
   assertSameTenant(user, ev.tenantId);
+  await assertEvaluationsEnabled(ev.tenantId, user.role);
 
   const title = input.title?.trim();
   if (!title || title.length < 2 || title.length > 120) {
@@ -136,6 +157,7 @@ export async function updateSection(
   });
   if (!section) throw new Error("Sección no encontrada");
   assertSameTenant(user, section.evaluation.tenantId);
+  await assertEvaluationsEnabled(section.evaluation.tenantId, user.role);
 
   await db.evaluationSection.update({
     where: { id: sectionId },
@@ -156,6 +178,7 @@ export async function deleteSection(sectionId: string) {
   });
   if (!section) throw new Error("Sección no encontrada");
   assertSameTenant(user, section.evaluation.tenantId);
+  await assertEvaluationsEnabled(section.evaluation.tenantId, user.role);
 
   await db.evaluationSection.delete({ where: { id: sectionId } });
   revalidatePath(`/professor/evaluations/${section.evaluationId}`);
@@ -175,6 +198,7 @@ export async function createQuestion(
   });
   if (!section) throw new Error("Sección no encontrada");
   assertSameTenant(user, section.evaluation.tenantId);
+  await assertEvaluationsEnabled(section.evaluation.tenantId, user.role);
 
   const label = input.label?.trim();
   if (!label || label.length < 2 || label.length > 200) {
@@ -210,6 +234,7 @@ export async function updateQuestion(
   });
   if (!q) throw new Error("Pregunta no encontrada");
   assertSameTenant(user, q.section.evaluation.tenantId);
+  await assertEvaluationsEnabled(q.section.evaluation.tenantId, user.role);
 
   await db.evaluationQuestion.update({
     where: { id: questionId },
@@ -235,6 +260,7 @@ export async function deleteQuestion(questionId: string) {
   });
   if (!q) throw new Error("Pregunta no encontrada");
   assertSameTenant(user, q.section.evaluation.tenantId);
+  await assertEvaluationsEnabled(q.section.evaluation.tenantId, user.role);
 
   await db.evaluationQuestion.delete({ where: { id: questionId } });
   revalidatePath(`/professor/evaluations/${q.section.evaluationId}`);
@@ -314,6 +340,7 @@ export async function unassignEvaluationFromCompany(
   });
   if (!assignment) throw new Error("Asignación no encontrada");
   assertSameTenant(user, assignment.evaluation.tenantId);
+  await assertEvaluationsEnabled(assignment.evaluation.tenantId, user.role);
 
   await db.evaluationAssignment.delete({ where: { id: assignment.id } });
 
@@ -353,6 +380,7 @@ export async function addEvaluationParticipant(
   if (!isSuperAdmin && !isTenantAdmin && !isLeader) {
     throw new Error("No autorizado");
   }
+  await assertEvaluationsEnabled(assignment.company.tenantId, caller.role);
 
   const target = await db.user.findUnique({ where: { id: userId } });
   if (!target) throw new Error("Usuario no encontrado");
@@ -394,6 +422,7 @@ export async function removeEvaluationParticipant(
   if (!isSuperAdmin && !isTenantAdmin && !isLeader) {
     throw new Error("No autorizado");
   }
+  await assertEvaluationsEnabled(assignment.company.tenantId, caller.role);
   // Don't allow removing the leader — they are a mandatory participant.
   if (userId === assignment.company.leaderId) {
     throw new Error("El líder no puede ser removido de la evaluación");
@@ -445,6 +474,10 @@ export async function submitEvaluationAnswers(
   if (participant.userId !== caller.id) {
     throw new Error("No autorizado");
   }
+  await assertEvaluationsEnabled(
+    participant.assignment.company.tenantId,
+    caller.role,
+  );
 
   // Validate answers cover exactly the evaluation's questions.
   const allQuestionIds = participant.assignment.evaluation.sections.flatMap(
