@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import crypto from "node:crypto";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import {
   requireTenantAdmin,
   assertSameTenant,
 } from "@/lib/auth";
+import { createUserWithPassword } from "@/lib/users";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -73,22 +74,12 @@ export async function createTenantUser(formData: FormData) {
     }
   }
 
-  // Check for existing email
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) throw new Error("El email ya está registrado");
-
-  // Use Better Auth API to create the user (handles password hashing + accounts row)
+  // Create user directly via DB helper. Going through
+  // auth.api.signUpEmail would set a session cookie for the new user
+  // on the current request and log the inviting admin out.
   const tempPassword = generateTempPassword();
-  const reqHeaders = await headers();
-
-  const result = await auth.api.signUpEmail({
-    body: { email, name, password: tempPassword },
-    headers: reqHeaders,
-    asResponse: false,
-  });
-
-  const userId = result.user?.id;
-  if (!userId) throw new Error("No se pudo crear el usuario");
+  const created = await createUserWithPassword({ email, name, password: tempPassword });
+  const userId = created.id;
 
   // Set tenant + role + company + force password reset.
   // onboardingCompleted=true: this user already has a tenant (we just
@@ -154,20 +145,9 @@ export async function createUserInTenant(
     }
   }
 
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) throw new Error("El email ya está registrado");
-
   const tempPassword = generateTempPassword();
-  const reqHeaders = await headers();
-
-  const result = await auth.api.signUpEmail({
-    body: { email, name, password: tempPassword },
-    headers: reqHeaders,
-    asResponse: false,
-  });
-
-  const userId = result.user?.id;
-  if (!userId) throw new Error("No se pudo crear el usuario");
+  const created = await createUserWithPassword({ email, name, password: tempPassword });
+  const userId = created.id;
 
   await db.user.update({
     where: { id: userId },
@@ -388,7 +368,6 @@ export async function bulkImportUsers(
   });
   const existingEmails = new Set(existing.map((u) => u.email));
 
-  const reqHeaders = await headers();
   const tenantName = admin.tenant?.name ?? "PROL";
 
   // Process row by row (sequential to allow per-row error reporting + emails)
@@ -438,13 +417,12 @@ export async function bulkImportUsers(
 
     try {
       const tempPassword = generateTempPassword();
-      const created = await auth.api.signUpEmail({
-        body: { email, name, password: tempPassword },
-        headers: reqHeaders,
-        asResponse: false,
+      const created = await createUserWithPassword({
+        email,
+        name,
+        password: tempPassword,
       });
-      const userId = created.user?.id;
-      if (!userId) throw new Error("Better Auth no devolvió userId");
+      const userId = created.id;
 
       await db.user.update({
         where: { id: userId },
