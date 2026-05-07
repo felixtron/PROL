@@ -17,9 +17,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PROL - Tu Academia Online",
+  title: "PROL — Enseña lo que sabes, en cualquier lugar",
   description:
-    "Crea, gestiona y monetiza tu academia online con PROL. La plataforma todo-en-uno para creadores de contenido educativo.",
+    "LMS mobile-first para salud, corporativo, manufactura, música y más. La IA te ayuda a armar el contenido aunque sea tu primera vez. Powered by ProSuite.",
 };
 
 export default function RootLayout({
