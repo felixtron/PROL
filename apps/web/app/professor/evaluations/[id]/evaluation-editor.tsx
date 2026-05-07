@@ -24,7 +24,11 @@ import {
   assignEvaluationToCompany,
   unassignEvaluationFromCompany,
 } from "@/lib/actions/evaluation";
-import type { EvaluationSectionType, EvaluationStatus } from "@prol/db";
+import type {
+  EvaluationSectionType,
+  EvaluationStatus,
+  EvaluationQuestionType,
+} from "@prol/db";
 
 type Question = {
   id: string;
@@ -32,6 +36,7 @@ type Question = {
   label: string;
   description: string | null;
   position: number;
+  type: EvaluationQuestionType;
 };
 
 type Section = {
@@ -476,6 +481,7 @@ function QuestionRow({
   const [code, setCode] = useState(question.code ?? "");
   const [label, setLabel] = useState(question.label);
   const [description, setDescription] = useState(question.description ?? "");
+  const [qType, setQType] = useState<EvaluationQuestionType>(question.type);
   const [error, setError] = useState("");
 
   function run(fn: () => Promise<unknown>) {
@@ -514,6 +520,19 @@ function QuestionRow({
           placeholder="Descripción / ayuda para el participante (opcional)"
           className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-xs"
         />
+        <div className="flex items-center gap-2">
+          <label className="text-[11px] text-text-tertiary">Tipo:</label>
+          <select
+            value={qType}
+            onChange={(e) =>
+              setQType(e.target.value as EvaluationQuestionType)
+            }
+            className="rounded-lg border border-border bg-surface px-2 py-1 text-xs"
+          >
+            <option value="MULTIPLE_CHOICE">Opción múltiple</option>
+            <option value="OPEN_TEXT">Texto abierto</option>
+          </select>
+        </div>
         {error && <p className="text-[11px] text-red-700">{error}</p>}
         <div className="flex justify-end gap-2">
           <button
@@ -522,6 +541,7 @@ function QuestionRow({
               setCode(question.code ?? "");
               setLabel(question.label);
               setDescription(question.description ?? "");
+              setQType(question.type);
               setEditing(false);
             }}
             className="rounded-md px-2 py-1 text-xs text-text-secondary"
@@ -536,6 +556,7 @@ function QuestionRow({
                   code: code || null,
                   label,
                   description: description || null,
+                  type: qType,
                 });
                 setEditing(false);
               })
@@ -568,6 +589,16 @@ function QuestionRow({
         )}
       </div>
       <div className="flex items-center gap-1">
+        <span
+          className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+            question.type === "OPEN_TEXT"
+              ? "bg-amber-50 text-amber-700"
+              : "bg-primary-50 text-primary-700"
+          }`}
+          title={question.type === "OPEN_TEXT" ? "Texto abierto" : "Opción múltiple"}
+        >
+          {question.type === "OPEN_TEXT" ? "Texto" : "Opción"}
+        </span>
         <button
           type="button"
           onClick={() => setEditing(true)}
@@ -679,6 +710,7 @@ function AddQuestionForm({
   const [code, setCode] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
+  const [qType, setQType] = useState<EvaluationQuestionType>("MULTIPLE_CHOICE");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -705,6 +737,21 @@ function AddQuestionForm({
         placeholder="Descripción / ayuda para el participante (opcional)"
         className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-xs"
       />
+      <div className="flex items-center gap-2">
+        <label className="text-[11px] text-text-tertiary">Tipo:</label>
+        <select
+          value={qType}
+          onChange={(e) =>
+            setQType(e.target.value as EvaluationQuestionType)
+          }
+          className="rounded-lg border border-border bg-surface px-2 py-1 text-xs"
+        >
+          <option value="MULTIPLE_CHOICE">
+            Opción múltiple (Fortaleza/Debilidad/No aplica)
+          </option>
+          <option value="OPEN_TEXT">Texto abierto</option>
+        </select>
+      </div>
       {error && <p className="text-[11px] text-red-700">{error}</p>}
       <div className="flex justify-end gap-2">
         <button
@@ -724,6 +771,7 @@ function AddQuestionForm({
                   code: code || null,
                   label,
                   description: description || null,
+                  type: qType,
                 });
                 onDone();
               } catch (err) {

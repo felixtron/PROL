@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   db,
   type EvaluationSectionType,
+  type EvaluationQuestionType,
   type EvaluationStatus,
   type EvaluationAnswerValue,
 } from "@prol/db";
@@ -189,7 +190,12 @@ export async function deleteSection(sectionId: string) {
 
 export async function createQuestion(
   sectionId: string,
-  input: { code?: string | null; label: string; description?: string | null },
+  input: {
+    code?: string | null;
+    label: string;
+    description?: string | null;
+    type?: EvaluationQuestionType;
+  },
 ) {
   const user = await requireEvaluationAuthor();
   const section = await db.evaluationSection.findUnique({
@@ -215,6 +221,7 @@ export async function createQuestion(
       label,
       code: input.code?.trim() || null,
       description: input.description?.trim() || null,
+      type: input.type ?? "MULTIPLE_CHOICE",
       position: (maxPos._max.position ?? -1) + 1,
     },
   });
@@ -225,7 +232,12 @@ export async function createQuestion(
 
 export async function updateQuestion(
   questionId: string,
-  input: { code?: string | null; label?: string; description?: string | null },
+  input: {
+    code?: string | null;
+    label?: string;
+    description?: string | null;
+    type?: EvaluationQuestionType;
+  },
 ) {
   const user = await requireEvaluationAuthor();
   const q = await db.evaluationQuestion.findUnique({
@@ -246,6 +258,7 @@ export async function updateQuestion(
       ...(input.description !== undefined
         ? { description: input.description?.trim() || null }
         : {}),
+      ...(input.type !== undefined ? { type: input.type } : {}),
     },
   });
   revalidatePath(`/professor/evaluations/${q.section.evaluationId}`);
@@ -451,7 +464,7 @@ export async function removeEvaluationParticipant(
  */
 export async function submitEvaluationAnswers(
   participantId: string,
-  answers: { questionId: string; value: EvaluationAnswerValue }[],
+  answers: { questionId: string; value?: EvaluationAnswerValue; text?: string }[],
 ) {
   const caller = await requireUser();
 
@@ -462,7 +475,9 @@ export async function submitEvaluationAnswers(
         include: {
           evaluation: {
             include: {
-              sections: { include: { questions: { select: { id: true } } } },
+              sections: {
+                include: { questions: { select: { id: true, type: true } } },
+              },
             },
           },
           company: { select: { id: true, tenantId: true } },
@@ -479,14 +494,30 @@ export async function submitEvaluationAnswers(
     caller.role,
   );
 
-  // Validate answers cover exactly the evaluation's questions.
-  const allQuestionIds = participant.assignment.evaluation.sections.flatMap(
-    (s) => s.questions.map((q) => q.id),
+  // Validate answers cover exactly the evaluation's questions, with the
+  // right shape per question type.
+  const questions = participant.assignment.evaluation.sections.flatMap(
+    (s) => s.questions,
   );
-  const provided = new Map<string, EvaluationAnswerValue>();
-  for (const a of answers) provided.set(a.questionId, a.value);
+  const questionType = new Map(questions.map((q) => [q.id, q.type] as const));
+  const allQuestionIds = questions.map((q) => q.id);
+  const provided = new Map<string, { value?: EvaluationAnswerValue; text?: string }>();
+  for (const a of answers) provided.set(a.questionId, { value: a.value, text: a.text });
 
-  const missing = allQuestionIds.filter((id) => !provided.has(id));
+  const missing: string[] = [];
+  for (const id of allQuestionIds) {
+    const ans = provided.get(id);
+    const type = questionType.get(id);
+    if (!ans) {
+      missing.push(id);
+      continue;
+    }
+    if (type === "MULTIPLE_CHOICE") {
+      if (!ans.value) missing.push(id);
+    } else if (type === "OPEN_TEXT") {
+      if (!ans.text || ans.text.trim().length === 0) missing.push(id);
+    }
+  }
   if (missing.length > 0) {
     throw new Error(`Faltan ${missing.length} respuesta(s) por contestar`);
   }
@@ -514,11 +545,15 @@ export async function submitEvaluationAnswers(
       },
     });
     await tx.evaluationAnswer.createMany({
-      data: allQuestionIds.map((qId) => ({
-        submissionId: submission.id,
-        questionId: qId,
-        value: provided.get(qId)!,
-      })),
+      data: allQuestionIds.map((qId) => {
+        const ans = provided.get(qId)!;
+        return {
+          submissionId: submission.id,
+          questionId: qId,
+          value: ans.value ?? null,
+          text: ans.text?.trim() || null,
+        };
+      }),
     });
   });
 

@@ -15,9 +15,11 @@ export default async function AnswerEvaluationPage({
   const ev = participant.assignment.evaluation;
   const latest = participant.submissions[0];
   const initialValues: Record<string, string> = {};
+  const initialTexts: Record<string, string> = {};
   if (latest) {
     for (const a of latest.answers) {
-      initialValues[a.questionId] = a.value;
+      if (a.value) initialValues[a.questionId] = a.value;
+      if (a.text) initialTexts[a.questionId] = a.text;
     }
   }
 
@@ -70,9 +72,11 @@ export default async function AnswerEvaluationPage({
             code: q.code,
             label: q.label,
             description: q.description,
+            type: q.type,
           })),
         }))}
         initialValues={initialValues}
+        initialTexts={initialTexts}
         hasPrevious={!!latest}
       />
     </div>

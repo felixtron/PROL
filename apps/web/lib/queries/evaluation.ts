@@ -251,20 +251,36 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
 
   // Index latest submissions and count answers per question.
   const latestSubmissions = assignment.participants
-    .map((p) => p.submissions[0])
+    .map((p) => {
+      const s = p.submissions[0];
+      return s ? { ...s, participantUser: p.user } : null;
+    })
     .filter((s): s is NonNullable<typeof s> => !!s);
 
   type Counts = { POSITIVE: number; NEGATIVE: number; NOT_APPLICABLE: number };
   const perQuestion = new Map<string, Counts>();
+  // Free-text answers: questionId -> Array of { author, text }
+  const perQuestionText = new Map<
+    string,
+    { author: string; text: string }[]
+  >();
   for (const sub of latestSubmissions) {
+    const author = sub.participantUser.name ?? sub.participantUser.email;
     for (const ans of sub.answers) {
-      const c = perQuestion.get(ans.questionId) ?? {
-        POSITIVE: 0,
-        NEGATIVE: 0,
-        NOT_APPLICABLE: 0,
-      };
-      c[ans.value] += 1;
-      perQuestion.set(ans.questionId, c);
+      if (ans.value) {
+        const c = perQuestion.get(ans.questionId) ?? {
+          POSITIVE: 0,
+          NEGATIVE: 0,
+          NOT_APPLICABLE: 0,
+        };
+        c[ans.value] += 1;
+        perQuestion.set(ans.questionId, c);
+      }
+      if (ans.text) {
+        const arr = perQuestionText.get(ans.questionId) ?? [];
+        arr.push({ author, text: ans.text });
+        perQuestionText.set(ans.questionId, arr);
+      }
     }
   }
 
@@ -291,11 +307,15 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
         id: q.id,
         code: q.code,
         label: q.label,
+        type: q.type,
         counts,
         verdict: verdictOf(counts),
+        textAnswers: perQuestionText.get(q.id) ?? [],
       };
     });
-    const considered = questions.filter((q) => q.verdict !== "NOT_APPLICABLE");
+    // OPEN_TEXT questions don't count toward DAFO percentages.
+    const dafoQuestions = questions.filter((q) => q.type === "MULTIPLE_CHOICE");
+    const considered = dafoQuestions.filter((q) => q.verdict !== "NOT_APPLICABLE");
     const positives = considered.filter((q) => q.verdict === "POSITIVE").length;
     const negatives = considered.filter((q) => q.verdict === "NEGATIVE").length;
     const denom = considered.length;

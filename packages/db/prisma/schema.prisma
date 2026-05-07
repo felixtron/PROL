@@ -132,6 +132,11 @@ enum EvaluationAnswerValue {
   NOT_APPLICABLE
 }
 
+enum EvaluationQuestionType {
+  MULTIPLE_CHOICE
+  OPEN_TEXT
+}
+
 enum EvaluationStatus {
   DRAFT
   PUBLISHED
@@ -1223,6 +1228,9 @@ model EvaluationQuestion {
   label       String
   description String?
   position    Int                 @default(0)
+  // MULTIPLE_CHOICE → Fortaleza/Debilidad/No aplica (counts toward DAFO).
+  // OPEN_TEXT → free text answer (does not count in the consolidated DAFO).
+  type        EvaluationQuestionType @default(MULTIPLE_CHOICE)
 
   answers     EvaluationAnswer[]
 
@@ -1306,7 +1314,11 @@ model EvaluationAnswer {
   questionId   String                @map("question_id")
   question     EvaluationQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  value        EvaluationAnswerValue
+  // Mutually-exclusive depending on the question type:
+  //  - MULTIPLE_CHOICE → `value` is set (POSITIVE/NEGATIVE/NOT_APPLICABLE).
+  //  - OPEN_TEXT       → `text` is set, free-form participant response.
+  value        EvaluationAnswerValue?
+  text         String?
 
   @@unique([submissionId, questionId])
   @@index([submissionId])

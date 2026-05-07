@@ -7,6 +7,7 @@ import { submitEvaluationAnswers } from "@/lib/actions/evaluation";
 import type {
   EvaluationSectionType,
   EvaluationAnswerValue,
+  EvaluationQuestionType,
 } from "@prol/db";
 
 type Question = {
@@ -14,6 +15,7 @@ type Question = {
   code: string | null;
   label: string;
   description: string | null;
+  type: EvaluationQuestionType;
 };
 
 type Section = {
@@ -42,11 +44,13 @@ export function EvaluationResponseForm({
   participantId,
   sections,
   initialValues,
+  initialTexts,
   hasPrevious,
 }: {
   participantId: string;
   sections: Section[];
   initialValues: Record<string, string>;
+  initialTexts: Record<string, string>;
   hasPrevious: boolean;
 }) {
   const router = useRouter();
@@ -61,13 +65,21 @@ export function EvaluationResponseForm({
       return out;
     },
   );
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>(
+    () => ({ ...initialTexts }),
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<string | null>(null);
 
-  const allQuestions = sections.flatMap((s) => s.questions.map((q) => q.id));
-  const answeredCount = allQuestions.filter((id) => answers[id]).length;
+  const allQuestions = sections.flatMap((s) => s.questions);
   const totalCount = allQuestions.length;
+  const answeredCount = allQuestions.filter((q) => {
+    if (q.type === "OPEN_TEXT") {
+      return (textAnswers[q.id]?.trim().length ?? 0) > 0;
+    }
+    return !!answers[q.id];
+  }).length;
   const allAnswered = answeredCount === totalCount;
 
   function handleSubmit(e: React.FormEvent) {
@@ -82,10 +94,11 @@ export function EvaluationResponseForm({
     }
     startTransition(async () => {
       try {
-        const payload = Object.entries(answers).map(([questionId, value]) => ({
-          questionId,
-          value,
-        }));
+        const payload = allQuestions.map((q) =>
+          q.type === "OPEN_TEXT"
+            ? { questionId: q.id, text: textAnswers[q.id] ?? "" }
+            : { questionId: q.id, value: answers[q.id] },
+        );
         const res = await submitEvaluationAnswers(participantId, payload);
         setSuccess(`Respuesta enviada (versión v${res.version})`);
         router.refresh();
@@ -176,6 +189,20 @@ export function EvaluationResponseForm({
                     {q.description}
                   </p>
                 )}
+                {q.type === "OPEN_TEXT" ? (
+                  <textarea
+                    value={textAnswers[q.id] ?? ""}
+                    onChange={(e) =>
+                      setTextAnswers((prev) => ({
+                        ...prev,
+                        [q.id]: e.target.value,
+                      }))
+                    }
+                    rows={4}
+                    placeholder="Tu respuesta..."
+                    className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  />
+                ) : (
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {VALUES.map((v) => {
                     const label =
@@ -213,6 +240,7 @@ export function EvaluationResponseForm({
                     );
                   })}
                 </div>
+                )}
               </li>
             ))}
           </ul>
