@@ -20,8 +20,8 @@ export function RevenueShareEditor({
 
   function handleSave() {
     setError("");
-    if (!Number.isFinite(value) || value < 5 || value > 95) {
-      setError("Debe ser entre 5 y 95");
+    if (!Number.isFinite(value) || value < 1 || value > 95) {
+      setError("Debe ser entre 1 y 95");
       return;
     }
     startTransition(async () => {
@@ -54,7 +54,7 @@ export function RevenueShareEditor({
       <div className="flex items-center gap-1">
         <input
           type="number"
-          min={5}
+          min={1}
           max={95}
           value={value}
           onChange={(e) => setValue(Number(e.target.value))}

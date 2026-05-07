@@ -1,12 +1,9 @@
 import { getCurrentUser } from "@/lib/auth";
-import { getConnectAccountStatus } from "@/lib/actions/payment";
 import { ProfileForm } from "@/components/profile-form";
 import { ProfessorSignOutButton } from "./sign-out-button";
-import { StripeConnectSection } from "./stripe-connect-section";
 
 export default async function ProfessorSettingsPage() {
   const user = await getCurrentUser();
-  const stripeStatus = await getConnectAccountStatus();
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -15,7 +12,7 @@ export default async function ProfessorSettingsPage() {
           Configuración
         </h1>
         <p className="mt-1 text-text-secondary">
-          Administra tu perfil, pagos y preferencias.
+          Administra tu perfil y preferencias.
         </p>
       </div>
 
@@ -28,13 +25,6 @@ export default async function ProfessorSettingsPage() {
           initialAvatar={user?.avatar ?? null}
           email={user?.email ?? ""}
         />
-      </section>
-
-      <section>
-        <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-          Pagos
-        </h2>
-        <StripeConnectSection status={stripeStatus} />
       </section>
 
       <section>

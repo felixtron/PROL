@@ -149,8 +149,8 @@ export async function updateTenantRevenueShare(
   rate: number
 ) {
   await requireAdmin();
-  if (rate < 0.05 || rate > 0.95) {
-    throw new Error("El porcentaje debe estar entre 5% y 95%");
+  if (rate < 0.01 || rate > 0.95) {
+    throw new Error("El porcentaje debe estar entre 1% y 95%");
   }
   await db.tenant.update({
     where: { id: tenantId },

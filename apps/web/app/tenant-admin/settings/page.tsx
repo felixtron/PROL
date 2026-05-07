@@ -1,12 +1,15 @@
 import { db } from "@prol/db";
 import { getCurrentUser, requireTenantAdmin } from "@/lib/auth";
+import { getConnectAccountStatus } from "@/lib/actions/payment";
 import { ProfileForm } from "@/components/profile-form";
 import { BrandingForm } from "./branding-form";
+import { StripeConnectSection } from "./stripe-connect-section";
 import { TenantAdminSignOutButton } from "./sign-out-button";
 
 export default async function TenantAdminSettingsPage() {
   const user = await getCurrentUser();
   const admin = await requireTenantAdmin();
+  const stripeStatus = await getConnectAccountStatus();
 
   const tenant = admin.tenantId
     ? await db.tenant.findUnique({
@@ -46,6 +49,13 @@ export default async function TenantAdminSettingsPage() {
           />
         </section>
       )}
+
+      <section>
+        <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
+          Pagos (Stripe Connect)
+        </h2>
+        <StripeConnectSection status={stripeStatus} />
+      </section>
 
       <section>
         <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">

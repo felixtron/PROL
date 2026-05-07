@@ -164,7 +164,10 @@ export async function createCheckoutSession(
 export async function createConnectOnboardingLink() {
   const user = await requireUser();
 
-  if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
+  // La cuenta Stripe Connect representa al tenant (la academia), no al
+  // profesor individual. Solo el ADMIN del tenant (o SUPER_ADMIN) puede
+  // crearla y vincularla.
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
     throw new Error("No autorizado");
   }
 
@@ -209,8 +212,8 @@ export async function createConnectOnboardingLink() {
   const accountLink = await getStripe().accountLinks.create({
     account: stripeAccountId,
     type: "account_onboarding",
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/professor/settings?stripe=success`,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/professor/settings?stripe=refresh`,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/tenant-admin/settings?stripe=success`,
+    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/tenant-admin/settings?stripe=refresh`,
   });
 
   return { url: accountLink.url };
@@ -223,7 +226,7 @@ export async function createConnectOnboardingLink() {
 export async function getConnectAccountStatus() {
   const user = await requireUser();
 
-  if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
+  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
     throw new Error("No autorizado");
   }
 
