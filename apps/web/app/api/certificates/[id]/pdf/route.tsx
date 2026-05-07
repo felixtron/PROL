@@ -287,7 +287,7 @@ export async function GET(
           courseCode={courseCode}
           courseName={certificate.courseName}
           description={description}
-          folio={`CERT-${certificate.folio}`}
+          folio={certificate.folio}
           issuedDate={issuedDateShort}
           authorizedByName={authorizedByName}
           authorizedByTitle={authorizedByTitle}
