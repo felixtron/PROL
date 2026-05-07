@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import {
@@ -12,6 +14,39 @@ import {
 } from "@react-pdf/renderer";
 import QRCode from "qrcode";
 import { buildVerificationUrl } from "@/lib/certificates";
+import { resolveUploadDir } from "@/lib/upload-paths";
+import { IbizaCertificate } from "@/lib/certificate-templates/ibiza";
+
+/**
+ * Load a /uploads/... URL from the local volume and return a data: URL,
+ * which is what @react-pdf/renderer's <Image> consumes reliably. Returns
+ * null on any failure so the template can fall back to its placeholder.
+ */
+async function loadAsDataUrl(url: string | null | undefined): Promise<string | null> {
+  if (!url || !url.startsWith("/uploads/")) return null;
+  // Expected shape: /uploads/<subdir>/<file.ext>
+  const parts = url.replace(/^\/uploads\//, "").split("/");
+  if (parts.length < 2) return null;
+  const [subdir, ...rest] = parts;
+  const filename = rest.join("/");
+  if (!subdir || !filename || filename.includes("..")) return null;
+  const dir = resolveUploadDir(subdir);
+  const filePath = join(dir, filename);
+  const ext = (filename.split(".").pop() ?? "").toLowerCase();
+  const mime =
+    ext === "png" ? "image/png" :
+    ext === "jpg" || ext === "jpeg" ? "image/jpeg" :
+    ext === "webp" ? "image/webp" :
+    ext === "gif" ? "image/gif" :
+    null;
+  if (!mime) return null;
+  try {
+    const buf = await readFile(filePath);
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -189,7 +224,7 @@ export async function GET(
     // The QR/verify URL exposes this; we accept that download is also public.
     const certificate = await db.certificate.findUnique({
       where: { id },
-      include: { tenant: { select: { name: true } } },
+      include: { tenant: { select: { name: true, slug: true, logo: true, contactEmail: true } } },
     });
 
     if (!certificate) {
@@ -199,6 +234,11 @@ export async function GET(
     const issuedDate = new Date(certificate.issuedAt).toLocaleDateString("es-MX", {
       year: "numeric",
       month: "long",
+      day: "numeric",
+    });
+    const issuedDateShort = new Date(certificate.issuedAt).toLocaleDateString("es-MX", {
+      year: "numeric",
+      month: "short",
       day: "numeric",
     });
 
@@ -216,6 +256,57 @@ export async function GET(
     // unauthenticated for sharing). The verify page already exposes data
     // publicly so this matches the trust model.
     void getCurrentUser; // (no-op import to keep the helper available)
+
+    // ── Tenant-specific template selection ─────────────────────────────
+    // Each tenant can opt into a custom certificate layout. New layouts
+    // are added here by slug. Default for every other tenant is the
+    // generic indigo certificate below.
+    if (certificate.tenant.slug === "ibiza-consultores") {
+      const meta = (certificate.metadata ?? {}) as Record<string, unknown>;
+      const description = typeof meta.description === "string"
+        ? meta.description
+        : `Curso impartido por ${certificate.professorName}.`;
+      const courseCode = typeof meta.courseCode === "string"
+        ? meta.courseCode
+        : null;
+      const authorizedByName = typeof meta.authorizedByName === "string"
+        ? meta.authorizedByName
+        : "Iván Albarrán Moreno";
+      const authorizedByTitle = typeof meta.authorizedByTitle === "string"
+        ? meta.authorizedByTitle
+        : "Socio – Director";
+      const authorizedSignatureUrl = typeof meta.authorizedSignatureUrl === "string"
+        ? await loadAsDataUrl(meta.authorizedSignatureUrl)
+        : null;
+
+      const brandLogoDataUrl = await loadAsDataUrl(certificate.tenant.logo);
+
+      const pdf = (
+        <IbizaCertificate
+          studentName={certificate.studentName}
+          courseCode={courseCode}
+          courseName={certificate.courseName}
+          description={description}
+          folio={`CERT-${certificate.folio}`}
+          issuedDate={issuedDateShort}
+          authorizedByName={authorizedByName}
+          authorizedByTitle={authorizedByTitle}
+          authorizedSignatureUrl={authorizedSignatureUrl}
+          brandLogoDataUrl={brandLogoDataUrl}
+          qrDataUrl={qrDataUrl}
+          verifyEmail={certificate.tenant.contactEmail ?? "soporte@ibizabmb.com"}
+          isRevoked={certificate.status === "REVOKED"}
+        />
+      );
+
+      const stream = await renderToStream(pdf);
+      return new NextResponse(stream as unknown as ReadableStream, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `inline; filename="diploma-${certificate.folio}.pdf"`,
+        },
+      });
+    }
 
     const pdf = (
       <CertificatePDF
