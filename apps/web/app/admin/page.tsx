@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   DollarSign,
   TrendingUp,
@@ -22,9 +23,16 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mode?: string }>;
+}) {
+  const { mode: modeParam } = await searchParams;
+  const mode: "demo" | "production" = modeParam === "demo" ? "demo" : "production";
+
   const [stats, revenueData, tenantDistribution] = await Promise.all([
-    getAdminDashboardStats(),
+    getAdminDashboardStats(mode),
     getAdminRevenueByMonth(6),
     getAdminTenantDistribution(),
   ]);
@@ -77,13 +85,43 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Panel de Administracion
-        </h1>
-        <p className="mt-1 text-text-secondary">
-          Vista general de la plataforma PROL.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-text-primary">
+            Panel de Administración
+          </h1>
+          <p className="mt-1 text-text-secondary">
+            {mode === "production"
+              ? "Solo se cuentan usuarios, cursos, tenants e inscripciones con cobros reales (Stripe COMPLETED)."
+              : "Modo demo: incluye datos sembrados, asignaciones gratuitas y cuentas de prueba."}
+          </p>
+        </div>
+
+        {/* Mode toggle */}
+        <div className="inline-flex shrink-0 rounded-lg border border-border bg-surface p-1 text-sm">
+          <Link
+            href="/admin?mode=production"
+            scroll={false}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mode === "production"
+                ? "bg-emerald-600 text-white shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            Producción
+          </Link>
+          <Link
+            href="/admin?mode=demo"
+            scroll={false}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mode === "demo"
+                ? "bg-amber-500 text-white shadow-sm"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            Demo
+          </Link>
+        </div>
       </div>
 
       {/* Stats Grid */}

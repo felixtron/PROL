@@ -2,30 +2,69 @@ import { cache } from "react";
 import { db } from "@prol/db";
 import { requireAdmin } from "@/lib/auth";
 
-export const getAdminDashboardStats = cache(async () => {
-  await requireAdmin();
+/**
+ * Admin dashboard KPIs.
+ *
+ * `mode = "production"` (default): only counts entities with at least one
+ * COMPLETED payment behind them — i.e. real revenue, real customers. Use
+ * this when showing numbers to the business / investor.
+ *
+ * `mode = "demo"`: counts every user/course/tenant/enrollment regardless of
+ * payment status. Used during PoC walkthroughs where seed data is part of
+ * the demo.
+ */
+export const getAdminDashboardStats = cache(
+  async (mode: "demo" | "production" = "production") => {
+    await requireAdmin();
 
-  const [revenue, users, courses, tenants, enrollments] = await Promise.all([
-    db.coursePayment.aggregate({
-      where: { status: "COMPLETED" },
-      _sum: { amount: true, prolFee: true, creatorReceives: true },
-    }),
-    db.user.count(),
-    db.course.count(),
-    db.tenant.count({ where: { status: { in: ["TRIAL", "ACTIVE"] } } }),
-    db.enrollment.count(),
-  ]);
+    const [revenue, users, courses, tenants, enrollments] = await Promise.all([
+      db.coursePayment.aggregate({
+        where: { status: "COMPLETED" },
+        _sum: { amount: true, prolFee: true, creatorReceives: true },
+      }),
+      mode === "production"
+        ? db.coursePayment
+            .findMany({
+              where: { status: "COMPLETED" },
+              distinct: ["studentId"],
+              select: { studentId: true },
+            })
+            .then((r) => r.length)
+        : db.user.count(),
+      mode === "production"
+        ? db.coursePayment
+            .findMany({
+              where: { status: "COMPLETED" },
+              distinct: ["courseId"],
+              select: { courseId: true },
+            })
+            .then((r) => r.length)
+        : db.course.count(),
+      mode === "production"
+        ? db.coursePayment
+            .findMany({
+              where: { status: "COMPLETED" },
+              distinct: ["tenantId"],
+              select: { tenantId: true },
+            })
+            .then((r) => r.length)
+        : db.tenant.count({ where: { status: { in: ["TRIAL", "ACTIVE"] } } }),
+      mode === "production"
+        ? db.coursePayment.count({ where: { status: "COMPLETED" } })
+        : db.enrollment.count(),
+    ]);
 
-  return {
-    totalRevenue: (revenue._sum.amount ?? 0) / 100,
-    prolFees: (revenue._sum.prolFee ?? 0) / 100,
-    creatorPayouts: (revenue._sum.creatorReceives ?? 0) / 100,
-    totalUsers: users,
-    totalCourses: courses,
-    activeTenants: tenants,
-    totalEnrollments: enrollments,
-  };
-});
+    return {
+      totalRevenue: (revenue._sum.amount ?? 0) / 100,
+      prolFees: (revenue._sum.prolFee ?? 0) / 100,
+      creatorPayouts: (revenue._sum.creatorReceives ?? 0) / 100,
+      totalUsers: users,
+      totalCourses: courses,
+      activeTenants: tenants,
+      totalEnrollments: enrollments,
+    };
+  },
+);
 
 export const getAdminTenants = cache(async () => {
   await requireAdmin();
