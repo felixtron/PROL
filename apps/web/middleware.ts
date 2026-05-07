@@ -52,7 +52,8 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/professor") ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/tenant-admin");
+    pathname.startsWith("/tenant-admin") ||
+    pathname.startsWith("/preview");
 
   if (isProtectedRoute && !hasSession) {
     const signInUrl = new URL("/sign-in", url.origin);

@@ -78,6 +78,13 @@ export async function updateLessonProgress(
   lessonId: string,
   data: { status?: "IN_PROGRESS" | "COMPLETED"; videoPositionSeconds?: number }
 ) {
+  // Preview mode: the synthetic enrollment id used by professors/admins
+  // viewing their own course doesn't correspond to a real DB row. We
+  // accept the call and skip persistence so the client UI still works.
+  if (enrollmentId.startsWith("preview-")) {
+    return { success: true, preview: true as const };
+  }
+
   const user = await requireUser();
 
   // Verify enrollment belongs to user
