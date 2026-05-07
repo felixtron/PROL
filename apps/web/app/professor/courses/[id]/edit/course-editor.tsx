@@ -1471,10 +1471,14 @@ function DownloadLessonEditor({
       setSaveError("Sube un archivo antes de guardar.");
       return;
     }
-    const content = JSON.stringify({ fileUrl, fileName, fileSize, description });
     startSaving(async () => {
       try {
-        await updateLesson(lessonId, { content });
+        // Pass the structured object directly — Lesson.content is a Json
+        // column, sending JSON.stringify(...) would store it as an escaped
+        // string and the player would never find fileUrl.
+        await updateLesson(lessonId, {
+          content: { fileUrl, fileName, fileSize, description },
+        });
         setSaved(true);
       } catch (err) {
         setSaveError(

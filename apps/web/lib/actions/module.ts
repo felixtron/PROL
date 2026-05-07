@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@prol/db";
+import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 
 export async function createModule(courseId: string, formData: FormData) {
@@ -112,7 +112,14 @@ export async function createLesson(moduleId: string, formData: FormData) {
 
 export async function updateLesson(
   lessonId: string,
-  data: { title?: string; type?: "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI"; content?: string }
+  data: {
+    title?: string;
+    type?: "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI" | "DOWNLOAD";
+    // Lesson.content is Prisma's Json column. Accept anything serialisable
+    // so callers can pass a plain string (markdown for TEXT) or a structured
+    // object (e.g. { fileUrl, fileName, ... } for DOWNLOAD).
+    content?: Prisma.InputJsonValue;
+  }
 ) {
   const user = await requireUser();
 
