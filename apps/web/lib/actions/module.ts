@@ -140,6 +140,60 @@ export async function updateLesson(
   return { success: true };
 }
 
+/**
+ * Move a lesson up or down within its module by swapping its `position`
+ * with the adjacent lesson. No-op if the lesson is already at the
+ * requested edge.
+ */
+export async function moveLesson(
+  lessonId: string,
+  direction: "up" | "down",
+) {
+  const user = await requireUser();
+
+  const lesson = await db.lesson.findFirst({
+    where: { id: lessonId },
+    include: {
+      module: {
+        include: { course: { select: { professorId: true, id: true } } },
+      },
+    },
+  });
+  if (!lesson || lesson.module.course.professorId !== user.id)
+    throw new Error("No autorizado");
+
+  const neighbor = await db.lesson.findFirst({
+    where: {
+      moduleId: lesson.moduleId,
+      position:
+        direction === "up"
+          ? { lt: lesson.position }
+          : { gt: lesson.position },
+    },
+    orderBy: { position: direction === "up" ? "desc" : "asc" },
+  });
+
+  if (!neighbor) {
+    return { success: true, moved: false };
+  }
+
+  // Swap positions atomically. Since (moduleId, position) is not unique,
+  // we can do a simple two-step update inside a transaction.
+  await db.$transaction([
+    db.lesson.update({
+      where: { id: lesson.id },
+      data: { position: neighbor.position },
+    }),
+    db.lesson.update({
+      where: { id: neighbor.id },
+      data: { position: lesson.position },
+    }),
+  ]);
+
+  revalidatePath(`/professor/courses/${lesson.module.course.id}/edit`);
+  return { success: true, moved: true };
+}
+
 export async function deleteLesson(lessonId: string) {
   const user = await requireUser();
 

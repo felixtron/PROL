@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import {
   Plus,
   Trash2,
@@ -14,8 +14,12 @@ import {
   Pencil,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Users,
   Download,
+  Image as ImageIcon,
+  Check,
+  X,
 } from "lucide-react";
 import {
   createModule,
@@ -23,6 +27,7 @@ import {
   deleteModule,
   createLesson,
   deleteLesson,
+  moveLesson,
   publishCourse,
   updateLesson,
 } from "@/lib/actions/module";
@@ -482,7 +487,41 @@ function LessonRow({
   const [showDownload, setShowDownload] = useState(false);
   const [quizData, setQuizData] = useState<any>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(lesson.title);
+  const [titleError, setTitleError] = useState("");
   const Icon = lessonTypeIcons[lesson.type] ?? Video;
+
+  function handleSaveTitle() {
+    const trimmed = titleDraft.trim();
+    if (trimmed.length < 3) {
+      setTitleError("Mínimo 3 caracteres");
+      return;
+    }
+    if (trimmed === lesson.title) {
+      setEditingTitle(false);
+      return;
+    }
+    setTitleError("");
+    startTransition(async () => {
+      try {
+        await updateLesson(lesson.id, { title: trimmed });
+        setEditingTitle(false);
+      } catch (err) {
+        setTitleError(err instanceof Error ? err.message : "Error");
+      }
+    });
+  }
+
+  function handleMove(direction: "up" | "down") {
+    startTransition(async () => {
+      try {
+        await moveLesson(lesson.id, direction);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Error al mover lección");
+      }
+    });
+  }
 
   function handleDelete() {
     if (!confirm(`¿Eliminar la lección "${lesson.title}"?`)) return;
@@ -518,13 +557,86 @@ function LessonRow({
   return (
     <div className="border-b border-border last:border-b-0">
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface/60">
-        <GripVertical className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+        {/* Reorder controls (up/down) */}
+        <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => handleMove("up")}
+            disabled={isDeleting}
+            title="Mover arriba"
+            className="rounded p-0.5 text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-50"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMove("down")}
+            disabled={isDeleting}
+            title="Mover abajo"
+            className="rounded p-0.5 text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-50"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </div>
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-tertiary">
           <Icon className="h-3.5 w-3.5 text-text-secondary" />
         </div>
-        <span className="flex-1 truncate text-sm text-text-primary">
-          {lesson.title}
-        </span>
+        {editingTitle ? (
+          <div className="flex flex-1 items-center gap-1">
+            <input
+              type="text"
+              value={titleDraft}
+              autoFocus
+              onChange={(e) => {
+                setTitleDraft(e.target.value);
+                setTitleError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveTitle();
+                if (e.key === "Escape") {
+                  setTitleDraft(lesson.title);
+                  setTitleError("");
+                  setEditingTitle(false);
+                }
+              }}
+              className="flex-1 rounded-md border border-primary-300 bg-surface px-2 py-1 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            />
+            <button
+              type="button"
+              onClick={handleSaveTitle}
+              disabled={isDeleting}
+              className="rounded-md bg-primary-600 p-1 text-white hover:bg-primary-700 disabled:opacity-50"
+              title="Guardar título"
+            >
+              {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTitleDraft(lesson.title);
+                setTitleError("");
+                setEditingTitle(false);
+              }}
+              className="rounded-md p-1 text-text-secondary hover:bg-surface-tertiary"
+              title="Cancelar"
+            >
+              <X className="h-3 w-3" />
+            </button>
+            {titleError && (
+              <span className="text-[10px] text-red-700">{titleError}</span>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditingTitle(true)}
+            title="Editar título"
+            className="group flex flex-1 items-center gap-1.5 truncate text-left text-sm text-text-primary hover:text-primary-700"
+          >
+            <span className="truncate">{lesson.title}</span>
+            <Pencil className="h-3 w-3 shrink-0 text-text-tertiary opacity-0 group-hover:opacity-100" />
+          </button>
+        )}
         {lesson.videoDurationSeconds != null && lesson.videoDurationSeconds > 0 && (
           <span className="shrink-0 text-xs text-text-tertiary">
             {formatDuration(lesson.videoDurationSeconds)}
@@ -1072,11 +1184,67 @@ function TextLessonEditor({
   const [loadedFile, setLoadedFile] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isLoadingFile, setIsLoadingFile] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [isSaving, startSaving] = useTransition();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
+    setImageError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageError("Solo imágenes (PNG, JPG, WEBP, GIF).");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError("La imagen supera 5 MB.");
+      e.target.value = "";
+      return;
+    }
+    setIsUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "No se pudo subir la imagen");
+      }
+      // Insert markdown image at the cursor position. The textarea is the
+      // source of truth, so we splice into `content` directly.
+      const ta = textareaRef.current;
+      const altText = file.name.replace(/\.[^.]+$/, "");
+      const markdown = `\n\n![${altText}](${data.url})\n\n`;
+      if (ta) {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        setContent((prev) => prev.slice(0, start) + markdown + prev.slice(end));
+        // Restore caret after the inserted markdown.
+        requestAnimationFrame(() => {
+          ta.focus();
+          const pos = start + markdown.length;
+          ta.setSelectionRange(pos, pos);
+        });
+      } else {
+        setContent((prev) => prev + markdown);
+      }
+      setSaved(false);
+    } catch (err) {
+      setImageError(
+        err instanceof Error ? err.message : "No se pudo subir la imagen",
+      );
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = "";
+    }
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     setFileError(null);
@@ -1165,7 +1333,33 @@ function TextLessonEditor({
           <p className="mt-1 text-[11px] text-red-700">{fileError}</p>
         )}
       </div>
+      <div className="mb-2 rounded-lg border border-dashed border-border bg-surface-secondary p-2 text-xs">
+        <label className="flex cursor-pointer items-center gap-2 text-text-secondary hover:text-primary-700">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={handleImage}
+            disabled={isUploadingImage}
+            className="sr-only"
+          />
+          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
+            {isUploadingImage ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <ImageIcon className="h-3 w-3" />
+            )}
+            Insertar imagen
+          </span>
+          <span>
+            Se inserta como markdown en la posición del cursor (PNG/JPG/WEBP/GIF, 5 MB máx).
+          </span>
+        </label>
+        {imageError && (
+          <p className="mt-1 text-[11px] text-red-700">{imageError}</p>
+        )}
+      </div>
       <textarea
+        ref={textareaRef}
         value={content}
         onChange={(e) => {
           setContent(e.target.value);

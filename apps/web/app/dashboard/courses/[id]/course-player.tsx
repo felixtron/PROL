@@ -678,15 +678,9 @@ function LessonView({
               );
             })()
           ) : lesson.type === "TEXT" ? (
-            <div className="prose prose-sm max-w-none rounded-xl bg-surface p-4 shadow-sm md:p-6">
+            <div className="rounded-xl bg-surface p-4 shadow-sm md:p-6">
               {typeof lesson.content === "string" ? (
-                <p className="whitespace-pre-wrap text-text-secondary">
-                  {lesson.content}
-                </p>
-              ) : lesson.content ? (
-                <p className="whitespace-pre-wrap text-text-secondary">
-                  {JSON.stringify(lesson.content, null, 2)}
-                </p>
+                <TextLessonContent content={lesson.content} />
               ) : (
                 <p className="text-text-tertiary italic">
                   El contenido de esta lección aún no está disponible.
@@ -852,6 +846,73 @@ function DownloadPlayer({ content }: { content: unknown }) {
           Descargar archivo
         </a>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TextLessonContent — minimal markdown rendering: paragraphs and inline
+// images. Parses ![alt](url) tokens both as standalone blocks and inline
+// inside text. No external dependency.
+// ---------------------------------------------------------------------------
+
+const IMG_RE = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
+
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let i = 0;
+  for (const match of text.matchAll(IMG_RE)) {
+    const idx = match.index ?? 0;
+    if (idx > last) out.push(text.slice(last, idx));
+    const alt = match[1] ?? "";
+    const url = match[2] ?? "";
+    out.push(
+      <img
+        key={`${keyPrefix}-${i++}`}
+        src={url}
+        alt={alt}
+        className="my-2 max-w-full rounded-lg"
+      />,
+    );
+    last = idx + match[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+function TextLessonContent({ content }: { content: string }) {
+  if (!content.trim()) {
+    return (
+      <p className="text-text-tertiary italic">
+        El contenido de esta lección aún no está disponible.
+      </p>
+    );
+  }
+  // Split on blank lines into blocks; preserve internal newlines per block.
+  const blocks = content.split(/\n{2,}/);
+  return (
+    <div className="space-y-4 text-text-secondary">
+      {blocks.map((block, i) => {
+        const trimmed = block.trim();
+        // Standalone image block.
+        const m = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+        if (m) {
+          return (
+            <img
+              key={i}
+              src={m[2]}
+              alt={m[1] ?? ""}
+              className="mx-auto max-w-full rounded-lg"
+            />
+          );
+        }
+        return (
+          <p key={i} className="whitespace-pre-wrap leading-relaxed">
+            {renderInline(block, `b${i}`)}
+          </p>
+        );
+      })}
     </div>
   );
 }
