@@ -233,7 +233,18 @@ export const getCourseBySlug = cache(
       },
     });
 
-    if (!course || course.status !== "PUBLISHED") return null;
+    if (!course) return null;
+    // Public access requires PUBLISHED. The course's own professor and any
+    // admin of the same tenant can preview drafts; super admins always can.
+    if (course.status !== "PUBLISHED") {
+      const viewer = await getCurrentUser();
+      const canPreview =
+        !!viewer &&
+        (viewer.role === "SUPER_ADMIN" ||
+          (viewer.role === "ADMIN" && viewer.tenantId === tenant.id) ||
+          (viewer.role === "PROFESSOR" && course.professorId === viewer.id));
+      if (!canPreview) return null;
+    }
 
     // Check if current user is enrolled (getCurrentUser returns null if not logged in)
     let isEnrolled = false;
