@@ -11,6 +11,7 @@ import {
   ClipboardList,
   ChevronDown,
   GraduationCap,
+  Download,
 } from "lucide-react";
 import { getCourseBySlug } from "@/lib/queries/catalog";
 import { getCurrentUser } from "@/lib/auth";
@@ -38,7 +39,7 @@ function formatSeconds(seconds: number): string {
 }
 
 const lessonTypeIcons: Record<
-  "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI",
+  "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI" | "DOWNLOAD",
   typeof Play
 > = {
   VIDEO: Play,
@@ -46,6 +47,7 @@ const lessonTypeIcons: Record<
   QUIZ: Brain,
   ASSIGNMENT: ClipboardList,
   MULTI: BookOpen,
+  DOWNLOAD: Download,
 };
 
 function ProfessorAvatar({

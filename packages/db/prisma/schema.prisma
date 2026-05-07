@@ -43,6 +43,7 @@ enum LessonType {
   QUIZ
   ASSIGNMENT
   MULTI
+  DOWNLOAD
 }
 
 enum VideoProvider {

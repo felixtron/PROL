@@ -18,6 +18,7 @@ import {
   User,
   X,
   List,
+  Download,
 } from "lucide-react";
 import { updateLessonProgress } from "@/lib/actions/enrollment";
 import { QuizPlayer } from "./quiz-player";
@@ -34,7 +35,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-type LessonType = "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI";
+type LessonType = "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI" | "DOWNLOAD";
 
 interface Lesson {
   id: string;
@@ -85,6 +86,7 @@ const lessonTypeIcon: Record<LessonType, typeof Video> = {
   QUIZ: HelpCircle,
   ASSIGNMENT: ClipboardList,
   MULTI: BookOpen,
+  DOWNLOAD: Download,
 };
 
 const lessonTypeLabel: Record<LessonType, string> = {
@@ -93,6 +95,7 @@ const lessonTypeLabel: Record<LessonType, string> = {
   QUIZ: "Evaluación",
   ASSIGNMENT: "Actividad",
   MULTI: "Lección",
+  DOWNLOAD: "Material",
 };
 
 function formatDuration(seconds: number | null): string | null {
@@ -722,6 +725,8 @@ function LessonView({
               lessonId={lesson.id}
               content={lesson.content}
             />
+          ) : lesson.type === "DOWNLOAD" ? (
+            <DownloadPlayer content={lesson.content} />
           ) : (
             <div className="flex items-center justify-center rounded-xl border border-dashed border-border bg-surface p-8 md:p-12">
               <div className="text-center">
@@ -779,6 +784,73 @@ function LessonView({
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DOWNLOAD lesson player — student-facing card with file metadata + a
+// big download button. Content shape:
+//   { fileUrl: string; fileName: string; fileSize: number; description?: string }
+// ---------------------------------------------------------------------------
+
+function DownloadPlayer({ content }: { content: unknown }) {
+  const data = (content ?? {}) as {
+    fileUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    description?: string;
+  };
+  if (!data.fileUrl) {
+    return (
+      <div className="flex items-center justify-center rounded-xl border border-dashed border-border bg-surface p-8 md:p-12">
+        <div className="text-center">
+          <Download className="mx-auto h-10 w-10 text-text-tertiary md:h-12 md:w-12" />
+          <p className="mt-2 text-sm text-text-secondary">
+            Aún no se ha subido el material
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  function formatSize(bytes?: number): string {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-6 md:p-8">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50">
+          <Download className="h-8 w-8 text-primary-600" />
+        </div>
+        <div>
+          <p className="font-heading text-lg font-semibold text-text-primary">
+            {data.fileName ?? "Material descargable"}
+          </p>
+          {data.fileSize ? (
+            <p className="mt-1 text-xs text-text-tertiary">
+              {formatSize(data.fileSize)}
+            </p>
+          ) : null}
+        </div>
+        {data.description ? (
+          <p className="max-w-md whitespace-pre-wrap text-sm text-text-secondary">
+            {data.description}
+          </p>
+        ) : null}
+        <a
+          href={data.fileUrl}
+          download={data.fileName ?? true}
+          className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+        >
+          <Download className="h-4 w-4" />
+          Descargar archivo
+        </a>
       </div>
     </div>
   );

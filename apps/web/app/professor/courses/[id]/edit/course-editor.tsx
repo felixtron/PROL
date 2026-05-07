@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  Download,
 } from "lucide-react";
 import {
   createModule,
@@ -101,6 +102,7 @@ const LESSON_TYPES = [
   { value: "TEXT", label: "Texto", icon: FileText },
   { value: "QUIZ", label: "Quiz", icon: HelpCircle },
   { value: "ASSIGNMENT", label: "Tarea", icon: ClipboardList },
+  { value: "DOWNLOAD", label: "Descargable", icon: Download },
 ] as const;
 
 const lessonTypeIcons: Record<string, typeof Video> = {
@@ -108,6 +110,7 @@ const lessonTypeIcons: Record<string, typeof Video> = {
   TEXT: FileText,
   QUIZ: HelpCircle,
   ASSIGNMENT: ClipboardList,
+  DOWNLOAD: Download,
 };
 
 const statusStyles: Record<string, string> = {
@@ -476,6 +479,7 @@ function LessonRow({
   const [showVideo, setShowVideo] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showText, setShowText] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [quizData, setQuizData] = useState<any>(null);
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
   const Icon = lessonTypeIcons[lesson.type] ?? Video;
@@ -557,6 +561,16 @@ function LessonRow({
             {showText ? "Ocultar texto" : "Editar texto"}
           </button>
         )}
+        {lesson.type === "DOWNLOAD" && (
+          <button
+            type="button"
+            onClick={() => setShowDownload(!showDownload)}
+            className="shrink-0 rounded-md bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 hover:bg-primary-100 transition-colors"
+            title="Subir/cambiar archivo descargable"
+          >
+            {showDownload ? "Ocultar archivo" : "Editar archivo"}
+          </button>
+        )}
         <AILessonActions
           lessonId={lesson.id}
           lessonType={lesson.type}
@@ -633,6 +647,23 @@ function LessonRow({
                       "string"
                   ? ((lesson.content as { content: string }).content)
                   : ""
+            }
+          />
+        </div>
+      )}
+
+      {/* Download editor for DOWNLOAD lessons */}
+      {lesson.type === "DOWNLOAD" && showDownload && (
+        <div className="px-4 pb-3">
+          <DownloadLessonEditor
+            lessonId={lesson.id}
+            initialContent={
+              lesson.content as {
+                fileUrl?: string;
+                fileName?: string;
+                fileSize?: number;
+                description?: string;
+              } | null
             }
           />
         </div>
@@ -1162,6 +1193,174 @@ function TextLessonEditor({
         >
           {isSaving && <Loader2 className="h-3 w-3 animate-spin" />}
           Guardar texto
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Download Lesson Editor — lets the professor upload a single file (PDF,
+// Office, ZIP, image…) that students will download. Persists fileUrl,
+// fileName, fileSize and a short description in lesson.content (JSON).
+// Reuses /api/upload/assignment which already accepts the same MIME types.
+// ---------------------------------------------------------------------------
+
+function DownloadLessonEditor({
+  lessonId,
+  initialContent,
+}: {
+  lessonId: string;
+  initialContent: {
+    fileUrl?: string;
+    fileName?: string;
+    fileSize?: number;
+    description?: string;
+  } | null;
+}) {
+  const [fileUrl, setFileUrl] = useState(initialContent?.fileUrl ?? "");
+  const [fileName, setFileName] = useState(initialContent?.fileName ?? "");
+  const [fileSize, setFileSize] = useState(initialContent?.fileSize ?? 0);
+  const [description, setDescription] = useState(initialContent?.description ?? "");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isSaving, startSaving] = useTransition();
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    setUploadError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadError("El archivo supera 25 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/assignment", {
+        method: "POST",
+        body: fd,
+      });
+      const data = (await res.json()) as {
+        url?: string;
+        filename?: string;
+        sizeBytes?: number;
+        error?: string;
+      };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "No se pudo subir");
+      }
+      setFileUrl(data.url);
+      setFileName(data.filename ?? file.name);
+      setFileSize(data.sizeBytes ?? file.size);
+      setSaved(false);
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : "Error al subir el archivo",
+      );
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  function handleSave() {
+    setSaveError(null);
+    setSaved(false);
+    if (!fileUrl) {
+      setSaveError("Sube un archivo antes de guardar.");
+      return;
+    }
+    const content = JSON.stringify({ fileUrl, fileName, fileSize, description });
+    startSaving(async () => {
+      try {
+        await updateLesson(lessonId, { content });
+        setSaved(true);
+      } catch (err) {
+        setSaveError(
+          err instanceof Error ? err.message : "No se pudo guardar la lección",
+        );
+      }
+    });
+  }
+
+  function formatSize(bytes: number): string {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-3">
+      <div className="mb-2 rounded-lg border border-dashed border-border bg-surface-secondary p-3 text-xs">
+        <label className="flex cursor-pointer items-center gap-3 text-text-secondary hover:text-primary-700">
+          <input
+            type="file"
+            accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.zip,.png,.jpg,.jpeg,.webp,.txt"
+            onChange={handleFile}
+            disabled={isUploading}
+            className="sr-only"
+          />
+          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-3 py-1.5 text-[11px] font-medium text-primary-700 ring-1 ring-border">
+            {isUploading && <Loader2 className="h-3 w-3 animate-spin" />}
+            {fileUrl ? "Reemplazar archivo" : "Subir archivo"}
+          </span>
+          <span className="flex-1 truncate">
+            {fileUrl ? (
+              <>
+                <span className="font-medium text-text-primary">{fileName}</span>
+                {fileSize > 0 && (
+                  <span className="ml-1 text-text-tertiary">
+                    ({formatSize(fileSize)})
+                  </span>
+                )}
+              </>
+            ) : (
+              "PDF, Word, Excel, PowerPoint, ZIP, imágenes o TXT (25 MB máx)"
+            )}
+          </span>
+        </label>
+        {uploadError && (
+          <p className="mt-1 text-[11px] text-red-700">{uploadError}</p>
+        )}
+      </div>
+
+      <textarea
+        value={description}
+        onChange={(e) => {
+          setDescription(e.target.value);
+          setSaved(false);
+        }}
+        rows={3}
+        placeholder="Descripción del material (opcional)"
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+      />
+
+      <div className="mt-2 flex items-center justify-end gap-2">
+        {saveError && (
+          <span className="text-xs text-red-700">{saveError}</span>
+        )}
+        {saved && !saveError && (
+          <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+            <CheckCircle className="h-3.5 w-3.5" />
+            Guardado
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving || !fileUrl}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+        >
+          {isSaving && <Loader2 className="h-3 w-3 animate-spin" />}
+          Guardar lección
         </button>
       </div>
     </div>
