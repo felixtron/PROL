@@ -39,9 +39,14 @@ export const auth = betterAuth({
     },
   },
   session: {
+    // cookieCache stores the session payload encrypted in a cookie so
+    // we can avoid hitting the DB on every request. Disabled because a
+    // pre-fix admin-side createUser flow (signUpEmail) leaked a session
+    // cookie into the admin's browser; with cookieCache on, that cookie
+    // remained valid for up to 5 minutes even after we revoked the
+    // underlying DB row. Always validate against the sessions table.
     cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60,
+      enabled: false,
     },
   },
   plugins: [nextCookies()],
