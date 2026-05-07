@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import crypto from "node:crypto";
 import { requireUser } from "@/lib/auth";
+import { resolveUploadDir } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_FILE_SIZE = 100; // bytes — reject empty/junk uploads
@@ -58,20 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     const storedName = `${crypto.randomUUID()}.pdf`;
-    // Next.js standalone runs from /app while the public folder lives at
-    // /app/apps/web/public. Fall back to <cwd>/public for `pnpm dev`.
-    const uploadDir = process.env.UPLOAD_DIR
-      ? join(process.env.UPLOAD_DIR, "pdfs")
-      : join(process.cwd(), "apps", "web", "public", "uploads", "pdfs");
-    const fallbackDir = join(process.cwd(), "public", "uploads", "pdfs");
-
-    let targetDir = uploadDir;
-    try {
-      await mkdir(targetDir, { recursive: true });
-    } catch {
-      targetDir = fallbackDir;
-      await mkdir(targetDir, { recursive: true });
-    }
+    const targetDir = resolveUploadDir("pdfs");
+    await mkdir(targetDir, { recursive: true });
     const filePath = join(targetDir, storedName);
     await writeFile(filePath, buffer);
 

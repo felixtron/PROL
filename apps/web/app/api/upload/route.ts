@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import crypto from "crypto";
+import { resolveUploadDir } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -54,25 +55,8 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const filename = `${crypto.randomUUID()}.${ext}`;
-    // Standalone build runs from /app while public lives at /app/apps/web/public.
-    // Falls back to <cwd>/public for `pnpm dev`.
-    const standaloneDir = join(
-      process.cwd(),
-      "apps",
-      "web",
-      "public",
-      "uploads",
-      "thumbnails"
-    );
-    const fallbackDir = join(process.cwd(), "public", "uploads", "thumbnails");
-
-    let targetDir = standaloneDir;
-    try {
-      await mkdir(targetDir, { recursive: true });
-    } catch {
-      targetDir = fallbackDir;
-      await mkdir(targetDir, { recursive: true });
-    }
+    const targetDir = resolveUploadDir("thumbnails");
+    await mkdir(targetDir, { recursive: true });
     const filePath = join(targetDir, filename);
 
     const bytes = await file.arrayBuffer();

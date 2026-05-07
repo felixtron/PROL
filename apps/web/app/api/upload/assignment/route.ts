@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import crypto from "node:crypto";
 import { requireUser } from "@/lib/auth";
+import { resolveUploadDir } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
@@ -78,23 +79,8 @@ export async function POST(request: NextRequest) {
     const ext = EXT_BY_MIME[file.type] ?? "bin";
     const storedName = `${crypto.randomUUID()}.${ext}`;
 
-    const standaloneDir = join(
-      process.cwd(),
-      "apps",
-      "web",
-      "public",
-      "uploads",
-      "assignments"
-    );
-    const fallbackDir = join(process.cwd(), "public", "uploads", "assignments");
-
-    let targetDir = standaloneDir;
-    try {
-      await mkdir(targetDir, { recursive: true });
-    } catch {
-      targetDir = fallbackDir;
-      await mkdir(targetDir, { recursive: true });
-    }
+    const targetDir = resolveUploadDir("assignments");
+    await mkdir(targetDir, { recursive: true });
     const filePath = join(targetDir, storedName);
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filePath, buffer);
