@@ -111,9 +111,11 @@ export function middleware(req: NextRequest) {
   }
 
   // Content Security Policy. We allow inline styles (Tailwind/Next runtime)
-  // and inline scripts (Next hydration) but block remote scripts. Images,
-  // media and connect default to self with explicit allowances for the
-  // providers actually used (Cloudflare Stream, Vimeo, YouTube, Stripe).
+  // and inline scripts (Next hydration). Remote scripts are restricted to
+  // the small set of providers we actively integrate with (Stripe,
+  // Cloudflare Turnstile + Stream, Vimeo and YouTube player SDKs). The
+  // video SDKs are required for interactive stops to work — without
+  // them the iframes load but we can't subscribe to timeupdate events.
   // Tightening further requires moving to nonce-based CSP.
   response.headers.set(
     "Content-Security-Policy",
@@ -127,9 +129,9 @@ export function middleware(req: NextRequest) {
       "media-src 'self' https://videodelivery.net https://customer-*.cloudflarestream.com https://*.vimeocdn.com",
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com",
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://player.vimeo.com https://www.youtube.com https://iframe.cloudflarestream.com",
-      "connect-src 'self' https://api.stripe.com https://upload.cloudflarestream.com https://api.cloudflare.com https://api.assemblyai.com https://api.anthropic.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com https://player.vimeo.com https://www.youtube.com https://embed.videodelivery.net",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://player.vimeo.com https://www.youtube.com https://www.youtube-nocookie.com https://iframe.cloudflarestream.com https://iframe.videodelivery.net https://embed.videodelivery.net",
+      "connect-src 'self' https://api.stripe.com https://upload.cloudflarestream.com https://api.cloudflare.com https://api.assemblyai.com https://api.anthropic.com https://player.vimeo.com https://*.vimeocdn.com https://www.youtube.com https://www.youtube-nocookie.com https://videodelivery.net https://*.cloudflarestream.com",
     ].join("; "),
   );
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
