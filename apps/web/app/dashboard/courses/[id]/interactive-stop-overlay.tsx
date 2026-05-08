@@ -9,6 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { submitStopResponse } from "@/lib/actions/interactive-stops";
+import { InlineRichText } from "@/components/rich-text";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -355,7 +356,9 @@ function QuestionContent({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-sm font-medium text-text-primary">{content.question}</p>
+      <p className="text-sm font-medium text-text-primary">
+        <InlineRichText text={content.question} />
+      </p>
 
       <div className="space-y-2">
         {content.options.map((option, idx) => (
@@ -399,7 +402,9 @@ function QuestionContent({
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
             <div className="flex-1">
               <p className="text-xs font-medium text-primary-800">Explicación</p>
-              <p className="mt-1 text-xs text-primary-700">{content.explanation}</p>
+              <p className="mt-1 text-xs text-primary-700">
+                <InlineRichText text={content.explanation} />
+              </p>
             </div>
           </div>
         </div>
@@ -499,7 +504,9 @@ function ReflectionContent({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-sm font-medium text-text-primary">{content.prompt}</p>
+      <p className="text-sm font-medium text-text-primary">
+        <InlineRichText text={content.prompt} />
+      </p>
 
       <textarea
         value={text}
@@ -576,7 +583,7 @@ function ExerciseContent({
   return (
     <div className="space-y-4">
       <p className="whitespace-pre-wrap text-sm text-text-primary">
-        {content.instructions}
+        <InlineRichText text={content.instructions} />
       </p>
 
       {submitted ? (
@@ -660,7 +667,9 @@ function PollContent({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="text-sm font-medium text-text-primary">{content.question}</p>
+      <p className="text-sm font-medium text-text-primary">
+        <InlineRichText text={content.question} />
+      </p>
 
       <div className="space-y-2">
         {content.options.map((option, idx) => (

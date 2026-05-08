@@ -20,6 +20,10 @@ import {
   Image as ImageIcon,
   Check,
   X,
+  Bold,
+  Italic,
+  Underline,
+  Type,
 } from "lucide-react";
 import {
   createModule,
@@ -1194,6 +1198,51 @@ function TextLessonEditor({
   const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 
+  /** Wrap the current selection (or insert at cursor) with markdown
+   * syntax. For "heading" we prepend the prefix to the start of the
+   * line containing the caret. */
+  function applyFormat(kind: "bold" | "italic" | "underline" | "h2" | "h3") {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = content.slice(0, start);
+    const selected = content.slice(start, end);
+    const after = content.slice(end);
+
+    const wrap = (left: string, right: string, placeholder: string) => {
+      const body = selected || placeholder;
+      const next = before + left + body + right + after;
+      setContent(next);
+      setSaved(false);
+      requestAnimationFrame(() => {
+        ta.focus();
+        const pos = (before + left).length;
+        ta.setSelectionRange(pos, pos + body.length);
+      });
+    };
+
+    if (kind === "bold") return wrap("**", "**", "texto en negritas");
+    if (kind === "italic") return wrap("*", "*", "texto en cursiva");
+    if (kind === "underline") return wrap("<u>", "</u>", "texto subrayado");
+
+    // Heading: insert at the start of the current line.
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const head = kind === "h2" ? "## " : "### ";
+    // Strip any existing leading "# " sequence on the line so toggling works.
+    const lineStartContent = content.slice(lineStart);
+    const cleaned = lineStartContent.replace(/^#{1,3}\s+/, "");
+    const next =
+      content.slice(0, lineStart) + head + cleaned;
+    setContent(next);
+    setSaved(false);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = lineStart + head.length;
+      ta.setSelectionRange(pos, pos);
+    });
+  }
+
   async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     setImageError(null);
     const file = e.target.files?.[0];
@@ -1357,6 +1406,55 @@ function TextLessonEditor({
         {imageError && (
           <p className="mt-1 text-[11px] text-red-700">{imageError}</p>
         )}
+      </div>
+      {/* Formatting toolbar */}
+      <div className="mb-1 flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface-secondary p-1">
+        <button
+          type="button"
+          onClick={() => applyFormat("bold")}
+          title="Negritas (**texto**)"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <Bold className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("italic")}
+          title="Cursiva (*texto*)"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <Italic className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("underline")}
+          title="Subrayado (<u>texto</u>)"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <Underline className="h-3.5 w-3.5" />
+        </button>
+        <span className="mx-1 h-4 w-px bg-border" />
+        <button
+          type="button"
+          onClick={() => applyFormat("h2")}
+          title="Tamaño grande (línea actual)"
+          className="inline-flex h-7 items-center gap-1 rounded px-2 text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <Type className="h-3.5 w-3.5" />
+          <span className="text-[11px] font-semibold">A+</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("h3")}
+          title="Tamaño mediano (línea actual)"
+          className="inline-flex h-7 items-center gap-1 rounded px-2 text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <Type className="h-3 w-3" />
+          <span className="text-[11px] font-medium">A</span>
+        </button>
+        <span className="ml-auto pr-2 text-[10px] text-text-tertiary">
+          Selecciona texto y aplica formato
+        </span>
       </div>
       <textarea
         ref={textareaRef}
