@@ -100,7 +100,18 @@ export function InteractiveStopOverlay({
   onStopCompleted,
 }: InteractiveStopOverlayProps) {
   const [activeStop, setActiveStop] = useState<StopData | null>(null);
+  // True once the active stop has been answered — either via the
+  // server response loaded from the API, or via a fresh local submit.
+  // Drives the close-button visibility and the "required" guard so a
+  // student who just answered isn't blocked by the obligatory alert.
+  const [activeSubmitted, setActiveSubmitted] = useState(false);
   const triggeredStopsRef = useRef<Set<string>>(new Set());
+
+  // Reset submitted flag whenever a new stop becomes active. Seed from
+  // the server-side response if we already have one.
+  useEffect(() => {
+    setActiveSubmitted(!!activeStop?.response);
+  }, [activeStop]);
 
   // Fire a stop the first time playback crosses its timestamp. We use
   // a "passed" check (not abs()) so stops still fire if the player
@@ -131,11 +142,16 @@ export function InteractiveStopOverlay({
   }, [currentTime, stops, activeStop, playerApi, onStopTriggered]);
 
   const handleClose = () => {
-    if (activeStop && activeStop.isRequired && !activeStop.response) {
+    if (activeStop && activeStop.isRequired && !activeSubmitted) {
       alert("Esta parada es obligatoria. Debes responder antes de continuar.");
       return;
     }
     setActiveStop(null);
+    try {
+      playerApi?.play();
+    } catch {
+      /* noop */
+    }
     onStopCompleted?.();
   };
 
@@ -164,7 +180,7 @@ export function InteractiveStopOverlay({
               {activeStop.type === "EXERCISE" && "Ejercicio"}
               {activeStop.type === "POLL" && "Encuesta"}
             </h3>
-            {(!activeStop.isRequired || activeStop.response) && (
+            {(!activeStop.isRequired || activeSubmitted) && (
               <button
                 type="button"
                 onClick={handleClose}
@@ -182,6 +198,7 @@ export function InteractiveStopOverlay({
               stop={activeStop}
               lessonProgressId={lessonProgressId}
               onComplete={handleClose}
+              onSubmittedLocally={() => setActiveSubmitted(true)}
             />
           </div>
         </div>
@@ -209,16 +226,23 @@ function StopContent({
   stop,
   lessonProgressId,
   onComplete,
+  onSubmittedLocally,
 }: {
   stop: StopData;
   lessonProgressId: string | null;
   onComplete: () => void;
+  onSubmittedLocally: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(!!stop.response);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(
     stop.response?.isCorrect ?? null
   );
+
+  const markSubmitted = () => {
+    setSubmitted(true);
+    onSubmittedLocally();
+  };
 
   switch (stop.type) {
     case "QUESTION":
@@ -231,8 +255,8 @@ function StopContent({
           isRequired={stop.isRequired}
           submitted={submitted}
           isCorrect={isCorrect}
-          onSubmit={(selectedIndex, correct) => {
-            setSubmitted(true);
+          onSubmit={(_selectedIndex, correct) => {
+            markSubmitted();
             setIsCorrect(correct);
           }}
           onComplete={onComplete}
@@ -250,7 +274,7 @@ function StopContent({
           stopId={stop.id}
           isRequired={stop.isRequired}
           submitted={submitted}
-          onSubmit={() => setSubmitted(true)}
+          onSubmit={markSubmitted}
           onComplete={onComplete}
           isPending={isPending}
           startTransition={startTransition}
@@ -266,7 +290,7 @@ function StopContent({
           stopId={stop.id}
           isRequired={stop.isRequired}
           submitted={submitted}
-          onSubmit={() => setSubmitted(true)}
+          onSubmit={markSubmitted}
           onComplete={onComplete}
           isPending={isPending}
           startTransition={startTransition}
@@ -282,7 +306,7 @@ function StopContent({
           stopId={stop.id}
           isRequired={stop.isRequired}
           submitted={submitted}
-          onSubmit={() => setSubmitted(true)}
+          onSubmit={markSubmitted}
           onComplete={onComplete}
           isPending={isPending}
           startTransition={startTransition}
@@ -571,14 +595,12 @@ function ExerciseContent({
   const handleComplete = () => {
     if (!lessonProgressId) {
       onSubmit();
-      onComplete();
       return;
     }
     startTransition(async () => {
       try {
         await submitStopResponse(stopId, lessonProgressId, { completed: true });
         onSubmit();
-        onComplete();
       } catch (err) {
         alert(err instanceof Error ? err.message : "Error al marcar como completado");
       }
