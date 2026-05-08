@@ -23,7 +23,7 @@ import {
 import { updateLessonProgress } from "@/lib/actions/enrollment";
 import { QuizPlayer } from "./quiz-player";
 import { InteractiveStopOverlay } from "./interactive-stop-overlay";
-import { VideoPlayer } from "@/components/video-player";
+import { VideoPlayer, type PlayerAPI } from "@/components/video-player";
 import { MultiLessonPlayer } from "./multi-lesson-player";
 import { AssignmentPlayer } from "./assignment-player";
 import { RichText } from "@/components/rich-text";
@@ -602,8 +602,17 @@ function LessonView({
   const [interactiveStops, setInteractiveStops] = useState<any[]>([]);
   const lessonProgressId = initialLessonProgressId;
   const [isLoadingStops, setIsLoadingStops] = useState(false);
-  const [videoElement, setVideoElement] = useState<HTMLIFrameElement | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [playerApi, setPlayerApi] = useState<PlayerAPI | null>(null);
   const isPreview = enrollmentId.startsWith("preview-");
+
+  // Reset playback state when switching lessons so a previous video's
+  // currentTime doesn't leak into a brand-new lesson and accidentally
+  // re-trigger stops.
+  useEffect(() => {
+    setCurrentTime(0);
+    setPlayerApi(null);
+  }, [lesson.id]);
 
   // Real students: opening a VIDEO lesson without an existing progress
   // row means we need to create one (IN_PROGRESS) so interactive stops
@@ -723,7 +732,6 @@ function LessonView({
             lesson.videoUrl ? (
               <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-900">
                 <VideoPlayer
-                  ref={setVideoElement}
                   videoUrl={lesson.videoUrl}
                   provider={lesson.videoProvider}
                   videoHash={
@@ -737,6 +745,8 @@ function LessonView({
                       : null
                   }
                   title={lesson.title}
+                  onTimeUpdate={setCurrentTime}
+                  onReady={setPlayerApi}
                 />
                 {/* Interactive stops overlay. We render even without a
                     lessonProgressId — the overlay short-circuits to a
@@ -747,7 +757,8 @@ function LessonView({
                   <InteractiveStopOverlay
                     stops={interactiveStops}
                     lessonProgressId={lessonProgressId}
-                    videoElement={videoElement}
+                    currentTime={currentTime}
+                    playerApi={playerApi}
                   />
                 )}
               </div>

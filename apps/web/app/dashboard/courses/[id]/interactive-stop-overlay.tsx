@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { submitStopResponse } from "@/lib/actions/interactive-stops";
 import { InlineRichText } from "@/components/rich-text";
+import type { PlayerAPI } from "@/components/video-player";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,7 +77,12 @@ interface InteractiveStopOverlayProps {
   // (preview mode, or in the milliseconds before the first
   // updateLessonProgress upsert resolves) but skip persistence.
   lessonProgressId: string | null;
-  videoElement: HTMLIFrameElement | null;
+  /** Real playback time in seconds, fed by the parent VideoPlayer SDK
+   * bridge. Drives the timestamp comparison that fires each stop. */
+  currentTime: number;
+  /** Imperative handle from the player so we can pause when a stop
+   * fires. Optional: if missing we still show the modal. */
+  playerApi: PlayerAPI | null;
   onStopTriggered?: () => void;
   onStopCompleted?: () => void;
 }
@@ -88,64 +94,41 @@ interface InteractiveStopOverlayProps {
 export function InteractiveStopOverlay({
   stops,
   lessonProgressId,
-  videoElement,
+  currentTime,
+  playerApi,
   onStopTriggered,
   onStopCompleted,
 }: InteractiveStopOverlayProps) {
   const [activeStop, setActiveStop] = useState<StopData | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [triggeredStops, setTriggeredStops] = useState<Set<string>>(new Set());
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const triggeredStopsRef = useRef<Set<string>>(new Set());
 
-  // Monitor video time (polling approach for iframe)
-  useEffect(() => {
-    if (!videoElement) return;
-
-    // For Cloudflare Stream iframe, we can't directly access currentTime
-    // We'll use a message-based approach or estimate based on play events
-    // For now, we'll use a simple interval to track estimated time
-    let startTime = Date.now();
-    let lastKnownTime = 0;
-
-    intervalRef.current = setInterval(() => {
-      // Estimate current time (this is a simplified approach)
-      // In production, you might want to use postMessage API with Stream iframe
-      const elapsed = (Date.now() - startTime) / 1000;
-      const estimatedTime = lastKnownTime + elapsed;
-      setCurrentTime(estimatedTime);
-    }, 500);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [videoElement]);
-
-  // Check for stops at current time
+  // Fire a stop the first time playback crosses its timestamp. We use
+  // a "passed" check (not abs()) so stops still fire if the player
+  // jumps past the marker. Each stop fires at most once per session.
   useEffect(() => {
     if (!stops.length || activeStop) return;
-
     for (const stop of stops) {
-      // Check if we've reached this stop's timestamp (within 1 second tolerance)
-      if (
-        Math.abs(currentTime - stop.timestampSeconds) < 1 &&
-        !triggeredStops.has(stop.id)
-      ) {
-        // Skip if already answered and not required
-        if (stop.response && !stop.isRequired) {
-          setTriggeredStops((prev) => new Set(prev).add(stop.id));
-          continue;
-        }
-
-        // Trigger the stop
-        setActiveStop(stop);
-        setTriggeredStops((prev) => new Set(prev).add(stop.id));
-        onStopTriggered?.();
-        break;
+      if (triggeredStopsRef.current.has(stop.id)) continue;
+      const passed =
+        currentTime >= stop.timestampSeconds &&
+        currentTime - stop.timestampSeconds < 5;
+      if (!passed) continue;
+      // Skip if already answered and not required
+      if (stop.response && !stop.isRequired) {
+        triggeredStopsRef.current.add(stop.id);
+        continue;
       }
+      triggeredStopsRef.current.add(stop.id);
+      try {
+        playerApi?.pause();
+      } catch {
+        /* noop */
+      }
+      setActiveStop(stop);
+      onStopTriggered?.();
+      break;
     }
-  }, [currentTime, stops, activeStop, triggeredStops, onStopTriggered]);
+  }, [currentTime, stops, activeStop, playerApi, onStopTriggered]);
 
   const handleClose = () => {
     if (activeStop && activeStop.isRequired && !activeStop.response) {
