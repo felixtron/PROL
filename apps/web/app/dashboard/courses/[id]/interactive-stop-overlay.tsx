@@ -72,7 +72,10 @@ interface StopData {
 
 interface InteractiveStopOverlayProps {
   stops: StopData[];
-  lessonProgressId: string;
+  // Null means "no real progress row yet" — we still show the stops
+  // (preview mode, or in the milliseconds before the first
+  // updateLessonProgress upsert resolves) but skip persistence.
+  lessonProgressId: string | null;
   videoElement: HTMLIFrameElement | null;
   onStopTriggered?: () => void;
   onStopCompleted?: () => void;
@@ -225,7 +228,7 @@ function StopContent({
   onComplete,
 }: {
   stop: StopData;
-  lessonProgressId: string;
+  lessonProgressId: string | null;
   onComplete: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -324,7 +327,7 @@ function QuestionContent({
 }: {
   content: QuestionContent;
   existingResponse?: QuestionResponse;
-  lessonProgressId: string;
+  lessonProgressId: string | null;
   stopId: string;
   isRequired: boolean;
   submitted: boolean;
@@ -341,6 +344,15 @@ function QuestionContent({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedIndex === null) return;
+
+    // Without a real lessonProgressId we can still let the user see if
+    // they got it right by comparing against content.correctIndex
+    // locally, but skip the server round-trip entirely.
+    if (!lessonProgressId) {
+      const correct = selectedIndex === content.correctIndex;
+      onSubmit(selectedIndex, correct);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -477,7 +489,7 @@ function ReflectionContent({
 }: {
   content: ReflectionContent;
   existingResponse?: ReflectionResponse;
-  lessonProgressId: string;
+  lessonProgressId: string | null;
   stopId: string;
   isRequired: boolean;
   submitted: boolean;
@@ -491,6 +503,11 @@ function ReflectionContent({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim()) return;
+
+    if (!lessonProgressId) {
+      onSubmit();
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -559,7 +576,7 @@ function ExerciseContent({
 }: {
   content: ExerciseContent;
   existingResponse?: ExerciseResponse;
-  lessonProgressId: string;
+  lessonProgressId: string | null;
   stopId: string;
   isRequired: boolean;
   submitted: boolean;
@@ -569,6 +586,11 @@ function ExerciseContent({
   startTransition: (fn: () => void) => void;
 }) {
   const handleComplete = () => {
+    if (!lessonProgressId) {
+      onSubmit();
+      onComplete();
+      return;
+    }
     startTransition(async () => {
       try {
         await submitStopResponse(stopId, lessonProgressId, { completed: true });
@@ -638,7 +660,7 @@ function PollContent({
 }: {
   content: PollContent;
   existingResponse?: PollResponse;
-  lessonProgressId: string;
+  lessonProgressId: string | null;
   stopId: string;
   isRequired: boolean;
   submitted: boolean;
@@ -654,6 +676,11 @@ function PollContent({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedIndex === null) return;
+
+    if (!lessonProgressId) {
+      onSubmit();
+      return;
+    }
 
     startTransition(async () => {
       try {

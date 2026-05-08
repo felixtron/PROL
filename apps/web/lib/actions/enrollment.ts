@@ -82,7 +82,7 @@ export async function updateLessonProgress(
   // viewing their own course doesn't correspond to a real DB row. We
   // accept the call and skip persistence so the client UI still works.
   if (enrollmentId.startsWith("preview-")) {
-    return { success: true, preview: true as const };
+    return { success: true, preview: true as const, lessonProgressId: null };
   }
 
   const user = await requireUser();
@@ -183,5 +183,5 @@ export async function updateLessonProgress(
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/certificates");
-  return { success: true, progressId: progress.id };
+  return { success: true, lessonProgressId: progress.id };
 }

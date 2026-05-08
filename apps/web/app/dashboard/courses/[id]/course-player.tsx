@@ -11,7 +11,7 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
+  ChevronDown,
   ArrowLeft,
   BookOpen,
   Clock,
@@ -127,6 +127,12 @@ export function CoursePlayer({
   const [progress, setProgress] = useState(initialProgress);
   const [isPending, startTransition] = useTransition();
   const [lessonPanelOpen, setLessonPanelOpen] = useState(false);
+  // Map of lessonId → lessonProgressId. Starts with whatever the server
+  // gave us; we extend it on the client when a video lesson is opened
+  // and we lazily create a progress row.
+  const [progressIdByLesson, setProgressIdByLesson] = useState<
+    Map<string, string>
+  >(() => new Map(lessonProgressMap));
 
   const flatLessons = useMemo(
     () => modules.flatMap((m) => m.lessons),
@@ -140,6 +146,42 @@ export function CoursePlayer({
 
   const activeLesson =
     activeLessonIndex >= 0 ? flatLessons[activeLessonIndex] : null;
+
+  const lessonsByModule = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of modules) for (const l of m.lessons) map.set(l.id, m.id);
+    return map;
+  }, [modules]);
+
+  // Accordion state for the sidebar — only one module needs to be open
+  // at a time; default to the module containing the active lesson, or
+  // the first module otherwise.
+  const [expandedModuleIds, setExpandedModuleIds] = useState<Set<string>>(
+    () => new Set(modules[0] ? [modules[0].id] : []),
+  );
+
+  // Whenever the active lesson changes, ensure its module is expanded so
+  // the user can see where they are in the sidebar.
+  useEffect(() => {
+    if (!activeLessonId) return;
+    const moduleId = lessonsByModule.get(activeLessonId);
+    if (!moduleId) return;
+    setExpandedModuleIds((prev) => {
+      if (prev.has(moduleId)) return prev;
+      const next = new Set(prev);
+      next.add(moduleId);
+      return next;
+    });
+  }, [activeLessonId, lessonsByModule]);
+
+  const toggleModule = useCallback((moduleId: string) => {
+    setExpandedModuleIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) next.delete(moduleId);
+      else next.add(moduleId);
+      return next;
+    });
+  }, []);
 
   const goToLesson = useCallback((lessonId: string | null) => {
     setActiveLessonId(lessonId);
@@ -225,58 +267,84 @@ export function CoursePlayer({
         </p>
       </div>
 
-      {/* Modules & lessons */}
+      {/* Modules & lessons (accordion) */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {modules.map((mod) => (
-          <div key={mod.id}>
-            <div className="px-4 py-3">
-              <h3 className="font-heading text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                Módulo {mod.position} — {mod.title}
-              </h3>
-            </div>
-            <ul>
-              {mod.lessons.map((lesson) => {
-                const Icon = lessonTypeIcon[lesson.type];
-                const isActive = lesson.id === activeLessonId;
-                const isComplete = completedIds.has(lesson.id);
-                const duration = formatDuration(lesson.videoDurationSeconds);
+        {modules.map((mod) => {
+          const isExpanded = expandedModuleIds.has(mod.id);
+          const moduleCompleted = mod.lessons.filter((l) =>
+            completedIds.has(l.id),
+          ).length;
+          return (
+            <div key={mod.id} className="border-b border-border/50 last:border-b-0">
+              <button
+                type="button"
+                onClick={() => toggleModule(mod.id)}
+                className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-surface-tertiary"
+                aria-expanded={isExpanded}
+              >
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-text-tertiary transition-transform ${
+                    isExpanded ? "" : "-rotate-90"
+                  }`}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="font-heading text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                    Módulo {mod.position}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm font-medium text-text-primary">
+                    {mod.title}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-medium text-text-tertiary">
+                  {moduleCompleted}/{mod.lessons.length}
+                </span>
+              </button>
+              {isExpanded && (
+                <ul className="pb-2">
+                  {mod.lessons.map((lesson) => {
+                    const Icon = lessonTypeIcon[lesson.type];
+                    const isActive = lesson.id === activeLessonId;
+                    const isComplete = completedIds.has(lesson.id);
+                    const duration = formatDuration(lesson.videoDurationSeconds);
 
-                return (
-                  <li key={lesson.id}>
-                    <button
-                      type="button"
-                      onClick={() => goToLesson(lesson.id)}
-                      className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition-colors ${
-                        isActive
-                          ? "border-l-2 border-primary-600 bg-primary-50 text-primary-700"
-                          : "text-text-primary active:bg-surface-tertiary"
-                      }`}
-                    >
-                      {isComplete ? (
-                        <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
-                      ) : (
-                        <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
-                      )}
-                      <div className="min-w-0 flex-1 text-left">
-                        <p
-                          className={`truncate ${isComplete ? "text-text-tertiary line-through" : ""}`}
+                    return (
+                      <li key={lesson.id}>
+                        <button
+                          type="button"
+                          onClick={() => goToLesson(lesson.id)}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 pl-10 text-sm transition-colors ${
+                            isActive
+                              ? "border-l-2 border-primary-600 bg-primary-50 text-primary-700"
+                              : "text-text-primary active:bg-surface-tertiary"
+                          }`}
                         >
-                          {lesson.title}
-                        </p>
-                      </div>
-                      {duration && (
-                        <span className="flex shrink-0 items-center gap-1 text-xs text-text-tertiary">
-                          <Clock className="h-3 w-3" />
-                          {duration}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+                          {isComplete ? (
+                            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
+                          ) : (
+                            <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
+                          )}
+                          <div className="min-w-0 flex-1 text-left">
+                            <p
+                              className={`truncate ${isComplete ? "text-text-tertiary line-through" : ""}`}
+                            >
+                              {lesson.title}
+                            </p>
+                          </div>
+                          {duration && (
+                            <span className="flex shrink-0 items-center gap-1 text-xs text-text-tertiary">
+                              <Clock className="h-3 w-3" />
+                              {duration}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </nav>
     </>
   );
@@ -304,7 +372,15 @@ export function CoursePlayer({
             lessonIndex={activeLessonIndex + 1}
             totalLessons={flatLessons.length}
             enrollmentId={enrollmentId}
-            lessonProgressId={lessonProgressMap.get(activeLesson.id) ?? null}
+            lessonProgressId={progressIdByLesson.get(activeLesson.id) ?? null}
+            onProgressIdResolved={(lessonId, progressId) =>
+              setProgressIdByLesson((prev) => {
+                if (prev.get(lessonId) === progressId) return prev;
+                const next = new Map(prev);
+                next.set(lessonId, progressId);
+                return next;
+              })
+            }
           />
         ) : (
           <CourseOverview
@@ -504,6 +580,7 @@ function LessonView({
   totalLessons,
   enrollmentId,
   lessonProgressId: initialLessonProgressId,
+  onProgressIdResolved,
 }: {
   lesson: Lesson;
   isCompleted: boolean;
@@ -517,6 +594,7 @@ function LessonView({
   totalLessons: number;
   enrollmentId: string;
   lessonProgressId: string | null;
+  onProgressIdResolved: (lessonId: string, progressId: string) => void;
 }) {
   const Icon = lessonTypeIcon[lesson.type];
   const [quizData, setQuizData] = useState<any>(null);
@@ -525,6 +603,35 @@ function LessonView({
   const lessonProgressId = initialLessonProgressId;
   const [isLoadingStops, setIsLoadingStops] = useState(false);
   const [videoElement, setVideoElement] = useState<HTMLIFrameElement | null>(null);
+  const isPreview = enrollmentId.startsWith("preview-");
+
+  // Real students: opening a VIDEO lesson without an existing progress
+  // row means we need to create one (IN_PROGRESS) so interactive stops
+  // can persist responses against it.
+  useEffect(() => {
+    if (lesson.type !== "VIDEO") return;
+    if (initialLessonProgressId) return;
+    if (isPreview) return;
+    let cancelled = false;
+    void updateLessonProgress(enrollmentId, lesson.id, {
+      status: "IN_PROGRESS",
+    }).then((res) => {
+      if (cancelled) return;
+      if (res?.lessonProgressId) {
+        onProgressIdResolved(lesson.id, res.lessonProgressId);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    lesson.id,
+    lesson.type,
+    initialLessonProgressId,
+    isPreview,
+    enrollmentId,
+    onProgressIdResolved,
+  ]);
 
   // Load quiz data when lesson type is QUIZ
   useEffect(() => {
@@ -631,8 +738,12 @@ function LessonView({
                   }
                   title={lesson.title}
                 />
-                {/* Interactive stops overlay */}
-                {interactiveStops.length > 0 && lessonProgressId && (
+                {/* Interactive stops overlay. We render even without a
+                    lessonProgressId — the overlay short-circuits to a
+                    no-op submit in that case so professor previews and
+                    real students whose progress row is still being
+                    created can both see the stops. */}
+                {interactiveStops.length > 0 && (
                   <InteractiveStopOverlay
                     stops={interactiveStops}
                     lessonProgressId={lessonProgressId}
