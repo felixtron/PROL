@@ -24,6 +24,13 @@ import {
   Italic,
   Underline,
   Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Palette,
+  List,
+  ListOrdered,
 } from "lucide-react";
 import {
   createModule,
@@ -1198,10 +1205,23 @@ function TextLessonEditor({
   const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 
-  /** Wrap the current selection (or insert at cursor) with markdown
-   * syntax. For "heading" we prepend the prefix to the start of the
-   * line containing the caret. */
-  function applyFormat(kind: "bold" | "italic" | "underline" | "h2" | "h3") {
+  type Format =
+    | "bold"
+    | "italic"
+    | "underline"
+    | "h2"
+    | "h3"
+    | "center"
+    | "right"
+    | "justify"
+    | "left"
+    | "bullets"
+    | "numbered";
+
+  /** Wrap the current selection (or insert at cursor) with markdown/HTML
+   * syntax. Headings and alignment apply to the current line/paragraph;
+   * lists apply line-by-line over the selection. */
+  function applyFormat(kind: Format) {
     const ta = textareaRef.current;
     if (!ta) return;
     const start = ta.selectionStart;
@@ -1226,6 +1246,83 @@ function TextLessonEditor({
     if (kind === "italic") return wrap("*", "*", "texto en cursiva");
     if (kind === "underline") return wrap("<u>", "</u>", "texto subrayado");
 
+    if (kind === "center" || kind === "right" || kind === "justify") {
+      // Wrap the entire current paragraph (block separated by blank
+      // lines) so the alignment applies to the whole block.
+      const blockStart =
+        before.lastIndexOf("\n\n") === -1 ? 0 : before.lastIndexOf("\n\n") + 2;
+      const blockEndOffset = after.indexOf("\n\n");
+      const blockEnd = blockEndOffset === -1 ? content.length : end + blockEndOffset;
+      const blockText = content.slice(blockStart, blockEnd).replace(
+        /^<(center|right|justify)>([\s\S]*?)<\/\1>$/,
+        "$2",
+      );
+      const wrapped = `<${kind}>${blockText.trim() || "texto"}</${kind}>`;
+      const next =
+        content.slice(0, blockStart) + wrapped + content.slice(blockEnd);
+      setContent(next);
+      setSaved(false);
+      requestAnimationFrame(() => {
+        ta.focus();
+        const pos = blockStart + wrapped.length;
+        ta.setSelectionRange(pos, pos);
+      });
+      return;
+    }
+
+    if (kind === "left") {
+      // Strip alignment wrapper if present on the current block.
+      const blockStart =
+        before.lastIndexOf("\n\n") === -1 ? 0 : before.lastIndexOf("\n\n") + 2;
+      const blockEndOffset = after.indexOf("\n\n");
+      const blockEnd = blockEndOffset === -1 ? content.length : end + blockEndOffset;
+      const blockText = content
+        .slice(blockStart, blockEnd)
+        .replace(/^<(center|right|justify)>([\s\S]*?)<\/\1>$/, "$2");
+      const next =
+        content.slice(0, blockStart) + blockText + content.slice(blockEnd);
+      setContent(next);
+      setSaved(false);
+      return;
+    }
+
+    if (kind === "bullets" || kind === "numbered") {
+      // Apply prefix to each non-empty line of the selection (or the
+      // current line if no selection).
+      const target = selected || (() => {
+        const lineStart = before.lastIndexOf("\n") + 1;
+        const lineEndOffset = after.indexOf("\n");
+        const lineEnd = lineEndOffset === -1 ? content.length : end + lineEndOffset;
+        return content.slice(lineStart, lineEnd);
+      })();
+      const lines = target.split("\n");
+      const prefixed = lines
+        .map((l, idx) => {
+          const stripped = l.replace(/^([*-]\s+|\d+\.\s+)/, "");
+          if (!stripped.trim()) return stripped;
+          return kind === "bullets" ? `- ${stripped}` : `${idx + 1}. ${stripped}`;
+        })
+        .join("\n");
+      if (selected) {
+        const next = before + prefixed + after;
+        setContent(next);
+        setSaved(false);
+        requestAnimationFrame(() => {
+          ta.focus();
+          ta.setSelectionRange(start, start + prefixed.length);
+        });
+      } else {
+        const lineStart = before.lastIndexOf("\n") + 1;
+        const lineEndOffset = after.indexOf("\n");
+        const lineEnd = lineEndOffset === -1 ? content.length : end + lineEndOffset;
+        const next =
+          content.slice(0, lineStart) + prefixed + content.slice(lineEnd);
+        setContent(next);
+        setSaved(false);
+      }
+      return;
+    }
+
     // Heading: insert at the start of the current line.
     const lineStart = before.lastIndexOf("\n") + 1;
     const head = kind === "h2" ? "## " : "### ";
@@ -1240,6 +1337,26 @@ function TextLessonEditor({
       ta.focus();
       const pos = lineStart + head.length;
       ta.setSelectionRange(pos, pos);
+    });
+  }
+
+  /** Wraps current selection with a color span. */
+  function applyColor(color: string) {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const before = content.slice(0, start);
+    const selected = content.slice(start, end);
+    const after = content.slice(end);
+    const body = selected || "texto con color";
+    const wrapped = `<color="${color}">${body}</color>`;
+    setContent(before + wrapped + after);
+    setSaved(false);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const offset = (before + `<color="${color}">`).length;
+      ta.setSelectionRange(offset, offset + body.length);
     });
   }
 
@@ -1452,6 +1569,72 @@ function TextLessonEditor({
           <Type className="h-3 w-3" />
           <span className="text-[11px] font-medium">A</span>
         </button>
+        <span className="mx-1 h-4 w-px bg-border" />
+        {/* Alignment */}
+        <button
+          type="button"
+          onClick={() => applyFormat("left")}
+          title="Alinear a la izquierda"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <AlignLeft className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("center")}
+          title="Centrar"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <AlignCenter className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("right")}
+          title="Alinear a la derecha"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <AlignRight className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("justify")}
+          title="Justificar"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <AlignJustify className="h-3.5 w-3.5" />
+        </button>
+        <span className="mx-1 h-4 w-px bg-border" />
+        {/* Lists */}
+        <button
+          type="button"
+          onClick={() => applyFormat("bullets")}
+          title="Lista con viñetas"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <List className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => applyFormat("numbered")}
+          title="Lista numerada"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-text-secondary hover:bg-surface hover:text-text-primary"
+        >
+          <ListOrdered className="h-3.5 w-3.5" />
+        </button>
+        <span className="mx-1 h-4 w-px bg-border" />
+        {/* Color picker — native input, looks like a button */}
+        <label
+          className="inline-flex h-7 cursor-pointer items-center gap-1 rounded px-2 text-text-secondary hover:bg-surface hover:text-text-primary"
+          title="Color del texto"
+        >
+          <Palette className="h-3.5 w-3.5" />
+          <input
+            type="color"
+            defaultValue="#1e5ae6"
+            onChange={(e) => applyColor(e.target.value)}
+            className="h-4 w-4 cursor-pointer rounded border-none bg-transparent p-0"
+          />
+        </label>
         <span className="ml-auto pr-2 text-[10px] text-text-tertiary">
           Selecciona texto y aplica formato
         </span>

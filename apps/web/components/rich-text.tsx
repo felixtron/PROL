@@ -22,11 +22,14 @@ const MD_IMG_RE = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g;
 const BOLD_RE = /\*\*([^*\n]+)\*\*/g;
 const ITALIC_RE = /(?<!\*)\*(?!\*)([^*\n]+)\*(?!\*)/g;
 const U_RE = /<u>([\s\S]*?)<\/u>/g;
+// <color="#hex">...</color> — accepts 3- or 6-digit hex.
+const COLOR_RE = /<color="(#[0-9a-fA-F]{3,8})">([\s\S]*?)<\/color>/g;
 
 interface Token {
-  kind: "text" | "img" | "link" | "bold" | "italic" | "u";
+  kind: "text" | "img" | "link" | "bold" | "italic" | "u" | "color";
   body: string;
   url?: string;
+  color?: string;
 }
 
 /** Splits a single line of text into formatted tokens. Order matters:
@@ -86,6 +89,15 @@ function tokenize(text: string): Token[] {
       idx,
       len: m[0].length,
       tok: { kind: "u", body: m[1] ?? "" },
+    });
+  }
+  for (const m of text.matchAll(COLOR_RE)) {
+    const idx = m.index ?? 0;
+    if (matches.some((x) => idx >= x.idx && idx < x.idx + x.len)) continue;
+    matches.push({
+      idx,
+      len: m[0].length,
+      tok: { kind: "color", body: m[2] ?? "", color: m[1] ?? "" },
     });
   }
 
@@ -149,6 +161,12 @@ function renderTokens(text: string, keyPrefix: string): React.ReactNode[] {
             {t.body}
           </u>
         );
+      case "color":
+        return (
+          <span key={k} style={{ color: t.color }}>
+            {t.body}
+          </span>
+        );
     }
   });
 }
@@ -190,8 +208,30 @@ export function RichText({ text }: { text: string }) {
             />
           );
         }
-        // Headings: #, ##, ###  → larger text. Anything else stays as a
-        // paragraph with inline formatting + preserved newlines.
+        // Alignment wrappers: <center>...</center>, <right>...</right>,
+        // <justify>...</justify>. Strip the wrapper, render inline.
+        const alignMatch = trimmed.match(
+          /^<(center|right|justify)>([\s\S]*?)<\/\1>$/,
+        );
+        if (alignMatch) {
+          const align = alignMatch[1] as "center" | "right" | "justify";
+          const body = alignMatch[2] ?? "";
+          const cls =
+            align === "center"
+              ? "text-center"
+              : align === "right"
+                ? "text-right"
+                : "text-justify";
+          return (
+            <p
+              key={i}
+              className={`whitespace-pre-wrap leading-relaxed ${cls}`}
+            >
+              {renderTokens(body, `a${i}`)}
+            </p>
+          );
+        }
+        // Headings: #, ##, ###  → larger text.
         const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
         if (headingMatch) {
           const level = headingMatch[1]?.length ?? 1;
@@ -206,6 +246,35 @@ export function RichText({ text }: { text: string }) {
             <p key={i} className={cls}>
               {renderTokens(body, `h${i}`)}
             </p>
+          );
+        }
+        // Bulleted list: every line in the block starts with "- " or "* ".
+        const lines = trimmed.split("\n");
+        const isBulleted =
+          lines.length > 0 && lines.every((l) => /^[*-]\s+/.test(l));
+        if (isBulleted) {
+          return (
+            <ul key={i} className="list-disc space-y-1 pl-5 leading-relaxed">
+              {lines.map((l, j) => (
+                <li key={j}>
+                  {renderTokens(l.replace(/^[*-]\s+/, ""), `ul${i}-${j}`)}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+        // Numbered list: every line starts with "N. ".
+        const isNumbered =
+          lines.length > 0 && lines.every((l) => /^\d+\.\s+/.test(l));
+        if (isNumbered) {
+          return (
+            <ol key={i} className="list-decimal space-y-1 pl-5 leading-relaxed">
+              {lines.map((l, j) => (
+                <li key={j}>
+                  {renderTokens(l.replace(/^\d+\.\s+/, ""), `ol${i}-${j}`)}
+                </li>
+              ))}
+            </ol>
           );
         }
         return (
