@@ -95,17 +95,17 @@ export function AIPromptTicker() {
   }, [phase, typed, revealCount, current]);
 
   return (
-    <div className="rounded-3xl border border-ink-200/80 bg-white p-5 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.18)] sm:p-7">
+    <div className="flex min-h-[540px] flex-col rounded-3xl border border-ink-200/80 bg-white p-5 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.18)] sm:min-h-[560px] sm:p-7">
       <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-500">
         <Sparkles className="h-3.5 w-3.5 text-brand-600" strokeWidth={2} />
         Asistente PROL
       </div>
 
-      <div className="mt-4 rounded-2xl border border-ink-200 bg-ink-50/70 p-4">
+      <div className="mt-4 min-h-[88px] rounded-2xl border border-ink-200 bg-ink-50/70 p-4">
         <p className="text-[11px] font-medium uppercase tracking-wider text-ink-400">
           Describe el tema
         </p>
-        <p className="mt-1.5 font-mono text-sm leading-relaxed text-ink-900 sm:text-[15px]">
+        <p className="mt-1.5 min-h-[2.6em] font-mono text-sm leading-relaxed text-ink-900 sm:text-[15px]">
           {typed}
           <span
             aria-hidden
@@ -145,7 +145,7 @@ export function AIPromptTicker() {
         })}
 
         {phase === "typing" &&
-          [0, 1, 2].map((i) => (
+          [0, 1, 2, 3].map((i) => (
             <li
               key={`skeleton-${i}`}
               className="flex items-center gap-3 rounded-xl border border-ink-100 bg-white p-3"
@@ -153,7 +153,7 @@ export function AIPromptTicker() {
               <span className="h-5 w-5 shrink-0 rounded-md bg-ink-100" />
               <span
                 className="h-3 flex-1 rounded-full bg-ink-100"
-                style={{ width: `${85 - i * 18}%` }}
+                style={{ width: `${88 - i * 14}%` }}
               />
             </li>
           ))}
