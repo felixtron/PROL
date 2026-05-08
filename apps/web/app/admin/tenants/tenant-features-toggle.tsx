@@ -5,7 +5,11 @@ import { toggleTenantFeature } from "@/lib/actions/admin";
 
 interface TenantFeaturesToggleProps {
   tenantId: string;
-  feature: "aiEnabled" | "workshopsEnabled" | "evaluationsEnabled";
+  feature:
+    | "aiEnabled"
+    | "workshopsEnabled"
+    | "evaluationsEnabled"
+    | "surveysEnabled";
   enabled: boolean;
   label: string;
 }

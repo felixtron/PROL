@@ -192,6 +192,17 @@ enum CourseDraftStatus {
   ABANDONED
 }
 
+enum SurveyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SurveyQuestionType {
+  RATING_STARS
+  MULTIPLE_CHOICE
+}
+
 enum DraftOperationType {
   BRIEFING_SUBMITTED
   REFINEMENT_GENERATED
@@ -213,10 +224,10 @@ enum DraftOperationType {
 /// The creator's branded academy — top-level tenant in the multi-tenant model.
 /// Resolved via subdomain: {slug}.prol.prosuite.pro or via customDomain.
 model Tenant {
-  id               String       @id @default(cuid())
-  name             String
-  slug             String       @unique
-  customDomain     String?      @unique @map("custom_domain")
+  id           String  @id @default(cuid())
+  name         String
+  slug         String  @unique
+  customDomain String? @unique @map("custom_domain")
 
   // Revenue & billing
   revenueShareRate Float        @default(0.30) @map("revenue_share_rate")
@@ -225,22 +236,23 @@ model Tenant {
   stripeAccountId  String?      @map("stripe_account_id")
 
   // Branding
-  logo             String?
-  primaryColor     String       @default("#6366f1") @map("primary_color")
-  accentColor      String       @default("#f59e0b") @map("accent_color")
-  favicon          String?
-  customCss        String?      @map("custom_css")
+  logo         String?
+  primaryColor String  @default("#6366f1") @map("primary_color")
+  accentColor  String  @default("#f59e0b") @map("accent_color")
+  favicon      String?
+  customCss    String? @map("custom_css")
 
   // Contact
-  contactEmail     String?      @map("contact_email")
-  phone            String?
-  socialLinks      Json?        @map("social_links")
+  contactEmail String? @map("contact_email")
+  phone        String?
+  socialLinks  Json?   @map("social_links")
 
   // Feature flags
-  workshopsEnabled   Boolean    @default(false) @map("workshops_enabled")
-  aiEnabled          Boolean    @default(false) @map("ai_enabled")
-  companiesEnabled   Boolean    @default(true) @map("companies_enabled")
-  evaluationsEnabled Boolean    @default(false) @map("evaluations_enabled")
+  workshopsEnabled   Boolean @default(false) @map("workshops_enabled")
+  aiEnabled          Boolean @default(false) @map("ai_enabled")
+  companiesEnabled   Boolean @default(true) @map("companies_enabled")
+  evaluationsEnabled Boolean @default(false) @map("evaluations_enabled")
+  surveysEnabled     Boolean @default(false) @map("surveys_enabled")
 
   // AI billing — plan and credit balance (prices defined later, structure ready)
   aiPlan             String    @default("none") @map("ai_plan")
@@ -249,26 +261,27 @@ model Tenant {
   aiAllotmentResetAt DateTime? @map("ai_allotment_reset_at")
 
   // Certificate folio prefix (e.g. "PROL", "ACME", etc.)
-  certificatePrefix String      @default("PROL") @map("certificate_prefix")
+  certificatePrefix String @default("PROL") @map("certificate_prefix")
 
-  createdAt        DateTime     @default(now()) @map("created_at")
-  updatedAt        DateTime     @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  users            User[]
-  courses          Course[]
-  enrollments      Enrollment[]
-  payments         CoursePayment[]
-  workshops        Workshop[]
-  certificates     Certificate[]
-  auditLogs        AuditLog[]
-  notifications    Notification[]
-  aiGenerationJobs AIGenerationJob[]
-  companies          Company[]
+  users               User[]
+  courses             Course[]
+  enrollments         Enrollment[]
+  payments            CoursePayment[]
+  workshops           Workshop[]
+  certificates        Certificate[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  aiGenerationJobs    AIGenerationJob[]
+  companies           Company[]
   certificateCounters CertificateCounter[]
-  courseDrafts       CourseDraft[]
-  aiCreditsLedger    AICreditsLedger[]
-  evaluations        Evaluation[]
+  courseDrafts        CourseDraft[]
+  aiCreditsLedger     AICreditsLedger[]
+  evaluations         Evaluation[]
+  surveys             Survey[]
 
   @@index([slug])
   @@index([status])
@@ -279,51 +292,52 @@ model Tenant {
 /// All platform users: students, professors, tenant admins, and super admins.
 /// Authenticated via Better Auth. SUPER_ADMIN users have tenantId = null.
 model User {
-  id                    String   @id @default(cuid())
-  email                 String   @unique
-  emailVerified         Boolean  @default(false) @map("email_verified")
-  name                  String?
-  image                 String?
-  avatar                String?
-  role                  UserRole @default(STUDENT)
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  name          String?
+  image         String?
+  avatar        String?
+  role          UserRole @default(STUDENT)
 
-  tenantId              String?  @map("tenant_id")
-  tenant                Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String? @map("tenant_id")
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  companyId             String?  @map("company_id")
-  company               Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  companyId String?  @map("company_id")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
-  stripeCustomerId      String?  @unique @map("stripe_customer_id")
+  stripeCustomerId String? @unique @map("stripe_customer_id")
 
-  onboardingCompleted   Boolean  @default(false) @map("onboarding_completed")
-  mustResetPassword     Boolean  @default(false) @map("must_reset_password")
-  disabledAt            DateTime? @map("disabled_at")
-  lastLoginAt           DateTime? @map("last_login_at")
+  onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  mustResetPassword   Boolean   @default(false) @map("must_reset_password")
+  disabledAt          DateTime? @map("disabled_at")
+  lastLoginAt         DateTime? @map("last_login_at")
 
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  sessions              Session[]
-  accounts              Account[]
-  taughtCourses         Course[]              @relation("CourseProfessor")
-  enrollments           Enrollment[]
-  payments              CoursePayment[]
-  workshops             Workshop[]            @relation("WorkshopProfessor")
-  workshopBookings      WorkshopBooking[]
-  workshopAttendances   WorkshopAttendance[]
-  notifications         Notification[]
-  auditLogs             AuditLog[]
-  aiGenerationJobs      AIGenerationJob[]
-  invitationsSent       CompanyInvitation[]   @relation("InvitationsSent")
-  assignmentsMade       CompanyCourseAssignment[] @relation("AssignmentsMade")
-  courseDrafts          CourseDraft[]
-  companyLed            Company?              @relation("CompanyLeader")
-  evaluationsCreated    Evaluation[]          @relation("EvaluationAuthor")
-  evaluationAssignmentsMade   EvaluationAssignment[]  @relation("EvaluationAssignedBy")
-  evaluationParticipations    EvaluationParticipant[] @relation("EvaluationParticipantUser")
-  evaluationParticipantsAdded EvaluationParticipant[] @relation("EvaluationParticipantAddedBy")
+  sessions                    Session[]
+  accounts                    Account[]
+  taughtCourses               Course[]                  @relation("CourseProfessor")
+  enrollments                 Enrollment[]
+  payments                    CoursePayment[]
+  workshops                   Workshop[]                @relation("WorkshopProfessor")
+  workshopBookings            WorkshopBooking[]
+  workshopAttendances         WorkshopAttendance[]
+  notifications               Notification[]
+  auditLogs                   AuditLog[]
+  aiGenerationJobs            AIGenerationJob[]
+  invitationsSent             CompanyInvitation[]       @relation("InvitationsSent")
+  assignmentsMade             CompanyCourseAssignment[] @relation("AssignmentsMade")
+  courseDrafts                CourseDraft[]
+  companyLed                  Company?                  @relation("CompanyLeader")
+  evaluationsCreated          Evaluation[]              @relation("EvaluationAuthor")
+  evaluationAssignmentsMade   EvaluationAssignment[]    @relation("EvaluationAssignedBy")
+  evaluationParticipations    EvaluationParticipant[]   @relation("EvaluationParticipantUser")
+  evaluationParticipantsAdded EvaluationParticipant[]   @relation("EvaluationParticipantAddedBy")
   evaluationSubmissions       EvaluationSubmission[]
+  surveysCreated              Survey[]                  @relation("SurveysCreated")
 
   @@index([tenantId])
   @@index([companyId])
@@ -334,9 +348,9 @@ model User {
 
 /// Better Auth session — tracks active login sessions per user.
 model Session {
-  id        String   @id
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   token     String   @unique
   expiresAt DateTime @map("expires_at")
@@ -353,9 +367,9 @@ model Session {
 
 /// Better Auth account — links OAuth providers and credentials to a user.
 model Account {
-  id                    String    @id
-  userId                String    @map("user_id")
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   accountId             String    @map("account_id")
   providerId            String    @map("provider_id")
@@ -367,8 +381,8 @@ model Account {
   idToken               String?   @map("id_token")
   password              String?
 
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([userId])
   @@map("accounts")
@@ -381,8 +395,8 @@ model Verification {
   value      String
   expiresAt  DateTime @map("expires_at")
 
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("verifications")
 }
@@ -390,40 +404,40 @@ model Verification {
 /// A course offered within a tenant's academy.
 /// Scoped by tenantId + slug for clean URLs.
 model Course {
-  id                   String       @id @default(cuid())
-  tenantId             String       @map("tenant_id")
-  tenant               Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  professorId          String       @map("professor_id")
-  professor            User         @relation("CourseProfessor", fields: [professorId], references: [id], onDelete: Restrict)
+  professorId String @map("professor_id")
+  professor   User   @relation("CourseProfessor", fields: [professorId], references: [id], onDelete: Restrict)
 
-  title                String
-  slug                 String
-  description          String?
-  thumbnail            String?
-  previewVideoUrl      String?      @map("preview_video_url")
+  title           String
+  slug            String
+  description     String?
+  thumbnail       String?
+  previewVideoUrl String? @map("preview_video_url")
 
-  priceInCents         Int          @map("price_in_cents")
-  currency             String       @default("MXN")
+  priceInCents Int    @map("price_in_cents")
+  currency     String @default("MXN")
 
-  status               CourseStatus @default(DRAFT)
-  publishedAt          DateTime?    @map("published_at")
+  status      CourseStatus @default(DRAFT)
+  publishedAt DateTime?    @map("published_at")
 
-  category             String?
-  tags                 Json?
+  category String?
+  tags     Json?
 
-  totalDurationMinutes Int          @default(0) @map("total_duration_minutes")
-  totalLessons         Int          @default(0) @map("total_lessons")
+  totalDurationMinutes Int @default(0) @map("total_duration_minutes")
+  totalLessons         Int @default(0) @map("total_lessons")
 
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  modules              Module[]
-  enrollments          Enrollment[]
-  payments             CoursePayment[]
-  workshops            Workshop[]
-  companyAssignments   CompanyCourseAssignment[]
+  modules            Module[]
+  enrollments        Enrollment[]
+  payments           CoursePayment[]
+  workshops          Workshop[]
+  companyAssignments CompanyCourseAssignment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -435,21 +449,21 @@ model Course {
 
 /// A section/module within a course, used to group lessons.
 model Module {
-  id          String   @id @default(cuid())
-  courseId    String   @map("course_id")
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   title       String
   description String?
   position    Int
-  isPublished Boolean  @default(false) @map("is_published")
+  isPublished Boolean @default(false) @map("is_published")
 
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  lessons     Lesson[]
-  workshops   Workshop[]
+  lessons   Lesson[]
+  workshops Workshop[]
 
   @@index([courseId])
   @@index([courseId, position])
@@ -458,33 +472,33 @@ model Module {
 
 /// An individual lesson within a module. Can be video, text, quiz, or assignment.
 model Lesson {
-  id                   String     @id @default(cuid())
-  moduleId             String     @map("module_id")
-  module               Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  moduleId String @map("module_id")
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
-  title                String
-  description          String?
-  position             Int
-  type                 LessonType @default(VIDEO)
+  title       String
+  description String?
+  position    Int
+  type        LessonType @default(VIDEO)
 
-  videoUrl             String?    @map("video_url")
+  videoUrl             String?        @map("video_url")
   videoProvider        VideoProvider? @default(CLOUDFLARE) @map("video_provider")
-  videoRawUrl          String?    @map("video_raw_url")
-  videoHash            String?    @map("video_hash")
-  videoDurationSeconds Int?       @map("video_duration_seconds")
+  videoRawUrl          String?        @map("video_raw_url")
+  videoHash            String?        @map("video_hash")
+  videoDurationSeconds Int?           @map("video_duration_seconds")
   content              Json?
 
   // AI-generated content
-  transcript           Json?      @map("transcript")
-  summary              String?    @map("summary")
-  aiGenerated          Boolean    @default(false) @map("ai_generated")
-  aiStatus             String?    @map("ai_status")
+  transcript  Json?   @map("transcript")
+  summary     String? @map("summary")
+  aiGenerated Boolean @default(false) @map("ai_generated")
+  aiStatus    String? @map("ai_status")
 
-  isPublished          Boolean    @default(false) @map("is_published")
-  isFree               Boolean    @default(false) @map("is_free")
+  isPublished Boolean @default(false) @map("is_published")
+  isFree      Boolean @default(false) @map("is_free")
 
-  createdAt            DateTime   @default(now()) @map("created_at")
-  updatedAt            DateTime   @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   interactiveStops      InteractiveStop[]
@@ -499,20 +513,20 @@ model Lesson {
 
 /// A pause point during video playback that presents an interactive element.
 model InteractiveStop {
-  id               String              @id @default(cuid())
-  lessonId         String              @map("lesson_id")
-  lesson           Lesson              @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  lessonId String @map("lesson_id")
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   timestampSeconds Int                 @map("timestamp_seconds")
   type             InteractiveStopType
   content          Json
   isRequired       Boolean             @default(true) @map("is_required")
 
-  createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  responses        InteractiveStopResponse[]
+  responses InteractiveStopResponse[]
 
   @@index([lessonId])
   @@index([lessonId, timestampSeconds])
@@ -521,25 +535,25 @@ model InteractiveStop {
 
 /// A quiz attached to a lesson.
 model Quiz {
-  id           String   @id @default(cuid())
-  lessonId     String   @map("lesson_id")
-  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  lessonId String @map("lesson_id")
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   title        String
-  passingScore Int      @default(70) @map("passing_score")
+  passingScore Int    @default(70) @map("passing_score")
   questions    Json
-  timeLimit    Int?     @map("time_limit")
-  maxAttempts  Int      @default(3) @map("max_attempts")
+  timeLimit    Int?   @map("time_limit")
+  maxAttempts  Int    @default(3) @map("max_attempts")
 
   // When true, passing this quiz triggers certificate issuance for the course.
   // Each course should have at most one quiz with isFinalExam=true.
-  isFinalExam  Boolean  @default(false) @map("is_final_exam")
+  isFinalExam Boolean @default(false) @map("is_final_exam")
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  attempts     QuizAttempt[]
+  attempts QuizAttempt[]
 
   @@index([lessonId])
   @@map("quizzes")
@@ -547,29 +561,29 @@ model Quiz {
 
 /// Represents a student's enrollment in a course. Tracks overall progress.
 model Enrollment {
-  id          String           @id @default(cuid())
-  studentId   String           @map("student_id")
-  student     User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id        String @id @default(cuid())
+  studentId String @map("student_id")
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  courseId    String           @map("course_id")
-  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  tenantId   String           @map("tenant_id")
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  status      EnrollmentStatus @default(ACTIVE)
-  progress    Float            @default(0)
+  status   EnrollmentStatus @default(ACTIVE)
+  progress Float            @default(0)
 
-  enrolledAt  DateTime         @default(now()) @map("enrolled_at")
-  completedAt DateTime?        @map("completed_at")
+  enrolledAt  DateTime  @default(now()) @map("enrolled_at")
+  completedAt DateTime? @map("completed_at")
 
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  lessonProgresses     LessonProgress[]
-  quizAttempts         QuizAttempt[]
-  certificate          Certificate?
+  lessonProgresses      LessonProgress[]
+  quizAttempts          QuizAttempt[]
+  certificate           Certificate?
   assignmentSubmissions AssignmentSubmission[]
 
   @@unique([studentId, courseId])
@@ -582,12 +596,12 @@ model Enrollment {
 
 /// Tracks a student's progress through an individual lesson.
 model LessonProgress {
-  id                   String               @id @default(cuid())
-  enrollmentId         String               @map("enrollment_id")
-  enrollment           Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  enrollmentId String     @map("enrollment_id")
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
-  lessonId             String               @map("lesson_id")
-  lesson               Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId String @map("lesson_id")
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   status               LessonProgressStatus @default(NOT_STARTED)
   videoPositionSeconds Int                  @default(0) @map("video_position_seconds")
@@ -595,10 +609,10 @@ model LessonProgress {
 
   // For MULTI lessons: tracks per-block completion
   // Schema: { videoWatchedSeconds?: number, pdfDownloadedAt?: string, blockProgress?: { [blockId: string]: boolean } }
-  metadata             Json?
+  metadata Json?
 
-  createdAt            DateTime             @default(now()) @map("created_at")
-  updatedAt            DateTime             @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   interactiveStopResponses InteractiveStopResponse[]
@@ -611,16 +625,16 @@ model LessonProgress {
 
 /// A student's response to an interactive stop during video playback.
 model InteractiveStopResponse {
-  id                String         @id @default(cuid())
-  lessonProgressId  String         @map("lesson_progress_id")
-  lessonProgress    LessonProgress @relation(fields: [lessonProgressId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  lessonProgressId String         @map("lesson_progress_id")
+  lessonProgress   LessonProgress @relation(fields: [lessonProgressId], references: [id], onDelete: Cascade)
 
-  interactiveStopId String         @map("interactive_stop_id")
+  interactiveStopId String          @map("interactive_stop_id")
   interactiveStop   InteractiveStop @relation(fields: [interactiveStopId], references: [id], onDelete: Cascade)
 
-  response          Json
-  isCorrect         Boolean?       @map("is_correct")
-  respondedAt       DateTime       @default(now()) @map("responded_at")
+  response    Json
+  isCorrect   Boolean? @map("is_correct")
+  respondedAt DateTime @default(now()) @map("responded_at")
 
   @@index([lessonProgressId])
   @@index([interactiveStopId])
@@ -633,15 +647,15 @@ model QuizAttempt {
   enrollmentId String     @map("enrollment_id")
   enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
-  quizId       String     @map("quiz_id")
-  quiz         Quiz       @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId String @map("quiz_id")
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
-  answers      Json
-  score        Int
-  passed       Boolean
+  answers Json
+  score   Int
+  passed  Boolean
 
-  startedAt    DateTime   @default(now()) @map("started_at")
-  completedAt  DateTime?  @map("completed_at")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
 
   @@index([enrollmentId])
   @@index([quizId])
@@ -658,24 +672,24 @@ enum AssignmentSubmissionStatus {
 /// The professor configures the assignment via Lesson.content (instructions
 /// + optional PDF). Students upload their work as fileUrl + optional notes.
 model AssignmentSubmission {
-  id           String                     @id @default(cuid())
-  enrollmentId String                     @map("enrollment_id")
-  enrollment   Enrollment                 @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  enrollmentId String     @map("enrollment_id")
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
-  lessonId     String                     @map("lesson_id")
-  lesson       Lesson                     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId String @map("lesson_id")
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  fileUrl      String?                    @map("file_url")
-  fileName     String?                    @map("file_name")
-  fileSize     Int?                       @map("file_size")
-  notes        String?
+  fileUrl  String? @map("file_url")
+  fileName String? @map("file_name")
+  fileSize Int?    @map("file_size")
+  notes    String?
 
-  status       AssignmentSubmissionStatus @default(SUBMITTED)
-  grade        Int?
-  feedback     String?
+  status   AssignmentSubmissionStatus @default(SUBMITTED)
+  grade    Int?
+  feedback String?
 
-  submittedAt  DateTime                   @default(now()) @map("submitted_at")
-  reviewedAt   DateTime?                  @map("reviewed_at")
+  submittedAt DateTime  @default(now()) @map("submitted_at")
+  reviewedAt  DateTime? @map("reviewed_at")
 
   @@unique([enrollmentId, lessonId])
   @@index([lessonId])
@@ -687,34 +701,34 @@ model AssignmentSubmission {
 /// Payment record for a course purchase via Stripe Connect.
 /// Stores revenue share snapshot at the time of payment.
 model CoursePayment {
-  id               String        @id @default(cuid())
-  tenantId         String        @map("tenant_id")
-  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  studentId        String        @map("student_id")
-  student          User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String @map("student_id")
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  courseId          String        @map("course_id")
-  course           Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  amount           Int
-  currency         String        @default("MXN")
+  amount   Int
+  currency String @default("MXN")
 
-  revenueShareRate Float         @map("revenue_share_rate")
-  prolFee          Int           @map("prol_fee")
-  creatorReceives  Int           @map("creator_receives")
-  stripeFee        Int           @map("stripe_fee")
+  revenueShareRate Float @map("revenue_share_rate")
+  prolFee          Int   @map("prol_fee")
+  creatorReceives  Int   @map("creator_receives")
+  stripeFee        Int   @map("stripe_fee")
 
-  stripePaymentId  String        @unique @map("stripe_payment_id")
-  paymentMethod    PaymentMethod @map("payment_method")
-  status           PaymentStatus @default(PENDING)
+  stripePaymentId String        @unique @map("stripe_payment_id")
+  paymentMethod   PaymentMethod @map("payment_method")
+  status          PaymentStatus @default(PENDING)
 
   // For OXXO/SPEI: URL to the hosted voucher with payment instructions
-  voucherUrl       String?       @map("voucher_url")
-  voucherExpiresAt DateTime?     @map("voucher_expires_at")
+  voucherUrl       String?   @map("voucher_url")
+  voucherExpiresAt DateTime? @map("voucher_expires_at")
 
-  paidAt           DateTime?     @map("paid_at")
-  createdAt        DateTime      @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([studentId])
@@ -726,33 +740,33 @@ model CoursePayment {
 
 /// A scheduled workshop session (in-person, virtual, or hybrid).
 model Workshop {
-  id              String               @id @default(cuid())
-  tenantId        String               @map("tenant_id")
-  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  courseId         String               @map("course_id")
-  course          Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  moduleId        String?              @map("module_id")
-  module          Module?              @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  moduleId String? @map("module_id")
+  module   Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
 
-  professorId     String               @map("professor_id")
-  professor       User                 @relation("WorkshopProfessor", fields: [professorId], references: [id], onDelete: Restrict)
+  professorId String @map("professor_id")
+  professor   User   @relation("WorkshopProfessor", fields: [professorId], references: [id], onDelete: Restrict)
 
-  title           String
-  description     String?
-  type            WorkshopType         @default(IN_PERSON)
+  title       String
+  description String?
+  type        WorkshopType @default(IN_PERSON)
 
-  locationName    String?              @map("location_name")
-  locationAddress String?              @map("location_address")
-  locationMapUrl  String?              @map("location_map_url")
-  meetingUrl      String?              @map("meeting_url")
+  locationName    String? @map("location_name")
+  locationAddress String? @map("location_address")
+  locationMapUrl  String? @map("location_map_url")
+  meetingUrl      String? @map("meeting_url")
 
-  startTime       DateTime             @map("start_time")
-  endTime         DateTime             @map("end_time")
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
 
-  maxAttendees    Int                  @map("max_attendees")
-  minAttendees    Int                  @default(3) @map("min_attendees")
+  maxAttendees Int @map("max_attendees")
+  minAttendees Int @default(3) @map("min_attendees")
 
   isRequired      Boolean              @default(false) @map("is_required")
   prerequisite    WorkshopPrerequisite @default(NONE)
@@ -763,19 +777,19 @@ model Workshop {
   // additional occurrence is created as a child pointing back to the parent
   // via parentWorkshopId. The frequency is informational and stored on every
   // member of the series (parent + children) for easy filtering.
-  parentWorkshopId    String?           @map("parent_workshop_id")
-  parentWorkshop      Workshop?         @relation("WorkshopRecurrence", fields: [parentWorkshopId], references: [id], onDelete: Cascade)
-  childWorkshops      Workshop[]        @relation("WorkshopRecurrence")
+  parentWorkshopId    String?              @map("parent_workshop_id")
+  parentWorkshop      Workshop?            @relation("WorkshopRecurrence", fields: [parentWorkshopId], references: [id], onDelete: Cascade)
+  childWorkshops      Workshop[]           @relation("WorkshopRecurrence")
   recurrenceFrequency RecurrenceFrequency? @map("recurrence_frequency")
 
-  status          WorkshopStatus       @default(SCHEDULED)
+  status WorkshopStatus @default(SCHEDULED)
 
-  createdAt       DateTime             @default(now()) @map("created_at")
-  updatedAt       DateTime             @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  bookings        WorkshopBooking[]
-  attendances     WorkshopAttendance[]
+  bookings    WorkshopBooking[]
+  attendances WorkshopAttendance[]
 
   @@index([tenantId])
   @@index([courseId])
@@ -789,18 +803,18 @@ model Workshop {
 
 /// A student's booking/reservation for a workshop.
 model WorkshopBooking {
-  id               String        @id @default(cuid())
-  workshopId       String        @map("workshop_id")
-  workshop         Workshop      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  workshopId String   @map("workshop_id")
+  workshop   Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
 
-  studentId        String        @map("student_id")
-  student          User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String @map("student_id")
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   status           BookingStatus @default(CONFIRMED)
   waitlistPosition Int?          @map("waitlist_position")
 
-  bookedAt         DateTime      @default(now()) @map("booked_at")
-  cancelledAt      DateTime?     @map("cancelled_at")
+  bookedAt    DateTime  @default(now()) @map("booked_at")
+  cancelledAt DateTime? @map("cancelled_at")
 
   @@unique([workshopId, studentId])
   @@index([workshopId])
@@ -811,19 +825,19 @@ model WorkshopBooking {
 
 /// Attendance record for a workshop session (check-in/check-out + feedback).
 model WorkshopAttendance {
-  id           String    @id @default(cuid())
-  workshopId   String    @map("workshop_id")
-  workshop     Workshop  @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  workshopId String   @map("workshop_id")
+  workshop   Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
 
-  studentId    String    @map("student_id")
-  student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String @map("student_id")
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   checkedInAt  DateTime  @map("checked_in_at")
   checkedInBy  String    @map("checked_in_by")
   checkedOutAt DateTime? @map("checked_out_at")
 
-  feedback     String?
-  rating       Int?
+  feedback String?
+  rating   Int?
 
   @@unique([workshopId, studentId])
   @@index([workshopId])
@@ -833,23 +847,23 @@ model WorkshopAttendance {
 
 /// Certificate issued upon course completion (passing the final exam with >= 80%).
 model Certificate {
-  id            String            @id @default(cuid())
-  enrollmentId  String            @unique @map("enrollment_id")
-  enrollment    Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  enrollmentId String     @unique @map("enrollment_id")
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
-  tenantId      String            @map("tenant_id")
-  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  studentName   String            @map("student_name")
-  courseName    String            @map("course_name")
-  professorName String            @map("professor_name")
+  studentName   String @map("student_name")
+  courseName    String @map("course_name")
+  professorName String @map("professor_name")
 
   // Sequential public folio: "{prefix}-{year}-{NNNN}" e.g. "PROL-2026-0042"
-  folio         String            @unique
+  folio  String @unique
   // Random hash kept for backwards-compat / private references
-  hash          String            @unique
+  hash   String @unique
   // SHA-256 of the canonical certificate data (anti-forgery, verifiable)
-  sha256        String            @map("sha256")
+  sha256 String @map("sha256")
 
   status        CertificateStatus @default(ACTIVE)
   issuedAt      DateTime          @default(now()) @map("issued_at")
@@ -858,10 +872,10 @@ model Certificate {
   revokedReason String?           @map("revoked_reason")
 
   // Snapshot of the final exam score that triggered issuance
-  finalExamScore Int?             @map("final_exam_score")
+  finalExamScore Int? @map("final_exam_score")
 
-  pdfUrl        String?           @map("pdf_url")
-  metadata      Json?
+  pdfUrl   String? @map("pdf_url")
+  metadata Json?
 
   @@index([tenantId])
   @@index([folio])
@@ -873,11 +887,11 @@ model Certificate {
 /// Counter for sequential certificate folios per tenant per year.
 /// Avoids race conditions when generating folios concurrently.
 model CertificateCounter {
-  id        String   @id @default(cuid())
-  tenantId  String   @map("tenant_id")
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  year      Int
-  lastSeq   Int      @default(0) @map("last_seq")
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  year     Int
+  lastSeq  Int    @default(0) @map("last_seq")
 
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -892,35 +906,37 @@ model CertificateCounter {
 /// A company groups users within a tenant. Used for B2B scenarios where
 /// an organization wants to manage its own employees as students.
 model Company {
-  id                       String   @id @default(cuid())
-  tenantId                 String   @map("tenant_id")
-  tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  name                     String
-  slug                     String
-  logo                     String?
-  contactEmail             String?  @map("contact_email")
-  seatsLimit               Int?     @map("seats_limit")
+  name         String
+  slug         String
+  logo         String?
+  contactEmail String? @map("contact_email")
+  seatsLimit   Int?    @map("seats_limit")
 
   // When true, current members can invite new users to the company.
   // When false, only ADMIN/SUPER_ADMIN (and the company leader, if any)
   // can add members.
-  allowMemberInvitations   Boolean  @default(false) @map("allow_member_invitations")
+  allowMemberInvitations Boolean @default(false) @map("allow_member_invitations")
 
   // Optional company leader: a regular STUDENT member granted two extra
   // capabilities — invite new members and view a team progress report.
   // Set/unset by tenant admins.
-  leaderId                 String?  @unique @map("leader_id")
-  leader                   User?    @relation("CompanyLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  leaderId String? @unique @map("leader_id")
+  leader   User?   @relation("CompanyLeader", fields: [leaderId], references: [id], onDelete: SetNull)
 
-  createdAt                DateTime @default(now()) @map("created_at")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  members                  User[]
-  invitations              CompanyInvitation[]
-  courseAssignments        CompanyCourseAssignment[]
-  evaluationAssignments    EvaluationAssignment[]
+  members                 User[]
+  invitations             CompanyInvitation[]
+  courseAssignments       CompanyCourseAssignment[]
+  evaluationAssignments   EvaluationAssignment[]
+  surveysAssigned         Survey[]                  @relation("SurveysForCompany")
+  surveyResponsesReceived SurveyResponse[]          @relation("SurveyRespondentCompany")
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -929,20 +945,20 @@ model Company {
 
 /// Pending invitation for a user to join a company.
 model CompanyInvitation {
-  id         String           @id @default(cuid())
-  companyId  String           @map("company_id")
-  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  companyId String  @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  email      String
-  invitedBy  String           @map("invited_by")
-  inviter    User             @relation("InvitationsSent", fields: [invitedBy], references: [id], onDelete: Cascade)
+  email     String
+  invitedBy String @map("invited_by")
+  inviter   User   @relation("InvitationsSent", fields: [invitedBy], references: [id], onDelete: Cascade)
 
-  token      String           @unique
-  status     InvitationStatus @default(PENDING)
+  token  String           @unique
+  status InvitationStatus @default(PENDING)
 
-  expiresAt  DateTime         @map("expires_at")
-  acceptedAt DateTime?        @map("accepted_at")
-  createdAt  DateTime         @default(now()) @map("created_at")
+  expiresAt  DateTime  @map("expires_at")
+  acceptedAt DateTime? @map("accepted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   @@index([companyId])
   @@index([email])
@@ -954,15 +970,15 @@ model CompanyInvitation {
 /// Assignment of a course to a company. Members of the company gain
 /// the ability to enroll in the course without paying.
 model CompanyCourseAssignment {
-  id         String    @id @default(cuid())
-  companyId  String    @map("company_id")
-  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  companyId String  @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  courseId   String    @map("course_id")
-  course     Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  assignedBy String    @map("assigned_by")
-  assigner   User      @relation("AssignmentsMade", fields: [assignedBy], references: [id], onDelete: Cascade)
+  assignedBy String @map("assigned_by")
+  assigner   User   @relation("AssignmentsMade", fields: [assignedBy], references: [id], onDelete: Cascade)
 
   assignedAt DateTime  @default(now()) @map("assigned_at")
   expiresAt  DateTime? @map("expires_at")
@@ -977,18 +993,18 @@ model CompanyCourseAssignment {
 
 /// Immutable audit trail for compliance and debugging.
 model AuditLog {
-  id        String   @id @default(cuid())
-  tenantId  String?  @map("tenant_id")
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  id       String  @id @default(cuid())
+  tenantId String? @map("tenant_id")
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
 
-  userId    String?  @map("user_id")
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   action    String
   entity    String
-  entityId  String   @map("entity_id")
+  entityId  String  @map("entity_id")
   metadata  Json?
-  ipAddress String?  @map("ip_address")
+  ipAddress String? @map("ip_address")
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -1001,20 +1017,20 @@ model AuditLog {
 
 /// In-app notification for users.
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String           @map("user_id")
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  tenantId  String           @map("tenant_id")
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  type      NotificationType
-  title     String
-  message   String
-  link      String?
+  type    NotificationType
+  title   String
+  message String
+  link    String?
 
-  isRead    Boolean          @default(false) @map("is_read")
-  createdAt DateTime         @default(now()) @map("created_at")
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([tenantId])
@@ -1056,44 +1072,44 @@ model AIGenerationJob {
 /// (briefing → refinement → generation → editing). Persists between sessions.
 /// When accepted, spawns a real Course and gets marked PUBLISHED.
 model CourseDraft {
-  id                String            @id @default(cuid())
-  tenantId          String            @map("tenant_id")
-  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  professorId       String            @map("professor_id")
-  professor         User              @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  professorId String @map("professor_id")
+  professor   User   @relation(fields: [professorId], references: [id], onDelete: Cascade)
 
-  status            CourseDraftStatus @default(BRIEFING)
+  status CourseDraftStatus @default(BRIEFING)
 
   // Step 1: briefing
-  topic             String
-  audience          String
-  level             String            @default("intermediate")
-  moduleCount       Int               @map("module_count")
-  lessonsPerModule  Int               @map("lessons_per_module")
-  language          String            @default("es")
+  topic            String
+  audience         String
+  level            String @default("intermediate")
+  moduleCount      Int    @map("module_count")
+  lessonsPerModule Int    @map("lessons_per_module")
+  language         String @default("es")
 
   // Step 2: refinement — { inferences: {...}, userAnswers: {...}, warnings: [...] }
-  refinement        Json?
+  refinement Json?
 
   // Step 3: generated outline (see CourseOutlineV2 type in app code)
-  outline           Json?
-  outlineModel      String?           @map("outline_model")
-  outlineTokens     Int?              @map("outline_tokens")
+  outline       Json?
+  outlineModel  String? @map("outline_model")
+  outlineTokens Int?    @map("outline_tokens")
 
   // Cumulative cost in USD cents (for internal billing + quota enforcement)
-  totalCostCents    Int               @default(0) @map("total_cost_cents")
-  creditsConsumed   Int               @default(0) @map("credits_consumed")
+  totalCostCents  Int @default(0) @map("total_cost_cents")
+  creditsConsumed Int @default(0) @map("credits_consumed")
 
   // Link to the real Course spawned on acceptance
-  publishedCourseId String?           @unique @map("published_course_id")
+  publishedCourseId String? @unique @map("published_course_id")
 
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  publishedAt       DateTime?         @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  publishedAt DateTime? @map("published_at")
 
-  versions          CourseDraftVersion[]
-  operations        CourseDraftOperation[]
+  versions   CourseDraftVersion[]
+  operations CourseDraftOperation[]
 
   @@index([tenantId])
   @@index([professorId])
@@ -1104,15 +1120,15 @@ model CourseDraft {
 
 /// Immutable snapshot of a draft outline at a point in time. Enables rollback.
 model CourseDraftVersion {
-  id        String      @id @default(cuid())
-  draftId   String      @map("draft_id")
-  draft     CourseDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  id      String      @id @default(cuid())
+  draftId String      @map("draft_id")
+  draft   CourseDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
 
-  version   Int
-  snapshot  Json
-  reason    String?
+  version  Int
+  snapshot Json
+  reason   String?
 
-  createdAt DateTime    @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@unique([draftId, version])
   @@index([draftId])
@@ -1121,9 +1137,9 @@ model CourseDraftVersion {
 
 /// Per-operation log for audit, analytics, and cost tracking.
 model CourseDraftOperation {
-  id         String             @id @default(cuid())
-  draftId    String             @map("draft_id")
-  draft      CourseDraft        @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  id      String      @id @default(cuid())
+  draftId String      @map("draft_id")
+  draft   CourseDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
 
   type       DraftOperationType
   target     String?
@@ -1136,7 +1152,7 @@ model CourseDraftOperation {
   credits    Int?
   durationMs Int?               @map("duration_ms")
 
-  createdAt  DateTime           @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([draftId])
   @@index([type])
@@ -1148,20 +1164,20 @@ model CourseDraftOperation {
 /// negative = consumption. Source of truth for billing; Tenant.aiCreditsBalance
 /// is a cached sum maintained transactionally alongside this table.
 model AICreditsLedger {
-  id              String   @id @default(cuid())
-  tenantId        String   @map("tenant_id")
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  delta           Int
-  reason          String
-  balance         Int
+  delta   Int
+  reason  String
+  balance Int
 
-  draftId         String?  @map("draft_id")
-  operationId     String?  @map("operation_id")
-  stripePaymentId String?  @map("stripe_payment_id")
+  draftId         String? @map("draft_id")
+  operationId     String? @map("operation_id")
+  stripePaymentId String? @map("stripe_payment_id")
 
-  metadata        Json?
-  createdAt       DateTime @default(now()) @map("created_at")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([tenantId, createdAt])
@@ -1177,20 +1193,20 @@ model AICreditsLedger {
 /// professor or tenant admin. Assigned to one or more companies; inside
 /// each company, the leader designates which members must answer.
 model Evaluation {
-  id          String            @id @default(cuid())
-  tenantId    String            @map("tenant_id")
-  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  createdById String            @map("created_by")
-  createdBy   User              @relation("EvaluationAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById String @map("created_by")
+  createdBy   User   @relation("EvaluationAuthor", fields: [createdById], references: [id], onDelete: Restrict)
 
   title       String
   description String?
   methodology String?
-  status      EvaluationStatus  @default(DRAFT)
+  status      EvaluationStatus @default(DRAFT)
 
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   sections    EvaluationSection[]
   assignments EvaluationAssignment[]
@@ -1204,15 +1220,15 @@ model Evaluation {
 /// negative answers are interpreted in the consolidated report
 /// (INTERNAL → Fortaleza/Debilidad, EXTERNAL → Oportunidad/Amenaza).
 model EvaluationSection {
-  id           String                @id @default(cuid())
-  evaluationId String                @map("evaluation_id")
-  evaluation   Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  evaluationId String     @map("evaluation_id")
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
-  title        String
-  type         EvaluationSectionType
-  position     Int                   @default(0)
+  title    String
+  type     EvaluationSectionType
+  position Int                   @default(0)
 
-  questions    EvaluationQuestion[]
+  questions EvaluationQuestion[]
 
   @@index([evaluationId])
   @@map("evaluation_sections")
@@ -1220,19 +1236,19 @@ model EvaluationSection {
 
 /// A single question inside a section.
 model EvaluationQuestion {
-  id          String              @id @default(cuid())
-  sectionId   String              @map("section_id")
-  section     EvaluationSection   @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  id        String            @id @default(cuid())
+  sectionId String            @map("section_id")
+  section   EvaluationSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
-  code        String?             // e.g. "1.1"
+  code        String? // e.g. "1.1"
   label       String
   description String?
-  position    Int                 @default(0)
+  position    Int                    @default(0)
   // MULTIPLE_CHOICE → Fortaleza/Debilidad/No aplica (counts toward DAFO).
   // OPEN_TEXT → free text answer (does not count in the consolidated DAFO).
   type        EvaluationQuestionType @default(MULTIPLE_CHOICE)
 
-  answers     EvaluationAnswer[]
+  answers EvaluationAnswer[]
 
   @@index([sectionId])
   @@map("evaluation_questions")
@@ -1241,17 +1257,17 @@ model EvaluationQuestion {
 /// Assignment of an evaluation template to a specific company. The
 /// assignedBy user is the professor/admin who published it for that company.
 model EvaluationAssignment {
-  id           String                   @id @default(cuid())
-  evaluationId String                   @map("evaluation_id")
-  evaluation   Evaluation               @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  evaluationId String     @map("evaluation_id")
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
 
-  companyId    String                   @map("company_id")
-  company      Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String  @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  assignedById String                   @map("assigned_by")
-  assignedBy   User                     @relation("EvaluationAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  assignedById String @map("assigned_by")
+  assignedBy   User   @relation("EvaluationAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
 
-  assignedAt   DateTime                 @default(now()) @map("assigned_at")
+  assignedAt DateTime @default(now()) @map("assigned_at")
 
   participants EvaluationParticipant[]
 
@@ -1265,18 +1281,18 @@ model EvaluationAssignment {
 /// company's leader(s) are added automatically; the leader can later add
 /// other members from the team.
 model EvaluationParticipant {
-  id           String                 @id @default(cuid())
-  assignmentId String                 @map("assignment_id")
-  assignment   EvaluationAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  id           String               @id @default(cuid())
+  assignmentId String               @map("assignment_id")
+  assignment   EvaluationAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 
-  userId       String                 @map("user_id")
-  user         User                   @relation("EvaluationParticipantUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation("EvaluationParticipantUser", fields: [userId], references: [id], onDelete: Cascade)
 
-  addedById    String                 @map("added_by")
-  addedBy      User                   @relation("EvaluationParticipantAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
-  addedAt      DateTime               @default(now()) @map("added_at")
+  addedById String   @map("added_by")
+  addedBy   User     @relation("EvaluationParticipantAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  addedAt   DateTime @default(now()) @map("added_at")
 
-  submissions  EvaluationSubmission[]
+  submissions EvaluationSubmission[]
 
   @@unique([assignmentId, userId])
   @@index([assignmentId])
@@ -1288,17 +1304,17 @@ model EvaluationParticipant {
 /// participant hits "Enviar" we create a new row (incrementing version);
 /// the latest submission is what counts for consolidated reports.
 model EvaluationSubmission {
-  id             String                 @id @default(cuid())
-  participantId  String                 @map("participant_id")
-  participant    EvaluationParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  id            String                @id @default(cuid())
+  participantId String                @map("participant_id")
+  participant   EvaluationParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
-  submittedById  String                 @map("submitted_by")
-  submittedBy    User                   @relation(fields: [submittedById], references: [id], onDelete: Restrict)
+  submittedById String @map("submitted_by")
+  submittedBy   User   @relation(fields: [submittedById], references: [id], onDelete: Restrict)
 
-  version        Int                    @default(1)
-  submittedAt    DateTime               @default(now()) @map("submitted_at")
+  version     Int      @default(1)
+  submittedAt DateTime @default(now()) @map("submitted_at")
 
-  answers        EvaluationAnswer[]
+  answers EvaluationAnswer[]
 
   @@unique([participantId, version])
   @@index([participantId])
@@ -1307,21 +1323,130 @@ model EvaluationSubmission {
 
 /// A single answer to one question inside a submission.
 model EvaluationAnswer {
-  id           String                @id @default(cuid())
-  submissionId String                @map("submission_id")
-  submission   EvaluationSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  id           String               @id @default(cuid())
+  submissionId String               @map("submission_id")
+  submission   EvaluationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
-  questionId   String                @map("question_id")
-  question     EvaluationQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String             @map("question_id")
+  question   EvaluationQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   // Mutually-exclusive depending on the question type:
   //  - MULTIPLE_CHOICE → `value` is set (POSITIVE/NEGATIVE/NOT_APPLICABLE).
   //  - OPEN_TEXT       → `text` is set, free-form participant response.
-  value        EvaluationAnswerValue?
-  text         String?
+  value EvaluationAnswerValue?
+  text  String?
 
   @@unique([submissionId, questionId])
   @@index([submissionId])
   @@index([questionId])
   @@map("evaluation_answers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Surveys (encuestas) — feature flagged via `Tenant.surveysEnabled`.
+// Authored by professors, distributed via a public slug to non-authenticated
+// respondents who self-identify with email + company (chosen from the
+// tenant's list). Each survey is scoped to one company whose leader is the
+// expected viewer of the aggregated results dashboard.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Top-level survey container. Public access uses `publicSlug` so the
+/// internal id never leaks. `resultsShareToken` lets the professor share
+/// the read-only results dashboard externally without granting login.
+model Survey {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  professorId String @map("professor_id")
+  professor   User   @relation("SurveysCreated", fields: [professorId], references: [id], onDelete: Cascade)
+
+  // Empresa cuyos resultados verá su líder. Una encuesta apunta a una
+  // sola empresa para que la agregación quede inequívoca.
+  companyId String  @map("company_id")
+  company   Company @relation("SurveysForCompany", fields: [companyId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String? @db.Text
+
+  publicSlug String       @unique @map("public_slug")
+  status     SurveyStatus @default(DRAFT)
+
+  resultsShareToken String? @unique @map("results_share_token")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  questions SurveyQuestion[]
+  responses SurveyResponse[]
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([professorId])
+  @@map("surveys")
+}
+
+/// One question of a survey. `options` is a JSON array of strings used
+/// only when `type = MULTIPLE_CHOICE`; ignored for `RATING_STARS` (1-5).
+model SurveyQuestion {
+  id       String @id @default(cuid())
+  surveyId String @map("survey_id")
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  type     SurveyQuestionType
+  label    String
+  position Int
+  options  Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  answers SurveyAnswer[]
+
+  @@index([surveyId, position])
+  @@map("survey_questions")
+}
+
+/// Single submission from a respondent. The (surveyId, email) pair is
+/// unique so reattempting from the same email surfaces "ya respondiste".
+/// Company is captured by FK when chosen from the dropdown, otherwise
+/// the free-text fallback (`respondentCompanyName`) preserves the
+/// answer when the responder picks "Otra…".
+model SurveyResponse {
+  id       String @id @default(cuid())
+  surveyId String @map("survey_id")
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  email String
+
+  respondentCompanyId   String?  @map("respondent_company_id")
+  respondentCompany     Company? @relation("SurveyRespondentCompany", fields: [respondentCompanyId], references: [id], onDelete: SetNull)
+  respondentCompanyName String?  @map("respondent_company_name")
+
+  submittedAt DateTime @default(now()) @map("submitted_at")
+
+  answers SurveyAnswer[]
+
+  @@unique([surveyId, email])
+  @@index([surveyId])
+  @@index([respondentCompanyId])
+  @@map("survey_responses")
+}
+
+/// Per-question answer. Exactly one of `ratingValue` / `selectedOptionIndex`
+/// is non-null based on the parent question type — enforced at the
+/// application layer (Prisma can't model "exactly one of").
+model SurveyAnswer {
+  id         String         @id @default(cuid())
+  responseId String         @map("response_id")
+  response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  questionId String         @map("question_id")
+  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  ratingValue         Int? @map("rating_value")
+  selectedOptionIndex Int? @map("selected_option_index")
+
+  @@unique([responseId, questionId])
+  @@index([questionId])
+  @@map("survey_answers")
 }
