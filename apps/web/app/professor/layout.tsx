@@ -42,6 +42,7 @@ export default async function ProfessorLayout({
       name: true,
       logo: true,
       evaluationsEnabled: true,
+      surveysEnabled: true,
       primaryColor: true,
       accentColor: true,
     },
@@ -51,6 +52,9 @@ export default async function ProfessorLayout({
     ...baseNavItems,
     ...(tenant?.evaluationsEnabled
       ? [{ label: "Evaluaciones", href: "/professor/evaluations", icon: "ClipboardCheck" as const }]
+      : []),
+    ...(tenant?.surveysEnabled
+      ? [{ label: "Encuestas", href: "/professor/surveys", icon: "ListChecks" as const }]
       : []),
     { label: "Configuración", href: "/professor/settings", icon: "Settings" },
   ];

@@ -131,6 +131,27 @@ export const requireEvaluationAuthor = cache(async () => {
 });
 
 /**
+ * Requires the current user to be allowed to author surveys: same gating
+ * as evaluation authors. Kept as a separate helper so future scoping
+ * (e.g. allowing tenant ADMIN but not regular PROFESSOR) can change in
+ * one place without touching evaluations.
+ */
+export const requireSurveyAuthor = cache(async () => {
+  const user = await requireUser();
+  if (
+    user.role !== "PROFESSOR" &&
+    user.role !== "ADMIN" &&
+    user.role !== "SUPER_ADMIN"
+  ) {
+    throw new Error("No autorizado");
+  }
+  if (user.role !== "SUPER_ADMIN" && !user.tenantId) {
+    throw new Error("No autorizado: tenant requerido");
+  }
+  return user;
+});
+
+/**
  * Requires the AI module to be enabled for the user's tenant. By default
  * any authenticated user with a tenant is acceptable; pass `roles` to
  * additionally restrict the caller (e.g. only PROFESSOR/ADMIN may author

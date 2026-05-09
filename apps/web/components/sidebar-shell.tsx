@@ -17,6 +17,7 @@ import {
   Home,
   Award,
   ClipboardCheck,
+  ListChecks,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -34,6 +35,7 @@ const ICONS: Record<string, LucideIcon> = {
   Home,
   Award,
   ClipboardCheck,
+  ListChecks,
 };
 
 export type SidebarIcon = keyof typeof ICONS;
