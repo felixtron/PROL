@@ -15,6 +15,8 @@ import {
   Share2,
   X,
   ExternalLink,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import {
   updateSurvey,
@@ -85,11 +87,149 @@ export function SurveyEditor({
 }) {
   return (
     <div className="space-y-6">
+      <PublishBanner survey={survey} />
       <SurveyHeader survey={survey} companies={companies} />
       <PublicLinkCard survey={survey} baseUrl={baseUrl} />
       <QuestionsSection survey={survey} />
       <ShareResultsCard survey={survey} baseUrl={baseUrl} />
       <DangerZone survey={survey} listHref={listHref} />
+    </div>
+  );
+}
+
+// ─── Publish banner: prominent CTA at the top of the editor ──────────────────
+
+function PublishBanner({ survey }: { survey: SurveyData }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  const questionCount = survey.questions.length;
+  const hasQuestions = questionCount > 0;
+
+  function setStatus(status: Status) {
+    setError("");
+    startTransition(async () => {
+      try {
+        await updateSurvey(survey.id, { status });
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al cambiar estado");
+      }
+    });
+  }
+
+  if (survey.status === "PUBLISHED") {
+    return (
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">
+                Encuesta publicada
+              </p>
+              <p className="mt-0.5 text-xs text-emerald-800">
+                Cualquier persona con el link público puede responderla.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatus("DRAFT")}
+            disabled={pending}
+            className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100 disabled:opacity-60"
+          >
+            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+            Volver a borrador
+          </button>
+        </div>
+        {error && (
+          <p className="mt-2 text-xs text-red-700">{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (survey.status === "ARCHIVED") {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Encuesta archivada
+              </p>
+              <p className="mt-0.5 text-xs text-amber-800">
+                El link público responde 404. Reactívala como borrador o
+                publicada para volver a recibir respuestas.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setStatus("DRAFT")}
+              disabled={pending}
+              className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-60"
+            >
+              Volver a borrador
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus("PUBLISHED")}
+              disabled={pending || !hasQuestions}
+              className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
+            >
+              Publicar
+            </button>
+          </div>
+        </div>
+        {error && (
+          <p className="mt-2 text-xs text-red-700">{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  // DRAFT — the prominent call-to-action that we were missing.
+  return (
+    <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="text-sm font-semibold text-amber-900">
+              Esta encuesta es un borrador
+            </p>
+            <p className="mt-0.5 text-xs text-amber-800">
+              {hasQuestions
+                ? "Publícala para que el link público acepte respuestas."
+                : "Agrega al menos una pregunta antes de publicarla."}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setStatus("PUBLISHED")}
+          disabled={pending || !hasQuestions}
+          title={
+            !hasQuestions ? "Agrega al menos una pregunta primero" : undefined
+          }
+          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4" />
+          )}
+          Publicar encuesta
+        </button>
+      </div>
+      {error && (
+        <p className="mt-2 text-xs text-red-700">{error}</p>
+      )}
     </div>
   );
 }
@@ -270,25 +410,41 @@ function PublicLinkCard({
   const isPublished = survey.status === "PUBLISHED";
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
+    <div
+      className={`rounded-xl border p-5 shadow-sm ${
+        isPublished
+          ? "border-border bg-surface"
+          : "border-dashed border-border bg-surface-secondary"
+      }`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-heading text-base font-semibold text-text-primary">
             Link público
           </h2>
           <p className="mt-0.5 text-sm text-text-tertiary">
-            Compártelo por correo. {!isPublished && "Publica la encuesta para que sea respondible."}
+            {isPublished
+              ? "Compártelo por correo o WhatsApp."
+              : "Disponible cuando la encuesta esté publicada."}
           </p>
         </div>
       </div>
       <div className="mt-3 flex gap-2">
-        <code className="flex-1 truncate rounded-lg bg-surface-secondary px-3 py-2 text-xs text-text-secondary">
+        <code
+          className={`flex-1 truncate rounded-lg px-3 py-2 text-xs ${
+            isPublished
+              ? "bg-surface-secondary text-text-secondary"
+              : "bg-surface text-text-tertiary"
+          }`}
+        >
           {url}
         </code>
         <button
           type="button"
           onClick={handleCopy}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary"
+          disabled={!isPublished}
+          title={!isPublished ? "Publica la encuesta primero" : undefined}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? (
             <>
@@ -302,15 +458,27 @@ function PublicLinkCard({
             </>
           )}
         </button>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Abrir
-        </a>
+        {isPublished ? (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-secondary"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Abrir
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="Publica la encuesta primero"
+            className="inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-tertiary opacity-50"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Abrir
+          </button>
+        )}
       </div>
     </div>
   );
