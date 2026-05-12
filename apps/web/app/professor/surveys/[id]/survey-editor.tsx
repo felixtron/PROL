@@ -75,10 +75,13 @@ export function SurveyEditor({
   survey,
   companies,
   baseUrl,
+  listHref = "/professor/surveys",
 }: {
   survey: SurveyData;
   companies: CompanyOption[];
   baseUrl: string;
+  /** Where to redirect after deleting. Defaults to the professor list. */
+  listHref?: string;
 }) {
   return (
     <div className="space-y-6">
@@ -86,7 +89,7 @@ export function SurveyEditor({
       <PublicLinkCard survey={survey} baseUrl={baseUrl} />
       <QuestionsSection survey={survey} />
       <ShareResultsCard survey={survey} baseUrl={baseUrl} />
-      <DangerZone survey={survey} />
+      <DangerZone survey={survey} listHref={listHref} />
     </div>
   );
 }
@@ -821,7 +824,13 @@ function ShareResultsCard({
 
 // ─── Danger zone (delete) ────────────────────────────────────────────────────
 
-function DangerZone({ survey }: { survey: SurveyData }) {
+function DangerZone({
+  survey,
+  listHref,
+}: {
+  survey: SurveyData;
+  listHref: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -837,7 +846,7 @@ function DangerZone({ survey }: { survey: SurveyData }) {
     startTransition(async () => {
       try {
         await deleteSurvey(survey.id);
-        router.push("/professor/surveys");
+        router.push(listHref);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al eliminar");
       }

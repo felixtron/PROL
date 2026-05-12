@@ -5,6 +5,7 @@ import {
   GraduationCap,
   ArrowRight,
   Crown,
+  ListChecks,
 } from "lucide-react";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -42,16 +43,18 @@ export default async function MyCompanyPage() {
   const canInvite = isLeader || company.allowMemberInvitations;
   const teamReport = isLeader ? await getCompanyTeamReport(company.id) : null;
 
-  // Evaluations panel: only shown to the leader and when the tenant has
-  // the feature flag enabled. We also need the full member roster (leader
-  // included) so the picker can add/remove.
+  // Tenant-gated features for the leader: evaluations and surveys. Both
+  // are read in a single tenant fetch so we don't double-roundtrip when
+  // the leader opens this page.
   let evaluationsData: Awaited<ReturnType<typeof getCompanyEvaluations>> | null =
     null;
   let allMembers: { id: string; name: string | null; email: string; avatar: string | null }[] = [];
+  let surveysCount = 0;
+  let surveysEnabled = false;
   if (isLeader && user?.tenantId) {
     const tenantFlag = await db.tenant.findUnique({
       where: { id: user.tenantId },
-      select: { evaluationsEnabled: true },
+      select: { evaluationsEnabled: true, surveysEnabled: true },
     });
     if (tenantFlag?.evaluationsEnabled) {
       [evaluationsData, allMembers] = await Promise.all([
@@ -62,6 +65,12 @@ export default async function MyCompanyPage() {
           select: { id: true, name: true, email: true, avatar: true },
         }),
       ]);
+    }
+    if (tenantFlag?.surveysEnabled) {
+      surveysEnabled = true;
+      surveysCount = await db.survey.count({
+        where: { companyId: company.id },
+      });
     }
   }
 
@@ -115,6 +124,32 @@ export default async function MyCompanyPage() {
           assignments={evaluationsData.assignments}
           members={allMembers}
         />
+      )}
+
+      {/* Surveys panel — leader only, tenant-gated. Links to the full
+          surveys CRUD under /dashboard/company/surveys. */}
+      {surveysEnabled && (
+        <Link
+          href="/dashboard/company/surveys"
+          className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm transition-colors hover:bg-surface-secondary"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
+              <ListChecks className="h-5 w-5 text-emerald-700" />
+            </div>
+            <div>
+              <h2 className="font-heading text-base font-semibold text-text-primary">
+                Encuestas
+              </h2>
+              <p className="mt-0.5 text-sm text-text-tertiary">
+                {surveysCount === 0
+                  ? "Crea tu primera encuesta para recolectar feedback."
+                  : `${surveysCount} encuesta${surveysCount !== 1 ? "s" : ""} de tu empresa. Crea más o revisa resultados.`}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 shrink-0 text-text-tertiary transition-transform group-hover:translate-x-0.5" />
+        </Link>
       )}
 
       {/* Cursos disponibles */}

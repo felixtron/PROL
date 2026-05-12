@@ -11,11 +11,24 @@ interface CompanyOption {
   slug: string;
 }
 
-export function NewSurveyForm({ companies }: { companies: CompanyOption[] }) {
+export function NewSurveyForm({
+  companies,
+  redirectPathBase = "/professor/surveys",
+  lockedCompanyId,
+}: {
+  companies: CompanyOption[];
+  /** Path to which the new survey id is appended after successful create. */
+  redirectPathBase?: string;
+  /** If set, hides the company picker and forces this id. Useful for the
+   *  leader flow where a leader can only create surveys for their company. */
+  lockedCompanyId?: string;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [companyId, setCompanyId] = useState(companies[0]?.id ?? "");
+  const [companyId, setCompanyId] = useState(
+    lockedCompanyId ?? companies[0]?.id ?? "",
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -33,7 +46,7 @@ export function NewSurveyForm({ companies }: { companies: CompanyOption[] }) {
           description: description || null,
           companyId,
         });
-        router.push(`/professor/surveys/${res.surveyId}`);
+        router.push(`${redirectPathBase}/${res.surveyId}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al crear");
       }
@@ -73,25 +86,27 @@ export function NewSurveyForm({ companies }: { companies: CompanyOption[] }) {
           className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
         />
       </div>
-      <div>
-        <label className="mb-1.5 block text-sm font-medium text-text-primary">
-          Empresa asignada
-        </label>
-        <select
-          value={companyId}
-          onChange={(e) => setCompanyId(e.target.value)}
-          className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
-        >
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1.5 text-xs text-text-tertiary">
-          El líder de esta empresa verá el dashboard de resultados.
-        </p>
-      </div>
+      {!lockedCompanyId && (
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-text-primary">
+            Empresa asignada
+          </label>
+          <select
+            value={companyId}
+            onChange={(e) => setCompanyId(e.target.value)}
+            className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
+          >
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-text-tertiary">
+            El líder de esta empresa verá el dashboard de resultados.
+          </p>
+        </div>
+      )}
       <div className="flex items-center gap-3 border-t border-border pt-5">
         <button
           type="submit"
