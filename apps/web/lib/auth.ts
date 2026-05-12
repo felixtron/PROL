@@ -191,4 +191,37 @@ export function assertSameTenant(
   }
 }
 
+/**
+ * Requires the current user to be the designated leader of a company. The
+ * leader is a regular STUDENT to whom a tenant admin granted two extra
+ * capabilities — invite members and view the team report. With surveys, the
+ * leader also becomes a co-author of surveys scoped to their company.
+ * Returns `{ user, company }` for downstream tenant/company-scoped queries.
+ */
+export const requireCompanyLeader = cache(async () => {
+  const user = await requireUser();
+  if (user.role !== "STUDENT") {
+    throw new Error("No autorizado");
+  }
+  const company = await db.company.findUnique({
+    where: { leaderId: user.id },
+    select: { id: true, tenantId: true, name: true, slug: true },
+  });
+  if (!company) {
+    throw new Error("No autorizado: no eres líder de ninguna empresa");
+  }
+  return { user, company };
+});
+
+/**
+ * Returns the company the user leads, or null if they don't lead any. Use
+ * this in query layers that need to branch on leadership without throwing.
+ */
+export const getCompanyLed = cache(async (userId: string) => {
+  return db.company.findUnique({
+    where: { leaderId: userId },
+    select: { id: true, tenantId: true, name: true, slug: true },
+  });
+});
+
 export type Auth = typeof auth;
