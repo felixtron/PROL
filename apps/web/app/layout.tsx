@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
+// Fonts servidas localmente desde /public/fonts. Variable fonts (un solo
+// archivo .woff2 latin cubre todo el rango de pesos), descargadas desde
+// fontsource para no depender de fonts.googleapis.com en build time —
+// el firewall del VPS bloquea esos hosts.
+const plusJakartaSans = localFont({
+  src: "../public/fonts/plus-jakarta-sans-variable.woff2",
   variable: "--font-heading",
   display: "swap",
+  weight: "200 800",
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+const inter = localFont({
+  src: "../public/fonts/inter-variable.woff2",
   variable: "--font-body",
   display: "swap",
+  weight: "100 900",
 });
 
 export const metadata: Metadata = {
