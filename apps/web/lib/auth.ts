@@ -4,6 +4,10 @@ import { nextCookies } from "better-auth/next-js";
 import { db } from "@prol/db";
 import { headers } from "next/headers";
 import { cache } from "react";
+import { assertCriticalServerEnv } from "@/lib/env";
+
+// Falla rápido al primer import si faltan variables críticas en producción.
+assertCriticalServerEnv();
 
 export const auth = betterAuth({
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
