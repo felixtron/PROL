@@ -6,6 +6,8 @@ import {
   View,
   Image,
   StyleSheet,
+  Svg,
+  Line,
 } from "@react-pdf/renderer";
 
 const PRIMARY = "#3aa1d6"; // azul del header de IBIZA
@@ -21,6 +23,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Helvetica",
     color: TEXT_DARK,
+  },
+  // Security pattern — diagonal hairlines covering the page below all
+  // content. Acts as the "papel de seguridad" backdrop.
+  securityBg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   // Header
   headerRow: {
@@ -166,10 +177,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: TEXT_DARK,
   },
-  authorizedTitle: {
-    fontSize: 10,
-    color: TEXT_DARK,
-  },
   signatureLine: {
     width: 130,
     borderBottom: "1pt solid #cbd5e1",
@@ -204,11 +211,14 @@ export interface IbizaCertificateProps {
   studentName: string;
   courseCode?: string | null; // e.g. "ISO 39001"
   courseName: string;
-  description: string; // párrafo: instructor, horas, estándares
+  description: string; // párrafo editable por el profesor en el curso
   folio: string;
   issuedDate: string; // formateada para display
+  // Entidad autorizadora — nombre que aparece bajo el bloque "Autorizado
+  // por". Por defecto el nombre de la consultora; el cargo individual
+  // ya no se muestra para que el documento represente a la empresa,
+  // no a una persona específica.
   authorizedByName: string;
-  authorizedByTitle: string;
   authorizedSignatureUrl?: string | null; // dataURL/URL absoluta opcional
   brandLogoDataUrl?: string | null; // logo del tenant como data URI (opcional)
   qrDataUrl: string;
@@ -216,10 +226,60 @@ export interface IbizaCertificateProps {
   isRevoked: boolean;
 }
 
+/**
+ * Fine diagonal hairlines — two crossing sets — that mimic security
+ * paper without overwhelming the foreground. Drawn once with @react-pdf
+ * SVG primitives.
+ */
+function SecurityPattern() {
+  const width = 612; // LETTER portrait in pt
+  const height = 792;
+  const step = 8;
+  const stroke = "#3aa1d6";
+  const opacity = 0.06;
+  // Diagonals going both directions cover the page.
+  const downward: number[] = [];
+  for (let x = -height; x < width; x += step) downward.push(x);
+  const upward: number[] = [];
+  for (let x = 0; x < width + height; x += step) upward.push(x);
+  return (
+    <Svg
+      style={styles.securityBg}
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      {downward.map((x, i) => (
+        <Line
+          key={`d-${i}`}
+          x1={x}
+          y1={0}
+          x2={x + height}
+          y2={height}
+          stroke={stroke}
+          strokeWidth={0.25}
+          strokeOpacity={opacity}
+        />
+      ))}
+      {upward.map((x, i) => (
+        <Line
+          key={`u-${i}`}
+          x1={x}
+          y1={0}
+          x2={x - height}
+          y2={height}
+          stroke={stroke}
+          strokeWidth={0.25}
+          strokeOpacity={opacity}
+        />
+      ))}
+    </Svg>
+  );
+}
+
 export function IbizaCertificate(p: IbizaCertificateProps) {
   return (
     <Document>
       <Page size="LETTER" orientation="portrait" style={styles.page}>
+        <SecurityPattern />
         {/* Header */}
         <View style={styles.headerRow}>
           <View style={styles.brandBox}>
@@ -267,7 +327,7 @@ export function IbizaCertificate(p: IbizaCertificateProps) {
         <View style={styles.footer}>
           <View style={styles.footerLeft}>
             <Text style={styles.metaTitle}>
-              <Text style={styles.metaTitleBold}>Certificado No.:</Text>{" "}
+              <Text style={styles.metaTitleBold}>Folio No.:</Text>{" "}
               {p.folio}.{"\n"}
               <Text style={styles.metaTitleBold}>Fecha de emisión:</Text>{" "}
               {p.issuedDate}.{"\n"}
@@ -288,7 +348,6 @@ export function IbizaCertificate(p: IbizaCertificateProps) {
             )}
             <View style={styles.signatureLine} />
             <Text style={styles.authorizedName}>{p.authorizedByName}</Text>
-            <Text style={styles.authorizedTitle}>{p.authorizedByTitle}</Text>
           </View>
 
           <View style={styles.footerRight}>

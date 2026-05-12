@@ -61,6 +61,11 @@ export async function updateCourse(courseId: string, formData: FormData) {
 
   const validated = updateCourseSchema.parse(raw);
   const category = formData.get("category") as string | null;
+  const certificateDescriptionRaw = formData.get("certificateDescription");
+  const certificateDescription =
+    typeof certificateDescriptionRaw === "string"
+      ? certificateDescriptionRaw.trim() || null
+      : undefined;
 
   await db.course.update({
     where: { id: courseId },
@@ -68,6 +73,9 @@ export async function updateCourse(courseId: string, formData: FormData) {
       ...validated,
       ...(validated.title ? { slug: slugify(validated.title) } : {}),
       ...(category !== null ? { category: category || null } : {}),
+      ...(certificateDescription !== undefined
+        ? { certificateDescription }
+        : {}),
     },
   });
 

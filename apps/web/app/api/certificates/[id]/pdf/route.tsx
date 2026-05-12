@@ -269,12 +269,12 @@ export async function GET(
       const courseCode = typeof meta.courseCode === "string"
         ? meta.courseCode
         : null;
+      // Default authorizer is the consultora itself (no individual name
+      // or job title). Metadata can still override per certificate if
+      // ever needed.
       const authorizedByName = typeof meta.authorizedByName === "string"
         ? meta.authorizedByName
-        : "Iván Albarrán Moreno";
-      const authorizedByTitle = typeof meta.authorizedByTitle === "string"
-        ? meta.authorizedByTitle
-        : "Socio – Director";
+        : certificate.tenant.name;
       const authorizedSignatureUrl = typeof meta.authorizedSignatureUrl === "string"
         ? await loadAsDataUrl(meta.authorizedSignatureUrl)
         : null;
@@ -290,7 +290,6 @@ export async function GET(
           folio={certificate.folio}
           issuedDate={issuedDateShort}
           authorizedByName={authorizedByName}
-          authorizedByTitle={authorizedByTitle}
           authorizedSignatureUrl={authorizedSignatureUrl}
           brandLogoDataUrl={brandLogoDataUrl}
           qrDataUrl={qrDataUrl}

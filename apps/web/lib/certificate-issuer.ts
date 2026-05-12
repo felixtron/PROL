@@ -27,7 +27,11 @@ export async function issueCertificateForEnrollment(
     where: { id: enrollmentId },
     include: {
       student: { select: { name: true } },
-      course: { include: { professor: { select: { name: true } } } },
+      course: {
+        include: {
+          professor: { select: { name: true } },
+        },
+      },
       tenant: { select: { name: true, certificatePrefix: true } },
     },
   });
@@ -82,6 +86,14 @@ export async function issueCertificateForEnrollment(
     })
   );
 
+  // Snapshot the course-level certificate description so future edits
+  // to the course don't change the wording of already-issued diplomas.
+  const courseDescription =
+    enrollment.course.certificateDescription?.trim() || null;
+  const metadata = courseDescription
+    ? { description: courseDescription }
+    : undefined;
+
   const certificate = await db.certificate.create({
     data: {
       enrollmentId,
@@ -97,6 +109,7 @@ export async function issueCertificateForEnrollment(
       ...(opts?.finalExamScore !== undefined
         ? { finalExamScore: opts.finalExamScore }
         : {}),
+      ...(metadata ? { metadata } : {}),
     },
   });
 

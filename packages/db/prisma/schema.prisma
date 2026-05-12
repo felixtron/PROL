@@ -429,6 +429,11 @@ model Course {
   totalDurationMinutes Int @default(0) @map("total_duration_minutes")
   totalLessons         Int @default(0) @map("total_lessons")
 
+  // Texto editable por el profesor que aparece debajo del título del
+  // curso en el diploma emitido al completar el examen. Si está vacío,
+  // el template usa un fallback genérico.
+  certificateDescription String? @map("certificate_description") @db.Text
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

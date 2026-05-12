@@ -93,6 +93,7 @@ type CourseData = {
   currency: string;
   status: string;
   category: string | null;
+  certificateDescription: string | null;
   modules: ModuleData[];
   quizzes?: { id: string; title: string }[];
   _count: { enrollments: number };
@@ -1049,6 +1050,29 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
               className="w-full rounded-lg border border-border bg-surface py-2.5 pl-8 pr-3.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
+        </div>
+
+        {/* Certificate description */}
+        <div>
+          <label
+            htmlFor="edit-certificate-description"
+            className="mb-1.5 block text-sm font-medium text-text-primary"
+          >
+            Texto del diploma
+          </label>
+          <textarea
+            id="edit-certificate-description"
+            name="certificateDescription"
+            rows={3}
+            defaultValue={course.certificateDescription ?? ""}
+            placeholder='Ej: "Impartido en 40 horas por Elizabeth Oliveros conforme a los estándares ISO 9001:2015."'
+            className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+          <p className="mt-1 text-xs text-text-tertiary">
+            Aparece debajo del título del curso en el diploma. Se guarda al
+            emitirse cada certificado, así que cambios futuros no
+            afectan los diplomas ya entregados.
+          </p>
         </div>
 
         {/* Category */}
