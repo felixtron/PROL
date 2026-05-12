@@ -20,23 +20,19 @@ export const getStudentDashboardStats = cache(async () => {
       db.certificate.count({
         where: { enrollment: { studentId: user.id } },
       }),
-      // Sum video duration of completed lessons
-      db.lessonProgress.findMany({
-        where: {
-          enrollment: { studentId: user.id },
-          status: "COMPLETED",
-        },
-        select: {
-          lesson: { select: { videoDurationSeconds: true } },
-        },
-      }),
+      // Sum video duration of completed lessons via DB query
+      // This avoids fetching all rows into memory and reducing in JavaScript
+      db.$queryRaw<{ totalSeconds: number | null }[]>`
+        SELECT SUM(l.video_duration_seconds) as "totalSeconds"
+        FROM lesson_progresses lp
+        JOIN lessons l ON l.id = lp.lesson_id
+        JOIN enrollments e ON e.id = lp.enrollment_id
+        WHERE e.student_id = ${user.id} AND lp.status = 'COMPLETED'
+      `,
     ]);
 
-  const studyHours =
-    totalStudyMinutes.reduce(
-      (acc, lp) => acc + (lp.lesson.videoDurationSeconds ?? 0),
-      0
-    ) / 3600;
+  const totalSeconds = totalStudyMinutes[0]?.totalSeconds ? Number(totalStudyMinutes[0].totalSeconds) : 0;
+  const studyHours = totalSeconds / 3600;
 
   return {
     enrolledCourses: enrollmentCount,
