@@ -27,6 +27,13 @@ let validated = false;
 
 export function assertCriticalServerEnv(): void {
   if (validated) return;
+
+  // Saltar durante `next build`: el binario construye el bundle sin las
+  // variables de runtime — sólo importa módulos y recopila page data.
+  // El assertion debe correr al arrancar el container, no al armar la
+  // imagen. `NEXT_PHASE` lo setea Next.js automáticamente.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+
   validated = true;
 
   const result = CriticalEnvSchema.safeParse(process.env);
