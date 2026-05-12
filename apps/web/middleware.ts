@@ -116,7 +116,23 @@ export function middleware(req: NextRequest) {
   // Cloudflare Turnstile + Stream, Vimeo and YouTube player SDKs). The
   // video SDKs are required for interactive stops to work — without
   // them the iframes load but we can't subscribe to timeupdate events.
-  // Tightening further requires moving to nonce-based CSP.
+  // 'unsafe-eval' is permitted only in development because Next.js HMR
+  // and the React refresh runtime rely on Function()/eval — production
+  // bundles never need it, so blocking it there closes a real XSS escalation
+  // vector without breaking anything. Tightening 'unsafe-inline' further
+  // requires moving to nonce-based CSP.
+  const isProduction = process.env.NODE_ENV === "production";
+  const scriptSrc = [
+    "script-src",
+    "'self'",
+    "'unsafe-inline'",
+    ...(isProduction ? [] : ["'unsafe-eval'"]),
+    "https://js.stripe.com",
+    "https://challenges.cloudflare.com",
+    "https://player.vimeo.com",
+    "https://www.youtube.com",
+    "https://embed.videodelivery.net",
+  ].join(" ");
   response.headers.set(
     "Content-Security-Policy",
     [
@@ -129,7 +145,7 @@ export function middleware(req: NextRequest) {
       "media-src 'self' https://videodelivery.net https://customer-*.cloudflarestream.com https://*.vimeocdn.com",
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com https://player.vimeo.com https://www.youtube.com https://embed.videodelivery.net",
+      scriptSrc,
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://player.vimeo.com https://www.youtube.com https://www.youtube-nocookie.com https://iframe.cloudflarestream.com https://iframe.videodelivery.net https://embed.videodelivery.net",
       "connect-src 'self' https://api.stripe.com https://upload.cloudflarestream.com https://api.cloudflare.com https://api.assemblyai.com https://api.anthropic.com https://player.vimeo.com https://*.vimeocdn.com https://www.youtube.com https://www.youtube-nocookie.com https://videodelivery.net https://*.cloudflarestream.com",
     ].join("; "),
