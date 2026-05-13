@@ -269,7 +269,7 @@ export function CoursePlayer({
 
       {/* Modules & lessons (accordion) */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {modules.map((mod) => {
+        {modules.map((mod, moduleIndex) => {
           const isExpanded = expandedModuleIds.has(mod.id);
           const moduleCompleted = mod.lessons.filter((l) =>
             completedIds.has(l.id),
@@ -288,8 +288,16 @@ export function CoursePlayer({
                   }`}
                 />
                 <div className="min-w-0 flex-1">
+                  {/*
+                    Render a sequential label rather than `mod.position` so
+                    students see "Módulo 1, 2, 3…" instead of the raw
+                    column value, which can have gaps when modules are
+                    reordered or deleted (e.g. ISO 27001 course has
+                    positions 0, 14, 15, 19…). `position` is still used
+                    for ORDER BY upstream.
+                  */}
                   <p className="font-heading text-xs font-semibold uppercase tracking-wider text-text-secondary">
-                    Módulo {mod.position}
+                    Módulo {moduleIndex + 1}
                   </p>
                   <p className="mt-0.5 truncate text-sm font-medium text-text-primary">
                     {mod.title}
