@@ -821,7 +821,11 @@ function LessonView({
                 </div>
               </div>
             ) : quizData ? (
+              // `key` forces a fresh QuizPlayer instance per lesson so
+              // internal state (currentQuestionIndex, answers, timer,
+              // isStarted...) doesn't leak across quiz navigations.
               <QuizPlayer
+                key={lesson.id}
                 quiz={quizData}
                 enrollmentId={enrollmentId}
                 onQuizPassed={onMarkComplete}
@@ -837,7 +841,10 @@ function LessonView({
               </div>
             )
           ) : lesson.type === "ASSIGNMENT" ? (
+            // Same reasoning as QuizPlayer: prevent stale submission /
+            // notes / file state from leaking across lesson navigations.
             <AssignmentPlayer
+              key={lesson.id}
               enrollmentId={enrollmentId}
               lessonId={lesson.id}
               content={lesson.content}
