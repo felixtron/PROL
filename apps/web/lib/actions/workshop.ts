@@ -354,8 +354,15 @@ export async function bookWorkshop(workshopId: string) {
     throw new Error("Ya tienes una reserva para este workshop");
   }
 
-  // Use transaction to prevent race condition on last spot
+  // Serialize concurrent bookings for this workshop. A plain $transaction
+  // under READ COMMITTED was NOT enough: two simultaneous bookings each
+  // saw the same `confirmedCount` (neither could see the other's pending
+  // create), so both proceeded to CONFIRMED and the workshop ended up
+  // overbooked. `SELECT ... FOR UPDATE` locks the workshop row so Tx2
+  // blocks until Tx1 commits, then recounts with Tx1's booking visible.
   const isWaitlisted = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 FROM workshops WHERE id = ${workshopId} FOR UPDATE`;
+
     // Re-count confirmed bookings inside transaction for accuracy
     const confirmedCount = await tx.workshopBooking.count({
       where: { workshopId, status: { in: ["CONFIRMED"] } },
