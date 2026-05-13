@@ -528,20 +528,29 @@ export async function submitEvaluationAnswers(
     throw new Error("Respuestas inválidas");
   }
 
-  // Determine next version number.
-  const last = await db.evaluationSubmission.findFirst({
-    where: { participantId },
-    orderBy: { version: "desc" },
-    select: { version: true },
-  });
-  const nextVersion = (last?.version ?? 0) + 1;
+  // Determine next version number inside a serialized transaction. The
+  // previous implementation read the max version OUTSIDE the tx and used
+  // it to compute `nextVersion`, which broke under concurrent submits
+  // for the same participant: both reads saw the same `last.version`,
+  // both wrote `version = N+1`, and the loser hit the unique constraint
+  // `@@unique([participantId, version])`. Now: lock the participant row
+  // first, read inside the tx, write inside the same tx. Same pattern as
+  // workshops (3515727) and enrollment progress (b155c31).
+  const nextVersion = await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 FROM evaluation_participants WHERE id = ${participantId} FOR UPDATE`;
 
-  await db.$transaction(async (tx) => {
+    const last = await tx.evaluationSubmission.findFirst({
+      where: { participantId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
+    const version = (last?.version ?? 0) + 1;
+
     const submission = await tx.evaluationSubmission.create({
       data: {
         participantId,
         submittedById: caller.id,
-        version: nextVersion,
+        version,
       },
     });
     await tx.evaluationAnswer.createMany({
@@ -555,6 +564,8 @@ export async function submitEvaluationAnswers(
         };
       }),
     });
+
+    return version;
   });
 
   revalidatePath("/dashboard");
