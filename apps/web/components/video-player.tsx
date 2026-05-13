@@ -300,6 +300,12 @@ export const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
 
     return (
       <iframe
+        // `key` forces React to unmount and remount the iframe whenever the
+        // video source changes. Without this the same DOM node is reused and
+        // the Vimeo/YouTube/Cloudflare SDK from the previous lesson — which
+        // mutates the iframe with `destroy()` — leaves the node in a zombie
+        // state, so the next lesson renders a black box.
+        key={`${provider}-${src}`}
         ref={(node) => {
           localRef.current = node;
           if (typeof ref === "function") ref(node);
