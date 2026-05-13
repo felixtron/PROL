@@ -46,45 +46,14 @@ export async function issueCertificateForEnrollment(
     throw new Error("La inscripción no está completada");
   }
 
-  const existing = await db.certificate.findUnique({ where: { enrollmentId } });
-  if (existing) {
-    return {
-      success: true,
-      certificateId: existing.id,
-      folio: existing.folio,
-      message: "El certificado ya existe",
-    };
-  }
-
   const issuedAt = new Date();
   const year = issuedAt.getUTCFullYear();
   const prefix = enrollment.tenant.certificatePrefix ?? "PROL";
-
-  const folio = await db.$transaction(async (tx) => {
-    const counter = await tx.certificateCounter.upsert({
-      where: { tenantId_year: { tenantId: enrollment.tenantId, year } },
-      create: { tenantId: enrollment.tenantId, year, lastSeq: 1 },
-      update: { lastSeq: { increment: 1 } },
-    });
-    return generateCertificateFolio(prefix, year, counter.lastSeq);
-  });
 
   const studentName = enrollment.student.name ?? "Estudiante";
   const courseName = enrollment.course.title;
   const professorName = enrollment.course.professor.name ?? "Profesor";
   const tenantName = enrollment.tenant.name;
-
-  const hash = crypto.randomBytes(16).toString("hex");
-  const sha256 = sha256Hex(
-    canonicalCertificateString({
-      folio,
-      studentName,
-      courseName,
-      professorName,
-      tenantName,
-      issuedAt,
-    })
-  );
 
   // Snapshot the course-level certificate description so future edits
   // to the course don't change the wording of already-issued diplomas.
@@ -94,29 +63,72 @@ export async function issueCertificateForEnrollment(
     ? { description: courseDescription }
     : undefined;
 
-  const certificate = await db.certificate.create({
-    data: {
-      enrollmentId,
-      tenantId: enrollment.tenantId,
-      studentName,
-      courseName,
-      professorName,
-      folio,
-      hash,
-      sha256,
-      status: "ACTIVE",
-      issuedAt,
-      ...(opts?.finalExamScore !== undefined
-        ? { finalExamScore: opts.finalExamScore }
-        : {}),
-      ...(metadata ? { metadata } : {}),
-    },
-  });
+  // All mutations live inside one $transaction so a failure in `create()`
+  // also rolls back the counter increment. Without this, a partial failure
+  // (network/timeout/validation between counter upsert and certificate
+  // create) leaves the folio counter at N+1 with no certificate emitted,
+  // so the next retry burns folio N+1 and emits the new one as N+2 — the
+  // visible sequence ends up with holes. Concurrent calls for the same
+  // enrollment are still safe: the second one collides on the unique
+  // `(enrollmentId)` constraint and its tx rolls back too.
+  return db.$transaction(async (tx) => {
+    // Idempotency: if a certificate already exists for this enrollment,
+    // return it without touching the counter.
+    const existing = await tx.certificate.findUnique({
+      where: { enrollmentId },
+    });
+    if (existing) {
+      return {
+        success: true,
+        certificateId: existing.id,
+        folio: existing.folio,
+        message: "El certificado ya existe",
+      };
+    }
 
-  return {
-    success: true,
-    certificateId: certificate.id,
-    folio: certificate.folio,
-    message: "Certificado emitido exitosamente",
-  };
+    const counter = await tx.certificateCounter.upsert({
+      where: { tenantId_year: { tenantId: enrollment.tenantId, year } },
+      create: { tenantId: enrollment.tenantId, year, lastSeq: 1 },
+      update: { lastSeq: { increment: 1 } },
+    });
+    const folio = generateCertificateFolio(prefix, year, counter.lastSeq);
+
+    const hash = crypto.randomBytes(16).toString("hex");
+    const sha256 = sha256Hex(
+      canonicalCertificateString({
+        folio,
+        studentName,
+        courseName,
+        professorName,
+        tenantName,
+        issuedAt,
+      })
+    );
+
+    const certificate = await tx.certificate.create({
+      data: {
+        enrollmentId,
+        tenantId: enrollment.tenantId,
+        studentName,
+        courseName,
+        professorName,
+        folio,
+        hash,
+        sha256,
+        status: "ACTIVE",
+        issuedAt,
+        ...(opts?.finalExamScore !== undefined
+          ? { finalExamScore: opts.finalExamScore }
+          : {}),
+        ...(metadata ? { metadata } : {}),
+      },
+    });
+
+    return {
+      success: true,
+      certificateId: certificate.id,
+      folio: certificate.folio,
+      message: "Certificado emitido exitosamente",
+    };
+  });
 }
