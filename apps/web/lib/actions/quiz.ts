@@ -334,6 +334,13 @@ export async function submitQuizAttempt(
   const isFinalAndPassed = passed && quiz.isFinalExam && score >= 80;
 
   const attempt = await db.$transaction(async (tx) => {
+    // Serialize concurrent writes to this enrollment (final-exam tx +
+    // any other lesson-progress update). Same reasoning as
+    // `updateLessonProgress` in lib/actions/enrollment.ts — without
+    // the lock, the count of completed lessons further below can be
+    // stale and Enrollment.progress can lose updates.
+    await tx.$queryRaw`SELECT 1 FROM enrollments WHERE id = ${enrollmentId} FOR UPDATE`;
+
     const created = await tx.quizAttempt.create({
       data: {
         quizId,

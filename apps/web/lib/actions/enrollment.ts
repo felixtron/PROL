@@ -100,6 +100,15 @@ export async function updateLessonProgress(
   // opens its own $transaction and is idempotent, so a transient failure
   // does not leave inconsistent state.
   const { progress, becameCompleted } = await db.$transaction(async (tx) => {
+    // Serialize concurrent updates for THIS enrollment so the
+    // `count completed lessons → write progress` sequence below is
+    // free of lost updates. Without this, two transactions marking
+    // different lessons COMPLETED at the same time can each compute a
+    // stale count and leave Enrollment.progress one step behind reality
+    // (and worse: prevent the auto-COMPLETED + certificate side effect
+    // from firing on the last lesson). The lock is released at commit.
+    await tx.$queryRaw`SELECT 1 FROM enrollments WHERE id = ${enrollmentId} FOR UPDATE`;
+
     const upserted = await tx.lessonProgress.upsert({
       where: { enrollmentId_lessonId: { enrollmentId, lessonId } },
       create: {
