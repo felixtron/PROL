@@ -153,9 +153,9 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
             className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50"
           >
             <option value="">Sin módulo específico</option>
-            {selectedCourse?.modules.map((m) => (
+            {selectedCourse?.modules.map((m, idx) => (
               <option key={m.id} value={m.id}>
-                Módulo {m.position}: {m.title}
+                Módulo {idx + 1}: {m.title}
               </option>
             ))}
           </select>

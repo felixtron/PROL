@@ -42,6 +42,9 @@ interface Workshop {
   status: string;
   course: { id: string; title: string; slug: string };
   module: { id: string; title: string; position: number } | null;
+  /** Sequential 1-based index of `module` within the course. Computed from
+   *  `Module.position` ranks (which can have gaps after reorders). */
+  moduleIndex: number | null;
   locationName: string | null;
   locationAddress: string | null;
   locationMapUrl: string | null;
@@ -272,7 +275,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
             <p className="text-sm text-text-tertiary">
               Curso: {workshop.course.title}
               {workshop.module &&
-                ` — Módulo ${workshop.module.position}: ${workshop.module.title}`}
+                ` — Módulo ${workshop.moduleIndex ?? "?"}: ${workshop.module.title}`}
             </p>
           </div>
 

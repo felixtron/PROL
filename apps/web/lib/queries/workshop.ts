@@ -60,6 +60,21 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
 
   if (!workshop) return null;
 
+  // Sequential index of the workshop's module within its course (1-based).
+  // The `Module.position` column can have gaps after reorders or deletes, so
+  // we count earlier modules to produce a stable display number that matches
+  // what the student sees in the course sidebar.
+  let moduleIndex: number | null = null;
+  if (workshop.module) {
+    const earlier = await db.module.count({
+      where: {
+        courseId: workshop.course.id,
+        position: { lt: workshop.module.position },
+      },
+    });
+    moduleIndex = earlier + 1;
+  }
+
   // Resolve recurring series: load all siblings (same parent or rooted at the
   // current workshop if it IS the parent), ordered by start time, so the UI
   // can render "Sesión X de Y" + sibling navigation.
@@ -88,6 +103,7 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
     status: workshop.status,
     course: workshop.course,
     module: workshop.module,
+    moduleIndex,
     locationName: workshop.locationName,
     locationAddress: workshop.locationAddress,
     locationMapUrl: workshop.locationMapUrl,
