@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
 import { getQuizWithAnswers } from "@/lib/queries/quiz";
 
 export async function GET(
@@ -16,6 +17,7 @@ export async function GET(
   }
 
   try {
+    await requireUser();
     const data = await getQuizWithAnswers(quizId, attemptId);
     return NextResponse.json(data);
   } catch (err) {

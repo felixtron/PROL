@@ -1,6 +1,7 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
 import { getQuizForStudent } from "@/lib/queries/quiz";
 
 export async function GET(
@@ -18,6 +19,10 @@ export async function GET(
   }
 
   try {
+    // Defense in depth: the query layer also checks ownership, but the
+    // route should gate auth itself so refactors of the query can't
+    // silently drop the guard.
+    await requireUser();
     const quiz = await getQuizForStudent(lessonId, enrollmentId);
     return NextResponse.json(quiz);
   } catch (err) {

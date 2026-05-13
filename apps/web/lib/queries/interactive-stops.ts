@@ -50,6 +50,27 @@ export const getInteractiveStopsForPlayer = cache(
   async (lessonId: string, lessonProgressId?: string) => {
     const user = await requireUser();
 
+    // Verify the lesson belongs to a course of the caller's tenant before
+    // returning anything. Without this, any authenticated user could read
+    // the interactive stop content of any lesson in any tenant by guessing
+    // the `lessonId`. SUPER_ADMIN bypasses the tenant check.
+    const lesson = await db.lesson.findFirst({
+      where: {
+        id: lessonId,
+        ...(user.role === "SUPER_ADMIN"
+          ? {}
+          : {
+              module: {
+                course: { tenantId: user.tenantId ?? "__none__" },
+              },
+            }),
+      },
+      select: { id: true },
+    });
+    if (!lesson) {
+      throw new Error("Lección no encontrada");
+    }
+
     // Get all stops for this lesson
     const stops = await db.interactiveStop.findMany({
       where: { lessonId },
