@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Plus, ClipboardCheck, Building2 } from "lucide-react";
-import { db } from "@prol/db";
+import { db, type EvaluationKind } from "@prol/db";
 import { requireEvaluationAuthor } from "@/lib/auth";
 import { listEvaluationsForTenant } from "@/lib/queries/evaluation";
 
@@ -20,6 +20,14 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
     label: "Archivada",
     className: "bg-amber-50 text-amber-700",
   },
+};
+
+const KIND_LABEL: Record<EvaluationKind, string> = {
+  DAFO: "DAFO",
+  DIAGNOSTIC: "Diagnóstico",
+  GUIDELINES: "Directrices",
+  STAKEHOLDERS: "Partes interesadas",
+  ROLES: "Cargos y roles",
 };
 
 export default async function EvaluationsListPage() {
@@ -88,6 +96,9 @@ export default async function EvaluationsListPage() {
                           className={`rounded-pill px-2 py-0.5 text-xs font-medium ${st.className}`}
                         >
                           {st.label}
+                        </span>
+                        <span className="rounded-pill bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
+                          {KIND_LABEL[ev.kind]}
                         </span>
                       </div>
                       {ev.description && (

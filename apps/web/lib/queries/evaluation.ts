@@ -211,6 +211,7 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
           title: true,
           description: true,
           tenantId: true,
+          kind: true,
           sections: {
             orderBy: { position: "asc" },
             include: {
@@ -257,22 +258,47 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
     })
     .filter((s): s is NonNullable<typeof s> => !!s);
 
-  type Counts = { POSITIVE: number; NEGATIVE: number; NOT_APPLICABLE: number };
+  type Counts = {
+    POSITIVE: number;
+    PARTIAL: number;
+    NEGATIVE: number;
+    NOT_APPLICABLE: number;
+  };
+  const emptyCounts = (): Counts => ({
+    POSITIVE: 0,
+    PARTIAL: 0,
+    NEGATIVE: 0,
+    NOT_APPLICABLE: 0,
+  });
   const perQuestion = new Map<string, Counts>();
   // Free-text answers: questionId -> Array of { author, text }
   const perQuestionText = new Map<
     string,
     { author: string; text: string }[]
   >();
+  // MULTI_FACTOR answers: questionId -> Array of { author, factors }
+  const perQuestionFactors = new Map<
+    string,
+    { author: string; factors: string[] }[]
+  >();
+  type FactorCounts = {
+    STRENGTH: number;
+    WEAKNESS: number;
+    OPPORTUNITY: number;
+    THREAT: number;
+  };
+  const emptyFactorCounts = (): FactorCounts => ({
+    STRENGTH: 0,
+    WEAKNESS: 0,
+    OPPORTUNITY: 0,
+    THREAT: 0,
+  });
+  const perQuestionFactorCounts = new Map<string, FactorCounts>();
   for (const sub of latestSubmissions) {
     const author = sub.participantUser.name ?? sub.participantUser.email;
     for (const ans of sub.answers) {
       if (ans.value) {
-        const c = perQuestion.get(ans.questionId) ?? {
-          POSITIVE: 0,
-          NEGATIVE: 0,
-          NOT_APPLICABLE: 0,
-        };
+        const c = perQuestion.get(ans.questionId) ?? emptyCounts();
         c[ans.value] += 1;
         perQuestion.set(ans.questionId, c);
       }
@@ -281,28 +307,45 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
         arr.push({ author, text: ans.text });
         perQuestionText.set(ans.questionId, arr);
       }
+      if (ans.factors && ans.factors.length > 0) {
+        const arr = perQuestionFactors.get(ans.questionId) ?? [];
+        arr.push({ author, factors: ans.factors });
+        perQuestionFactors.set(ans.questionId, arr);
+        const fc =
+          perQuestionFactorCounts.get(ans.questionId) ?? emptyFactorCounts();
+        for (const f of ans.factors) fc[f] += 1;
+        perQuestionFactorCounts.set(ans.questionId, fc);
+      }
     }
   }
 
-  type Verdict = "POSITIVE" | "NEGATIVE" | "NOT_APPLICABLE" | "NO_RESPONSE";
+  type Verdict =
+    | "POSITIVE"
+    | "PARTIAL"
+    | "NEGATIVE"
+    | "NOT_APPLICABLE"
+    | "NO_RESPONSE";
   function verdictOf(counts: Counts | undefined): Verdict {
     if (!counts) return "NO_RESPONSE";
-    const total = counts.POSITIVE + counts.NEGATIVE + counts.NOT_APPLICABLE;
+    const total =
+      counts.POSITIVE + counts.PARTIAL + counts.NEGATIVE + counts.NOT_APPLICABLE;
     if (total === 0) return "NO_RESPONSE";
     // If everyone marked it not-applicable, the question is NOT_APPLICABLE.
     if (counts.NOT_APPLICABLE === total) return "NOT_APPLICABLE";
-    // Otherwise compare positive vs negative; ties favor positive.
-    if (counts.POSITIVE >= counts.NEGATIVE) return "POSITIVE";
-    return "NEGATIVE";
+    // Pick the most-voted answer; ties favor positive > partial > negative.
+    const opts: [Verdict, number][] = [
+      ["POSITIVE", counts.POSITIVE],
+      ["PARTIAL", counts.PARTIAL],
+      ["NEGATIVE", counts.NEGATIVE],
+    ];
+    opts.sort((a, b) => b[1] - a[1]);
+    const top = opts[0]!;
+    return top[1] === 0 ? "NOT_APPLICABLE" : top[0];
   }
 
   const sections = assignment.evaluation.sections.map((s) => {
     const questions = s.questions.map((q) => {
-      const counts = perQuestion.get(q.id) ?? {
-        POSITIVE: 0,
-        NEGATIVE: 0,
-        NOT_APPLICABLE: 0,
-      };
+      const counts = perQuestion.get(q.id) ?? emptyCounts();
       return {
         id: q.id,
         code: q.code,
@@ -311,15 +354,21 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
         counts,
         verdict: verdictOf(counts),
         textAnswers: perQuestionText.get(q.id) ?? [],
+        factorAnswers: perQuestionFactors.get(q.id) ?? [],
+        factorCounts: perQuestionFactorCounts.get(q.id) ?? emptyFactorCounts(),
       };
     });
-    // OPEN_TEXT questions don't count toward DAFO percentages.
-    const dafoQuestions = questions.filter((q) => q.type === "MULTIPLE_CHOICE");
-    const considered = dafoQuestions.filter((q) => q.verdict !== "NOT_APPLICABLE");
+    // OPEN_TEXT questions don't count toward aggregates.
+    const choiceQuestions = questions.filter((q) => q.type === "MULTIPLE_CHOICE");
+    const considered = choiceQuestions.filter(
+      (q) => q.verdict !== "NOT_APPLICABLE" && q.verdict !== "NO_RESPONSE",
+    );
     const positives = considered.filter((q) => q.verdict === "POSITIVE").length;
+    const partials = considered.filter((q) => q.verdict === "PARTIAL").length;
     const negatives = considered.filter((q) => q.verdict === "NEGATIVE").length;
     const denom = considered.length;
     const positivePct = denom > 0 ? Math.round((positives / denom) * 1000) / 10 : 0;
+    const partialPct = denom > 0 ? Math.round((partials / denom) * 1000) / 10 : 0;
     const negativePct = denom > 0 ? Math.round((negatives / denom) * 1000) / 10 : 0;
     return {
       id: s.id,
@@ -327,8 +376,10 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
       type: s.type,
       questions,
       positives,
+      partials,
       negatives,
       positivePct,
+      partialPct,
       negativePct,
     };
   });
@@ -345,6 +396,7 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
       id: assignment.evaluation.id,
       title: assignment.evaluation.title,
       description: assignment.evaluation.description,
+      kind: assignment.evaluation.kind,
     },
     company: {
       id: assignment.company.id,

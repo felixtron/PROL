@@ -7,6 +7,8 @@ import {
   type EvaluationQuestionType,
   type EvaluationStatus,
   type EvaluationAnswerValue,
+  type EvaluationKind,
+  type EvaluationFactor,
 } from "@prol/db";
 import {
   requireUser,
@@ -45,6 +47,7 @@ export async function createEvaluation(input: {
   title: string;
   description?: string | null;
   methodology?: string | null;
+  kind?: EvaluationKind;
 }) {
   const user = await requireEvaluationAuthor();
   const title = input.title?.trim();
@@ -63,6 +66,7 @@ export async function createEvaluation(input: {
       title,
       description: input.description?.trim() || null,
       methodology: input.methodology?.trim() || null,
+      kind: input.kind ?? "DAFO",
     },
   });
 
@@ -464,7 +468,12 @@ export async function removeEvaluationParticipant(
  */
 export async function submitEvaluationAnswers(
   participantId: string,
-  answers: { questionId: string; value?: EvaluationAnswerValue; text?: string }[],
+  answers: {
+    questionId: string;
+    value?: EvaluationAnswerValue;
+    text?: string;
+    factors?: EvaluationFactor[];
+  }[],
 ) {
   const caller = await requireUser();
 
@@ -496,13 +505,22 @@ export async function submitEvaluationAnswers(
 
   // Validate answers cover exactly the evaluation's questions, with the
   // right shape per question type.
+  const evaluationKind = participant.assignment.evaluation.kind;
   const questions = participant.assignment.evaluation.sections.flatMap(
     (s) => s.questions,
   );
   const questionType = new Map(questions.map((q) => [q.id, q.type] as const));
   const allQuestionIds = questions.map((q) => q.id);
-  const provided = new Map<string, { value?: EvaluationAnswerValue; text?: string }>();
-  for (const a of answers) provided.set(a.questionId, { value: a.value, text: a.text });
+  const provided = new Map<
+    string,
+    { value?: EvaluationAnswerValue; text?: string; factors?: EvaluationFactor[] }
+  >();
+  for (const a of answers)
+    provided.set(a.questionId, {
+      value: a.value,
+      text: a.text,
+      factors: a.factors,
+    });
 
   const missing: string[] = [];
   for (const id of allQuestionIds) {
@@ -514,8 +532,15 @@ export async function submitEvaluationAnswers(
     }
     if (type === "MULTIPLE_CHOICE") {
       if (!ans.value) missing.push(id);
+      // PARTIAL sólo es válido para evaluaciones DIAGNOSTIC; el resto usan
+      // POSITIVE/NEGATIVE/NOT_APPLICABLE.
+      else if (ans.value === "PARTIAL" && evaluationKind !== "DIAGNOSTIC") {
+        throw new Error("Opción 'Parcialmente' no aplica a este tipo de evaluación");
+      }
     } else if (type === "OPEN_TEXT") {
       if (!ans.text || ans.text.trim().length === 0) missing.push(id);
+    } else if (type === "MULTI_FACTOR") {
+      if (!ans.factors || ans.factors.length === 0) missing.push(id);
     }
   }
   if (missing.length > 0) {
@@ -561,6 +586,7 @@ export async function submitEvaluationAnswers(
           questionId: qId,
           value: ans.value ?? null,
           text: ans.text?.trim() || null,
+          factors: ans.factors ?? [],
         };
       }),
     });

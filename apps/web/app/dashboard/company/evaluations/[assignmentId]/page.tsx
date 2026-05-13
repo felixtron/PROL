@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getEvaluationResults } from "@/lib/queries/evaluation";
 import { EvaluationResultsView } from "./results-view";
+import { DiagnosticResultsView } from "./diagnostic-results-view";
+import { StakeholdersResultsView } from "./stakeholders-results-view";
+import { TextResultsView } from "./text-results-view";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +34,16 @@ export default async function EvaluationResultsPage({
           {data.totalParticipants !== 1 ? "s" : ""} respondieron.
         </p>
       </div>
-      <EvaluationResultsView data={data} />
+      {data.evaluation.kind === "DIAGNOSTIC" ? (
+        <DiagnosticResultsView data={data} />
+      ) : data.evaluation.kind === "STAKEHOLDERS" ? (
+        <StakeholdersResultsView data={data} />
+      ) : data.evaluation.kind === "GUIDELINES" ||
+        data.evaluation.kind === "ROLES" ? (
+        <TextResultsView data={data} />
+      ) : (
+        <EvaluationResultsView data={data} />
+      )}
     </div>
   );
 }

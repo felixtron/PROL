@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Building2 } from "lucide-react";
+import type { EvaluationFactor } from "@prol/db";
 import { getMyParticipantDetail } from "@/lib/queries/evaluation";
 import { EvaluationResponseForm } from "./response-form";
 
@@ -16,10 +17,13 @@ export default async function AnswerEvaluationPage({
   const latest = participant.submissions[0];
   const initialValues: Record<string, string> = {};
   const initialTexts: Record<string, string> = {};
+  const initialFactors: Record<string, EvaluationFactor[]> = {};
   if (latest) {
     for (const a of latest.answers) {
       if (a.value) initialValues[a.questionId] = a.value;
       if (a.text) initialTexts[a.questionId] = a.text;
+      if (a.factors && a.factors.length > 0)
+        initialFactors[a.questionId] = a.factors;
     }
   }
 
@@ -63,6 +67,7 @@ export default async function AnswerEvaluationPage({
 
       <EvaluationResponseForm
         participantId={participant.id}
+        kind={ev.kind}
         sections={ev.sections.map((s) => ({
           id: s.id,
           title: s.title,
@@ -77,6 +82,7 @@ export default async function AnswerEvaluationPage({
         }))}
         initialValues={initialValues}
         initialTexts={initialTexts}
+        initialFactors={initialFactors}
         hasPrevious={!!latest}
       />
     </div>

@@ -28,6 +28,7 @@ import type {
   EvaluationSectionType,
   EvaluationStatus,
   EvaluationQuestionType,
+  EvaluationKind,
 } from "@prol/db";
 
 type Question = {
@@ -60,6 +61,7 @@ interface EvaluationData {
   description: string | null;
   methodology: string | null;
   status: EvaluationStatus;
+  kind: EvaluationKind;
   sections: Section[];
   assignments: Assignment[];
 }
@@ -75,6 +77,55 @@ interface CompanyOption {
 const TYPE_LABEL: Record<EvaluationSectionType, string> = {
   INTERNAL: "Cuestiones Internas (Fortaleza/Debilidad)",
   EXTERNAL: "Cuestiones Externas (Oportunidad/Amenaza)",
+};
+
+const KIND_LABEL: Record<EvaluationKind, string> = {
+  DAFO: "DAFO",
+  DIAGNOSTIC: "Diagnóstico",
+  GUIDELINES: "Directrices",
+  STAKEHOLDERS: "Partes interesadas",
+  ROLES: "Cargos y roles",
+};
+
+const KIND_HINT: Record<EvaluationKind, string> = {
+  DAFO: "Respuesta única F/D/O/A. Reporte DAFO consolidado.",
+  DIAGNOSTIC: "Respuesta única Sí / Parcialmente / No. Reporte de barras GAP.",
+  GUIDELINES: "Sólo texto abierto. Reporte sin gráfico.",
+  STAKEHOLDERS: "Opción múltiple F/D/O/A. Reporte sin gráfico.",
+  ROLES: "Sólo texto abierto. Reporte sin gráfico.",
+};
+
+/** Tipos de pregunta disponibles según el kind. El default va primero. */
+function questionTypesFor(kind: EvaluationKind): {
+  value: EvaluationQuestionType;
+  label: string;
+}[] {
+  switch (kind) {
+    case "DAFO":
+      return [
+        { value: "MULTIPLE_CHOICE", label: "Opción única (F/D/O/A por sección)" },
+        { value: "OPEN_TEXT", label: "Texto abierto" },
+      ];
+    case "DIAGNOSTIC":
+      return [
+        { value: "MULTIPLE_CHOICE", label: "Opción única (Sí/Parcial/No)" },
+        { value: "OPEN_TEXT", label: "Texto abierto" },
+      ];
+    case "STAKEHOLDERS":
+      return [
+        { value: "MULTI_FACTOR", label: "Opción múltiple (F/D/O/A)" },
+        { value: "OPEN_TEXT", label: "Texto abierto" },
+      ];
+    case "GUIDELINES":
+    case "ROLES":
+      return [{ value: "OPEN_TEXT", label: "Texto abierto" }];
+  }
+}
+
+const Q_TYPE_BADGE: Record<EvaluationQuestionType, { label: string; cls: string }> = {
+  MULTIPLE_CHOICE: { label: "Opción", cls: "bg-primary-50 text-primary-700" },
+  MULTI_FACTOR: { label: "Multi", cls: "bg-indigo-50 text-indigo-700" },
+  OPEN_TEXT: { label: "Texto", cls: "bg-amber-50 text-amber-700" },
 };
 
 const STATUS_LABEL: Record<EvaluationStatus, string> = {
@@ -148,6 +199,12 @@ export function EvaluationEditor({
         <div className="flex items-center gap-2 text-xs">
           <span className="rounded-pill bg-primary-100 px-2 py-0.5 font-medium text-primary-700">
             {STATUS_LABEL[evaluation.status]}
+          </span>
+          <span
+            className="rounded-pill bg-surface-tertiary px-2 py-0.5 font-medium text-text-secondary"
+            title={KIND_HINT[evaluation.kind]}
+          >
+            Tipo · {KIND_LABEL[evaluation.kind]}
           </span>
           <button
             type="button"
@@ -234,6 +291,7 @@ export function EvaluationEditor({
             <SectionBlock
               key={s.id}
               section={s}
+              kind={evaluation.kind}
               onChange={() => router.refresh()}
             />
           ))
@@ -329,9 +387,11 @@ export function EvaluationEditor({
 
 function SectionBlock({
   section,
+  kind,
   onChange,
 }: {
   section: Section;
+  kind: EvaluationKind;
   onChange: () => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -438,13 +498,14 @@ function SectionBlock({
 
       <ul className="divide-y divide-border">
         {section.questions.map((q) => (
-          <QuestionRow key={q.id} question={q} onChange={onChange} />
+          <QuestionRow key={q.id} question={q} kind={kind} onChange={onChange} />
         ))}
       </ul>
 
       {showAddQuestion ? (
         <AddQuestionForm
           sectionId={section.id}
+          kind={kind}
           onDone={() => {
             setShowAddQuestion(false);
             onChange();
@@ -471,11 +532,14 @@ function SectionBlock({
 
 function QuestionRow({
   question,
+  kind,
   onChange,
 }: {
   question: Question;
+  kind: EvaluationKind;
   onChange: () => void;
 }) {
+  const typeOptions = questionTypesFor(kind);
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [code, setCode] = useState(question.code ?? "");
@@ -529,8 +593,11 @@ function QuestionRow({
             }
             className="rounded-lg border border-border bg-surface px-2 py-1 text-xs"
           >
-            <option value="MULTIPLE_CHOICE">Opción múltiple</option>
-            <option value="OPEN_TEXT">Texto abierto</option>
+            {typeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
         {error && <p className="text-[11px] text-red-700">{error}</p>}
@@ -590,14 +657,10 @@ function QuestionRow({
       </div>
       <div className="flex items-center gap-1">
         <span
-          className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-            question.type === "OPEN_TEXT"
-              ? "bg-amber-50 text-amber-700"
-              : "bg-primary-50 text-primary-700"
-          }`}
-          title={question.type === "OPEN_TEXT" ? "Texto abierto" : "Opción múltiple"}
+          className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${Q_TYPE_BADGE[question.type].cls}`}
+          title={Q_TYPE_BADGE[question.type].label}
         >
-          {question.type === "OPEN_TEXT" ? "Texto" : "Opción"}
+          {Q_TYPE_BADGE[question.type].label}
         </span>
         <button
           type="button"
@@ -700,17 +763,22 @@ function AddSectionButton({
 
 function AddQuestionForm({
   sectionId,
+  kind,
   onDone,
   onCancel,
 }: {
   sectionId: string;
+  kind: EvaluationKind;
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const typeOptions = questionTypesFor(kind);
   const [code, setCode] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
-  const [qType, setQType] = useState<EvaluationQuestionType>("MULTIPLE_CHOICE");
+  const [qType, setQType] = useState<EvaluationQuestionType>(
+    typeOptions[0]!.value,
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -746,10 +814,11 @@ function AddQuestionForm({
           }
           className="rounded-lg border border-border bg-surface px-2 py-1 text-xs"
         >
-          <option value="MULTIPLE_CHOICE">
-            Opción múltiple (Fortaleza/Debilidad/No aplica)
-          </option>
-          <option value="OPEN_TEXT">Texto abierto</option>
+          {typeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
       </div>
       {error && <p className="text-[11px] text-red-700">{error}</p>}

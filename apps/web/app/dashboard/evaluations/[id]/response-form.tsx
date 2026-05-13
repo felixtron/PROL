@@ -8,6 +8,8 @@ import type {
   EvaluationSectionType,
   EvaluationAnswerValue,
   EvaluationQuestionType,
+  EvaluationKind,
+  EvaluationFactor,
 } from "@prol/db";
 
 type Question = {
@@ -34,32 +36,76 @@ const NEGATIVE_LABEL: Record<EvaluationSectionType, string> = {
   EXTERNAL: "Amenaza",
 };
 
-const VALUES: EvaluationAnswerValue[] = [
+const DAFO_VALUES: EvaluationAnswerValue[] = [
   "POSITIVE",
   "NEGATIVE",
   "NOT_APPLICABLE",
 ];
+const DIAGNOSTIC_VALUES: EvaluationAnswerValue[] = [
+  "POSITIVE",
+  "PARTIAL",
+  "NEGATIVE",
+];
+
+const DIAGNOSTIC_LABEL: Record<EvaluationAnswerValue, string> = {
+  POSITIVE: "Sí",
+  PARTIAL: "Parcialmente",
+  NEGATIVE: "No",
+  NOT_APPLICABLE: "No aplica",
+};
+
+const FACTOR_OPTIONS: {
+  value: EvaluationFactor;
+  label: string;
+  palette: string;
+}[] = [
+  {
+    value: "STRENGTH",
+    label: "Fortaleza",
+    palette: "border-emerald-500 bg-emerald-50 text-emerald-700",
+  },
+  {
+    value: "WEAKNESS",
+    label: "Debilidad",
+    palette: "border-red-500 bg-red-50 text-red-700",
+  },
+  {
+    value: "OPPORTUNITY",
+    label: "Oportunidad",
+    palette: "border-blue-500 bg-blue-50 text-blue-700",
+  },
+  {
+    value: "THREAT",
+    label: "Amenaza",
+    palette: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+];
 
 export function EvaluationResponseForm({
   participantId,
+  kind,
   sections,
   initialValues,
   initialTexts,
+  initialFactors,
   hasPrevious,
 }: {
   participantId: string;
+  kind: EvaluationKind;
   sections: Section[];
   initialValues: Record<string, string>;
   initialTexts: Record<string, string>;
+  initialFactors: Record<string, EvaluationFactor[]>;
   hasPrevious: boolean;
 }) {
   const router = useRouter();
+  const validValues = kind === "DIAGNOSTIC" ? DIAGNOSTIC_VALUES : DAFO_VALUES;
   const [answers, setAnswers] = useState<Record<string, EvaluationAnswerValue>>(
     () => {
       const out: Record<string, EvaluationAnswerValue> = {};
       for (const [k, v] of Object.entries(initialValues)) {
-        if (v === "POSITIVE" || v === "NEGATIVE" || v === "NOT_APPLICABLE") {
-          out[k] = v;
+        if (validValues.includes(v as EvaluationAnswerValue)) {
+          out[k] = v as EvaluationAnswerValue;
         }
       }
       return out;
@@ -68,6 +114,9 @@ export function EvaluationResponseForm({
   const [textAnswers, setTextAnswers] = useState<Record<string, string>>(
     () => ({ ...initialTexts }),
   );
+  const [factorAnswers, setFactorAnswers] = useState<
+    Record<string, EvaluationFactor[]>
+  >(() => ({ ...initialFactors }));
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<string | null>(null);
@@ -78,9 +127,22 @@ export function EvaluationResponseForm({
     if (q.type === "OPEN_TEXT") {
       return (textAnswers[q.id]?.trim().length ?? 0) > 0;
     }
+    if (q.type === "MULTI_FACTOR") {
+      return (factorAnswers[q.id]?.length ?? 0) > 0;
+    }
     return !!answers[q.id];
   }).length;
   const allAnswered = answeredCount === totalCount;
+
+  function toggleFactor(qId: string, f: EvaluationFactor) {
+    setFactorAnswers((prev) => {
+      const curr = prev[qId] ?? [];
+      const next = curr.includes(f)
+        ? curr.filter((x) => x !== f)
+        : [...curr, f];
+      return { ...prev, [qId]: next };
+    });
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -94,11 +156,13 @@ export function EvaluationResponseForm({
     }
     startTransition(async () => {
       try {
-        const payload = allQuestions.map((q) =>
-          q.type === "OPEN_TEXT"
-            ? { questionId: q.id, text: textAnswers[q.id] ?? "" }
-            : { questionId: q.id, value: answers[q.id] },
-        );
+        const payload = allQuestions.map((q) => {
+          if (q.type === "OPEN_TEXT")
+            return { questionId: q.id, text: textAnswers[q.id] ?? "" };
+          if (q.type === "MULTI_FACTOR")
+            return { questionId: q.id, factors: factorAnswers[q.id] ?? [] };
+          return { questionId: q.id, value: answers[q.id] };
+        });
         const res = await submitEvaluationAnswers(participantId, payload);
         setSuccess(`Respuesta enviada (versión v${res.version})`);
         router.refresh();
@@ -106,6 +170,13 @@ export function EvaluationResponseForm({
         setError(err instanceof Error ? err.message : "Error al enviar");
       }
     });
+  }
+
+  function labelFor(v: EvaluationAnswerValue, sectionType: EvaluationSectionType): string {
+    if (kind === "DIAGNOSTIC") return DIAGNOSTIC_LABEL[v];
+    if (v === "POSITIVE") return POSITIVE_LABEL[sectionType];
+    if (v === "NEGATIVE") return NEGATIVE_LABEL[sectionType];
+    return "No aplica";
   }
 
   return (
@@ -161,17 +232,31 @@ export function EvaluationResponseForm({
             <h2 className="font-heading text-base font-semibold text-text-primary">
               {section.title}
             </h2>
-            <p className="mt-0.5 text-xs text-text-tertiary">
-              Cada respuesta positiva cuenta como{" "}
-              <span className="font-medium text-emerald-700">
-                {POSITIVE_LABEL[section.type]}
-              </span>
-              ; negativa como{" "}
-              <span className="font-medium text-red-700">
-                {NEGATIVE_LABEL[section.type]}
-              </span>
-              .
-            </p>
+            {kind === "DAFO" && (
+              <p className="mt-0.5 text-xs text-text-tertiary">
+                Cada respuesta positiva cuenta como{" "}
+                <span className="font-medium text-emerald-700">
+                  {POSITIVE_LABEL[section.type]}
+                </span>
+                ; negativa como{" "}
+                <span className="font-medium text-red-700">
+                  {NEGATIVE_LABEL[section.type]}
+                </span>
+                .
+              </p>
+            )}
+            {kind === "DIAGNOSTIC" && (
+              <p className="mt-0.5 text-xs text-text-tertiary">
+                Responde <span className="font-medium text-emerald-700">Sí</span>,{" "}
+                <span className="font-medium text-amber-700">Parcialmente</span> o{" "}
+                <span className="font-medium text-red-700">No</span> a cada pregunta.
+              </p>
+            )}
+            {kind === "STAKEHOLDERS" && (
+              <p className="mt-0.5 text-xs text-text-tertiary">
+                Marca todos los factores DAFO que apliquen a cada parte interesada.
+              </p>
+            )}
           </div>
           <ul className="divide-y divide-border">
             {section.questions.map((q) => (
@@ -202,44 +287,83 @@ export function EvaluationResponseForm({
                     placeholder="Tu respuesta..."
                     className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   />
+                ) : q.type === "MULTI_FACTOR" ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {FACTOR_OPTIONS.map((opt) => {
+                      const checked = (factorAnswers[q.id] ?? []).includes(
+                        opt.value,
+                      );
+                      return (
+                        <label
+                          key={opt.value}
+                          className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                            checked
+                              ? opt.palette
+                              : "border-border bg-surface text-text-secondary hover:border-primary-200"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleFactor(q.id, opt.value)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-[10px] ${
+                              checked
+                                ? "border-current bg-current text-white"
+                                : "border-border"
+                            }`}
+                          >
+                            {checked && (
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                            )}
+                          </span>
+                          {opt.label}
+                        </label>
+                      );
+                    })}
+                  </div>
                 ) : (
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {VALUES.map((v) => {
-                    const label =
-                      v === "POSITIVE"
-                        ? POSITIVE_LABEL[section.type]
-                        : v === "NEGATIVE"
-                          ? NEGATIVE_LABEL[section.type]
-                          : "No aplica";
-                    const checked = answers[q.id] === v;
-                    return (
-                      <label
-                        key={v}
-                        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                          checked
-                            ? v === "POSITIVE"
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                              : v === "NEGATIVE"
-                                ? "border-red-500 bg-red-50 text-red-700"
-                                : "border-text-tertiary bg-surface-secondary text-text-secondary"
-                            : "border-border bg-surface text-text-secondary hover:border-primary-200"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          value={v}
-                          checked={checked}
-                          onChange={() =>
-                            setAnswers((prev) => ({ ...prev, [q.id]: v }))
-                          }
-                          className="sr-only"
-                        />
-                        {label}
-                      </label>
-                    );
-                  })}
-                </div>
+                  <div
+                    className={`mt-2 grid grid-cols-1 gap-2 ${
+                      validValues.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+                    }`}
+                  >
+                    {validValues.map((v) => {
+                      const checked = answers[q.id] === v;
+                      const palette =
+                        v === "POSITIVE"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : v === "PARTIAL"
+                            ? "border-amber-500 bg-amber-50 text-amber-700"
+                            : v === "NEGATIVE"
+                              ? "border-red-500 bg-red-50 text-red-700"
+                              : "border-text-tertiary bg-surface-secondary text-text-secondary";
+                      return (
+                        <label
+                          key={v}
+                          className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                            checked
+                              ? palette
+                              : "border-border bg-surface text-text-secondary hover:border-primary-200"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={q.id}
+                            value={v}
+                            checked={checked}
+                            onChange={() =>
+                              setAnswers((prev) => ({ ...prev, [q.id]: v }))
+                            }
+                            className="sr-only"
+                          />
+                          {labelFor(v, section.type)}
+                        </label>
+                      );
+                    })}
+                  </div>
                 )}
               </li>
             ))}

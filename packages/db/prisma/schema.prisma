@@ -128,6 +128,7 @@ enum EvaluationSectionType {
 
 enum EvaluationAnswerValue {
   POSITIVE
+  PARTIAL // Diagnóstico — "Parcialmente". Inválido para DAFO.
   NEGATIVE
   NOT_APPLICABLE
 }
@@ -135,12 +136,35 @@ enum EvaluationAnswerValue {
 enum EvaluationQuestionType {
   MULTIPLE_CHOICE
   OPEN_TEXT
+  MULTI_FACTOR // Multi-selección F/D/O/A (Partes interesadas).
+}
+
+/// Factor DAFO marcable en preguntas MULTI_FACTOR.
+enum EvaluationFactor {
+  STRENGTH // Fortaleza
+  WEAKNESS // Debilidad
+  OPPORTUNITY // Oportunidad
+  THREAT // Amenaza
 }
 
 enum EvaluationStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+/// Tipo de evaluación: define qué opciones de respuesta y qué reporte usa la plantilla.
+/// DAFO         → opción única F/D/O/A según section.type, reporte DAFO (pie + cuadrantes).
+/// DIAGNOSTIC   → opción única Sí/Parcialmente/No, reporte de barras GAP.
+/// GUIDELINES   → texto abierto, sin gráfico.
+/// STAKEHOLDERS → opción múltiple F/D/O/A, sin gráfico.
+/// ROLES        → texto abierto, sin gráfico.
+enum EvaluationKind {
+  DAFO
+  DIAGNOSTIC
+  GUIDELINES
+  STAKEHOLDERS
+  ROLES
 }
 
 enum NotificationType {
@@ -1209,6 +1233,7 @@ model Evaluation {
   description String?
   methodology String?
   status      EvaluationStatus @default(DRAFT)
+  kind        EvaluationKind   @default(DAFO)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1336,10 +1361,12 @@ model EvaluationAnswer {
   question   EvaluationQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   // Mutually-exclusive depending on the question type:
-  //  - MULTIPLE_CHOICE → `value` is set (POSITIVE/NEGATIVE/NOT_APPLICABLE).
+  //  - MULTIPLE_CHOICE → `value` is set (POSITIVE/PARTIAL/NEGATIVE/NOT_APPLICABLE).
   //  - OPEN_TEXT       → `text` is set, free-form participant response.
-  value EvaluationAnswerValue?
-  text  String?
+  //  - MULTI_FACTOR    → `factors` carries one or more F/D/O/A.
+  value   EvaluationAnswerValue?
+  text    String?
+  factors EvaluationFactor[]     @default([])
 
   @@unique([submissionId, questionId])
   @@index([submissionId])

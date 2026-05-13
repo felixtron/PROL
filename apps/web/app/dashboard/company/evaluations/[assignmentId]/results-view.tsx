@@ -6,16 +6,28 @@ interface SectionData {
   title: string;
   type: EvaluationSectionType;
   positives: number;
+  partials: number;
   negatives: number;
   positivePct: number;
+  partialPct: number;
   negativePct: number;
   questions: {
     id: string;
     code: string | null;
     label: string;
     type: EvaluationQuestionType;
-    counts: { POSITIVE: number; NEGATIVE: number; NOT_APPLICABLE: number };
-    verdict: "POSITIVE" | "NEGATIVE" | "NOT_APPLICABLE" | "NO_RESPONSE";
+    counts: {
+      POSITIVE: number;
+      PARTIAL: number;
+      NEGATIVE: number;
+      NOT_APPLICABLE: number;
+    };
+    verdict:
+      | "POSITIVE"
+      | "PARTIAL"
+      | "NEGATIVE"
+      | "NOT_APPLICABLE"
+      | "NO_RESPONSE";
     textAnswers: { author: string; text: string }[];
   }[];
 }
@@ -296,7 +308,12 @@ function Quadrant({
 function VerdictIcon({
   verdict,
 }: {
-  verdict: "POSITIVE" | "NEGATIVE" | "NOT_APPLICABLE" | "NO_RESPONSE";
+  verdict:
+    | "POSITIVE"
+    | "PARTIAL"
+    | "NEGATIVE"
+    | "NOT_APPLICABLE"
+    | "NO_RESPONSE";
 }) {
   if (verdict === "POSITIVE") {
     return (
