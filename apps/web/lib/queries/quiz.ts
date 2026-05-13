@@ -70,26 +70,55 @@ export const getQuizForLesson = cache(async (lessonId: string) => {
 });
 
 /**
- * Get quiz for student (WITHOUT correct answers), plus their previous attempts
+ * Get quiz for student (WITHOUT correct answers), plus their previous attempts.
+ *
+ * Acepta también un `enrollmentId` sintético `preview-...` cuando el caller
+ * es el profesor del curso, un ADMIN del mismo tenant o un SUPER_ADMIN —
+ * mismo criterio que `getStudentCourseDetail`. En preview no se cargan
+ * intentos (no hay enrollment real al que asociarlos).
  */
 export const getQuizForStudent = cache(
   async (lessonId: string, enrollmentId: string) => {
     const user = await requireUser();
+    const isPreview = enrollmentId.startsWith("preview-");
 
-    // Verify enrollment belongs to user
-    const enrollment = await db.enrollment.findFirst({
-      where: { id: enrollmentId, studentId: user.id },
-    });
-    if (!enrollment) throw new Error("Inscripción no encontrada");
+    if (isPreview) {
+      // Authorize by role using the lesson's course.
+      const lesson = await db.lesson.findFirst({
+        where: { id: lessonId },
+        select: {
+          module: {
+            select: {
+              course: { select: { professorId: true, tenantId: true } },
+            },
+          },
+        },
+      });
+      if (!lesson) throw new Error("Lección no encontrada");
+      const course = lesson.module.course;
+      const canPreview =
+        user.role === "SUPER_ADMIN" ||
+        (user.role === "ADMIN" && user.tenantId === course.tenantId) ||
+        (user.role === "PROFESSOR" && course.professorId === user.id);
+      if (!canPreview) throw new Error("No autorizado");
+    } else {
+      // Verify enrollment belongs to user
+      const enrollment = await db.enrollment.findFirst({
+        where: { id: enrollmentId, studentId: user.id },
+      });
+      if (!enrollment) throw new Error("Inscripción no encontrada");
+    }
 
-    // Get quiz
+    // Get quiz (sólo cargamos attempts si es un enrollment real)
     const quiz = await db.quiz.findFirst({
       where: { lessonId },
       include: {
-        attempts: {
-          where: { enrollmentId },
-          orderBy: { startedAt: "desc" },
-        },
+        attempts: isPreview
+          ? false
+          : {
+              where: { enrollmentId },
+              orderBy: { startedAt: "desc" },
+            },
       },
     });
 
@@ -103,15 +132,17 @@ export const getQuizForStudent = cache(
       explanation: q.explanation,
     }));
 
-    // Format attempts
-    const attempts = quiz.attempts.map((attempt) => ({
-      id: attempt.id,
-      answers: attempt.answers as unknown as number[],
-      score: attempt.score,
-      passed: attempt.passed,
-      startedAt: attempt.startedAt,
-      completedAt: attempt.completedAt,
-    }));
+    // Format attempts (vacío en preview)
+    const attempts = isPreview
+      ? []
+      : quiz.attempts.map((attempt) => ({
+          id: attempt.id,
+          answers: attempt.answers as unknown as number[],
+          score: attempt.score,
+          passed: attempt.passed,
+          startedAt: attempt.startedAt,
+          completedAt: attempt.completedAt,
+        }));
 
     return {
       id: quiz.id,
