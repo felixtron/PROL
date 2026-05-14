@@ -574,9 +574,17 @@ function QuestionRow({
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Etiqueta"
+            maxLength={500}
             className="flex-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
           />
         </div>
+        <p
+          className={`text-right text-[10px] ${
+            label.length > 450 ? "text-amber-700" : "text-text-tertiary"
+          }`}
+        >
+          {label.length}/500
+        </p>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -628,7 +636,9 @@ function QuestionRow({
                 setEditing(false);
               })
             }
-            disabled={pending}
+            disabled={
+              pending || label.trim().length < 2 || label.length > 500
+            }
             className="rounded-lg bg-primary-600 px-3 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
           >
             Guardar
@@ -795,14 +805,22 @@ function AddQuestionForm({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder='Etiqueta (ej. "Estructura de la organización")'
+          maxLength={500}
           className="flex-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
         />
       </div>
+      <p
+        className={`text-right text-[10px] ${
+          label.length > 450 ? "text-amber-700" : "text-text-tertiary"
+        }`}
+      >
+        {label.length}/500
+      </p>
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
-        placeholder="Descripción / ayuda para el participante (opcional)"
+        placeholder="Descripción / ayuda para el participante (opcional). Para texto largo usa este campo en lugar de la etiqueta."
         className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-xs"
       />
       <div className="flex items-center gap-2">

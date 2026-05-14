@@ -211,8 +211,10 @@ export async function createQuestion(
   await assertEvaluationsEnabled(section.evaluation.tenantId, user.role);
 
   const label = input.label?.trim();
-  if (!label || label.length < 2 || label.length > 200) {
-    throw new Error("Etiqueta de pregunta inválida");
+  if (!label || label.length < 2 || label.length > 500) {
+    throw new Error(
+      "Etiqueta de pregunta inválida: debe tener entre 2 y 500 caracteres",
+    );
   }
 
   const maxPos = await db.evaluationQuestion.aggregate({
@@ -251,6 +253,15 @@ export async function updateQuestion(
   if (!q) throw new Error("Pregunta no encontrada");
   assertSameTenant(user, q.section.evaluation.tenantId);
   await assertEvaluationsEnabled(q.section.evaluation.tenantId, user.role);
+
+  if (input.label !== undefined) {
+    const trimmed = input.label.trim();
+    if (trimmed.length < 2 || trimmed.length > 500) {
+      throw new Error(
+        "Etiqueta de pregunta inválida: debe tener entre 2 y 500 caracteres",
+      );
+    }
+  }
 
   await db.evaluationQuestion.update({
     where: { id: questionId },
