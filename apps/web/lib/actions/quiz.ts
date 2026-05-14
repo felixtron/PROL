@@ -21,9 +21,17 @@ interface CreateQuizData {
   title: string;
   passingScore: number;
   questions: QuizQuestion[];
-  timeLimit?: number;
+  // null o ausente ⇒ sin límite de tiempo. Cualquier valor ≤ 0 también se
+  // normaliza a null para que "0 minutos" no se guarde por accidente.
+  timeLimit?: number | null;
   maxAttempts: number;
   isFinalExam?: boolean;
+}
+
+/** Sin límite ↔ null. Acepta undefined, null, 0 y negativos como "sin límite". */
+function normalizeTimeLimit(v: number | null | undefined): number | null {
+  if (v === undefined || v === null) return null;
+  return v > 0 ? v : null;
 }
 
 const FINAL_EXAM_MIN_PASSING_SCORE = 80;
@@ -119,7 +127,7 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
       title: data.title,
       passingScore: data.passingScore,
       questions: data.questions as unknown as Prisma.InputJsonValue,
-      timeLimit: data.timeLimit,
+      timeLimit: normalizeTimeLimit(data.timeLimit),
       maxAttempts: data.maxAttempts,
       isFinalExam: data.isFinalExam ?? false,
     },
@@ -213,7 +221,11 @@ export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) 
       ...(data.title && { title: data.title }),
       ...(data.passingScore !== undefined && { passingScore: data.passingScore }),
       ...(data.questions && { questions: data.questions as unknown as Prisma.InputJsonValue }),
-      ...(data.timeLimit !== undefined && { timeLimit: data.timeLimit }),
+      // `timeLimit: null` debe BORRAR el límite. Por eso aceptamos null
+      // explícito y sólo skipeamos cuando viene undefined (no enviado).
+      ...(data.timeLimit !== undefined && {
+        timeLimit: normalizeTimeLimit(data.timeLimit),
+      }),
       ...(data.maxAttempts !== undefined && { maxAttempts: data.maxAttempts }),
       ...(data.isFinalExam !== undefined && { isFinalExam: data.isFinalExam }),
     },

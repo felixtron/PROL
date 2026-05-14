@@ -65,13 +65,19 @@ interface QuizResult {
 // ---------------------------------------------------------------------------
 
 export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps) {
+  // Sin límite: el campo es null o ≤ 0 (defensa: si por alguna razón la DB
+  // tuviera 0 guardado, lo tratamos igual que null para no mostrar un reloj
+  // a cero ni intentar contar al revés desde 0).
+  const effectiveTimeLimit =
+    quiz.timeLimit && quiz.timeLimit > 0 ? quiz.timeLimit : null;
+
   const [isStarted, setIsStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(
     new Array(quiz.questions.length).fill(null)
   );
   const [timeRemaining, setTimeRemaining] = useState<number | null>(
-    quiz.timeLimit
+    effectiveTimeLimit,
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [results, setResults] = useState<QuizResult[] | null>(null);
@@ -105,7 +111,7 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
     setIsStarted(true);
     setCurrentQuestionIndex(0);
     setAnswers(new Array(quiz.questions.length).fill(null));
-    setTimeRemaining(quiz.timeLimit);
+    setTimeRemaining(effectiveTimeLimit);
     setIsSubmitted(false);
     setResults(null);
     setScore(null);
@@ -212,12 +218,17 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
             <span className="text-text-secondary">Número de preguntas:</span>
             <span className="font-semibold text-text-primary">{quiz.questions.length}</span>
           </div>
-          {quiz.timeLimit && (
+          {effectiveTimeLimit ? (
             <div className="flex items-center justify-between text-sm">
               <span className="text-text-secondary">Tiempo límite:</span>
               <span className="font-semibold text-text-primary">
-                {Math.floor(quiz.timeLimit / 60)} minutos
+                {Math.floor(effectiveTimeLimit / 60)} minutos
               </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-secondary">Tiempo límite:</span>
+              <span className="font-semibold text-text-primary">Sin límite</span>
             </div>
           )}
           <div className="flex items-center justify-between text-sm">

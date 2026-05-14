@@ -49,8 +49,12 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
 
   const [title, setTitle] = useState(existingQuiz?.title ?? "");
   const [passingScore, setPassingScore] = useState(existingQuiz?.passingScore ?? 70);
+  // Sin límite ↔ null. Aceptamos 0 en la UI como sinónimo de null para que
+  // el profesor pueda escribir "0" y entender "sin límite".
   const [timeLimit, setTimeLimit] = useState<number | null>(
-    existingQuiz?.timeLimit ? Math.floor(existingQuiz.timeLimit / 60) : null
+    existingQuiz?.timeLimit && existingQuiz.timeLimit > 0
+      ? Math.floor(existingQuiz.timeLimit / 60)
+      : null,
   );
   const [maxAttempts, setMaxAttempts] = useState(existingQuiz?.maxAttempts ?? 3);
   const [isFinalExam, setIsFinalExam] = useState(existingQuiz?.isFinalExam ?? false);
@@ -159,7 +163,8 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
           title,
           passingScore,
           questions,
-          timeLimit: timeLimit ? timeLimit * 60 : undefined,
+          // null borra el límite en update; en create se guarda como null.
+          timeLimit: timeLimit && timeLimit > 0 ? timeLimit * 60 : null,
           maxAttempts,
           isFinalExam,
         };
@@ -274,12 +279,24 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
             </label>
             <input
               type="number"
-              min="1"
+              min="0"
               value={timeLimit ?? ""}
-              onChange={(e) => setTimeLimit(e.target.value ? parseInt(e.target.value) : null)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") {
+                  setTimeLimit(null);
+                  return;
+                }
+                const n = parseInt(v);
+                // 0, negativo o NaN ⇒ sin límite.
+                setTimeLimit(Number.isFinite(n) && n > 0 ? n : null);
+              }}
               placeholder="Sin límite"
               className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
+            <p className="mt-1 text-[11px] text-text-tertiary">
+              Deja en blanco o pon 0 para quiz sin límite de tiempo.
+            </p>
           </div>
 
           <div>
