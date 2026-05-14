@@ -14,6 +14,7 @@ interface CheckoutButtonProps {
   priceInCents: number;
   currency: string;
   isFree: boolean;
+  coveredByCompany?: boolean;
 }
 
 type PaymentOption = {
@@ -47,42 +48,60 @@ const PAYMENT_OPTIONS: PaymentOption[] = [
 export function CheckoutButton({
   courseId,
   isFree,
+  coveredByCompany,
 }: CheckoutButtonProps) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<StripePaymentMethod>("card");
   const [showMethodPicker, setShowMethodPicker] = useState(false);
   const router = useRouter();
 
+  // Inscripción directa (sin Stripe) cuando el curso es gratis o cuando la
+  // empresa del alumno tiene asignación activa.
+  const isDirect = isFree || coveredByCompany;
+
   function handleClick() {
+    setError(null);
     startTransition(async () => {
-      if (isFree) {
-        await enrollInCourse(courseId);
-        router.push(`/dashboard/courses/${courseId}`);
-      } else {
-        const session = await createCheckoutSession(courseId, method);
-        if (session?.url) {
-          window.location.href = session.url;
+      try {
+        if (isDirect) {
+          await enrollInCourse(courseId);
+          router.push(`/dashboard/courses/${courseId}`);
+        } else {
+          const session = await createCheckoutSession(courseId, method);
+          if (session?.url) {
+            window.location.href = session.url;
+          }
         }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al inscribir");
       }
     });
   }
 
-  if (isFree) {
+  if (isDirect) {
     return (
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={isPending}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-60"
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Procesando...
-          </>
-        ) : (
-          "Inscribirse Gratis"
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-60"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Procesando...
+            </>
+          ) : coveredByCompany ? (
+            "Inscribirse (incluido por tu empresa)"
+          ) : (
+            "Inscribirse Gratis"
+          )}
+        </button>
+        {error && (
+          <p className="text-center text-xs text-red-700">{error}</p>
         )}
-      </button>
+      </div>
     );
   }
 

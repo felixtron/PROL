@@ -23,6 +23,29 @@ export async function enrollInCourse(courseId: string) {
   });
   if (!course) throw new Error("Curso no disponible");
 
+  // Defensa: sólo permitimos inscripción directa cuando el curso es gratis
+  // o cuando la empresa del alumno tiene asignación activa (no expirada).
+  // En cualquier otro caso, el cliente debe pasar por createCheckoutSession.
+  // Sin este guard, cualquier usuario podría inscribirse a un curso de pago
+  // bypassando Stripe llamando esta server action directamente.
+  if (course.priceInCents > 0) {
+    let coveredByCompany = false;
+    if (user.companyId) {
+      const assignment = await db.companyCourseAssignment.findUnique({
+        where: {
+          companyId_courseId: { companyId: user.companyId, courseId },
+        },
+        select: { isActive: true, expiresAt: true },
+      });
+      coveredByCompany =
+        !!assignment?.isActive &&
+        (!assignment.expiresAt || assignment.expiresAt > new Date());
+    }
+    if (!coveredByCompany) {
+      throw new Error("Este curso requiere pago; usa el flujo de checkout");
+    }
+  }
+
   const enrollment = await db.enrollment.create({
     data: {
       studentId: user.id,

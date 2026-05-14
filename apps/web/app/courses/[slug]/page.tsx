@@ -106,7 +106,7 @@ export default async function CourseDetailPage({
     notFound();
   }
 
-  const { course, isEnrolled } = result;
+  const { course, isEnrolled, coveredByCompany } = result;
   const user = await getCurrentUser();
   const isLoggedIn = user !== null;
 
@@ -277,6 +277,15 @@ export default async function CourseDetailPage({
                 <span className="text-3xl font-bold text-emerald-600">
                   Gratis
                 </span>
+              ) : coveredByCompany ? (
+                <div>
+                  <span className="text-3xl font-bold text-emerald-600">
+                    Incluido
+                  </span>
+                  <p className="mt-1 text-xs text-text-tertiary">
+                    Tu empresa cubre este curso
+                  </p>
+                </div>
               ) : (
                 <span className="text-3xl font-bold text-text-primary">
                   {formatCurrency(course.priceInCents, course.currency)}
@@ -300,6 +309,7 @@ export default async function CourseDetailPage({
                   priceInCents={course.priceInCents}
                   currency={course.currency}
                   isFree={course.priceInCents === 0}
+                  coveredByCompany={coveredByCompany}
                 />
               ) : (
                 <Link

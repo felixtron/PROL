@@ -192,7 +192,11 @@ export type CourseDetail = {
 export const getCourseBySlug = cache(
   async (
     slug: string
-  ): Promise<{ course: CourseDetail; isEnrolled: boolean } | null> => {
+  ): Promise<{
+    course: CourseDetail;
+    isEnrolled: boolean;
+    coveredByCompany: boolean;
+  } | null> => {
     const tenant = await getCurrentTenant();
     if (!tenant) return null;
 
@@ -248,6 +252,7 @@ export const getCourseBySlug = cache(
 
     // Check if current user is enrolled (getCurrentUser returns null if not logged in)
     let isEnrolled = false;
+    let coveredByCompany = false;
     const user = await getCurrentUser();
 
     if (user) {
@@ -261,6 +266,23 @@ export const getCourseBySlug = cache(
         select: { id: true },
       });
       isEnrolled = enrollment !== null;
+
+      // Si el curso es de pago, chequea si la empresa del alumno lo tiene
+      // asignado y activo — en ese caso ofrecemos inscripción gratis.
+      if (!isEnrolled && course.priceInCents > 0 && user.companyId) {
+        const assignment = await db.companyCourseAssignment.findUnique({
+          where: {
+            companyId_courseId: {
+              companyId: user.companyId,
+              courseId: course.id,
+            },
+          },
+          select: { isActive: true, expiresAt: true },
+        });
+        coveredByCompany =
+          !!assignment?.isActive &&
+          (!assignment.expiresAt || assignment.expiresAt > new Date());
+      }
     }
 
     return {
@@ -290,6 +312,7 @@ export const getCourseBySlug = cache(
         })),
       },
       isEnrolled,
+      coveredByCompany,
     };
   }
 );
