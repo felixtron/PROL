@@ -128,6 +128,66 @@ const Q_TYPE_BADGE: Record<EvaluationQuestionType, { label: string; cls: string 
   OPEN_TEXT: { label: "Texto", cls: "bg-amber-50 text-amber-700" },
 };
 
+/**
+ * Returns the answer options the respondent will see for a given combination
+ * of evaluation kind + section type + question type. Options are not stored
+ * per-question for evaluations (unlike surveys) — they are derived from the
+ * EvaluationKind and, for DAFO, from EvaluationSectionType. We surface them
+ * in the editor as a read-only preview so the professor can confirm what
+ * the respondent will see.
+ */
+function answerOptionsPreview(
+  kind: EvaluationKind,
+  sectionType: EvaluationSectionType,
+  qType: EvaluationQuestionType,
+): { mode: "single" | "multi" | "text"; options: string[] } | null {
+  if (qType === "OPEN_TEXT") {
+    return { mode: "text", options: ["Texto libre (respuesta abierta)"] };
+  }
+  if (kind === "DAFO" && qType === "MULTIPLE_CHOICE") {
+    return {
+      mode: "single",
+      options:
+        sectionType === "INTERNAL"
+          ? ["Fortaleza", "Debilidad", "No aplica"]
+          : ["Oportunidad", "Amenaza", "No aplica"],
+    };
+  }
+  if (kind === "DIAGNOSTIC" && qType === "MULTIPLE_CHOICE") {
+    return {
+      mode: "single",
+      options: ["Sí", "Parcialmente", "No", "No aplica"],
+    };
+  }
+  if (kind === "STAKEHOLDERS" && qType === "MULTI_FACTOR") {
+    return {
+      mode: "multi",
+      options: ["Fortaleza", "Debilidad", "Oportunidad", "Amenaza"],
+    };
+  }
+  return null;
+}
+
+function OptionsPreview({
+  preview,
+}: {
+  preview: ReturnType<typeof answerOptionsPreview>;
+}) {
+  if (!preview) return null;
+  const prefix =
+    preview.mode === "multi"
+      ? "Opción múltiple:"
+      : preview.mode === "single"
+        ? "El respondente elige una de:"
+        : "Respuesta:";
+  return (
+    <p className="mt-1 text-[11px] text-text-tertiary">
+      <span className="font-medium">{prefix}</span>{" "}
+      {preview.options.join(" · ")}
+    </p>
+  );
+}
+
 const STATUS_LABEL: Record<EvaluationStatus, string> = {
   DRAFT: "Borrador",
   PUBLISHED: "Publicada",
@@ -498,7 +558,13 @@ function SectionBlock({
 
       <ul className="divide-y divide-border">
         {section.questions.map((q) => (
-          <QuestionRow key={q.id} question={q} kind={kind} onChange={onChange} />
+          <QuestionRow
+            key={q.id}
+            question={q}
+            kind={kind}
+            sectionType={section.type}
+            onChange={onChange}
+          />
         ))}
       </ul>
 
@@ -506,6 +572,7 @@ function SectionBlock({
         <AddQuestionForm
           sectionId={section.id}
           kind={kind}
+          sectionType={section.type}
           onDone={() => {
             setShowAddQuestion(false);
             onChange();
@@ -533,10 +600,12 @@ function SectionBlock({
 function QuestionRow({
   question,
   kind,
+  sectionType,
   onChange,
 }: {
   question: Question;
   kind: EvaluationKind;
+  sectionType: EvaluationSectionType;
   onChange: () => void;
 }) {
   const typeOptions = questionTypesFor(kind);
@@ -608,6 +677,9 @@ function QuestionRow({
             ))}
           </select>
         </div>
+        <OptionsPreview
+          preview={answerOptionsPreview(kind, sectionType, qType)}
+        />
         {error && <p className="text-[11px] text-red-700">{error}</p>}
         <div className="flex justify-end gap-2">
           <button
@@ -664,6 +736,9 @@ function QuestionRow({
             {question.description}
           </p>
         )}
+        <OptionsPreview
+          preview={answerOptionsPreview(kind, sectionType, question.type)}
+        />
       </div>
       <div className="flex items-center gap-1">
         <span
@@ -774,11 +849,13 @@ function AddSectionButton({
 function AddQuestionForm({
   sectionId,
   kind,
+  sectionType,
   onDone,
   onCancel,
 }: {
   sectionId: string;
   kind: EvaluationKind;
+  sectionType: EvaluationSectionType;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -839,6 +916,9 @@ function AddQuestionForm({
           ))}
         </select>
       </div>
+      <OptionsPreview
+        preview={answerOptionsPreview(kind, sectionType, qType)}
+      />
       {error && <p className="text-[11px] text-red-700">{error}</p>}
       <div className="flex justify-end gap-2">
         <button
