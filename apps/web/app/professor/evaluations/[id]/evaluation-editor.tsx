@@ -38,6 +38,10 @@ type Question = {
   description: string | null;
   position: number;
   type: EvaluationQuestionType;
+  /** MULTI_SELECT only: array of option strings the respondent picks from. */
+  options?: unknown;
+  minSelections?: number | null;
+  maxSelections?: number | null;
 };
 
 type Section = {
@@ -114,6 +118,7 @@ function questionTypesFor(kind: EvaluationKind): {
     case "STAKEHOLDERS":
       return [
         { value: "MULTI_FACTOR", label: "Opción múltiple (F/D/O/A)" },
+        { value: "MULTI_SELECT", label: "Lista personalizada (multi-selección)" },
         { value: "OPEN_TEXT", label: "Texto abierto" },
       ];
     case "GUIDELINES":
@@ -125,6 +130,7 @@ function questionTypesFor(kind: EvaluationKind): {
 const Q_TYPE_BADGE: Record<EvaluationQuestionType, { label: string; cls: string }> = {
   MULTIPLE_CHOICE: { label: "Opción", cls: "bg-primary-50 text-primary-700" },
   MULTI_FACTOR: { label: "Multi", cls: "bg-indigo-50 text-indigo-700" },
+  MULTI_SELECT: { label: "Lista", cls: "bg-emerald-50 text-emerald-700" },
   OPEN_TEXT: { label: "Texto", cls: "bg-amber-50 text-amber-700" },
 };
 
@@ -140,7 +146,12 @@ function answerOptionsPreview(
   kind: EvaluationKind,
   sectionType: EvaluationSectionType,
   qType: EvaluationQuestionType,
-): { mode: "single" | "multi" | "text"; options: string[] } | null {
+  question?: { options?: unknown; minSelections?: number | null; maxSelections?: number | null },
+): {
+  mode: "single" | "multi" | "text";
+  options: string[];
+  bounds?: { min: number | null; max: number | null };
+} | null {
   if (qType === "OPEN_TEXT") {
     return { mode: "text", options: ["Texto libre (respuesta abierta)"] };
   }
@@ -165,7 +176,148 @@ function answerOptionsPreview(
       options: ["Fortaleza", "Debilidad", "Oportunidad", "Amenaza"],
     };
   }
+  if (qType === "MULTI_SELECT") {
+    const opts = Array.isArray(question?.options)
+      ? (question!.options as unknown[]).filter(
+          (o): o is string => typeof o === "string",
+        )
+      : [];
+    return {
+      mode: "multi",
+      options: opts.length > 0 ? opts : ["(sin opciones configuradas todavía)"],
+      bounds: {
+        min: question?.minSelections ?? null,
+        max: question?.maxSelections ?? null,
+      },
+    };
+  }
   return null;
+}
+
+/**
+ * Editor inline para las opciones de una pregunta MULTI_SELECT. Permite
+ * agregar/eliminar/editar opciones (mínimo 2, máximo 20) e indicar min/max
+ * de selecciones que el respondente debe marcar.
+ */
+function MultiSelectOptionsEditor({
+  options,
+  setOptions,
+  minSelections,
+  setMinSelections,
+  maxSelections,
+  setMaxSelections,
+}: {
+  options: string[];
+  setOptions: (next: string[]) => void;
+  minSelections: number | null;
+  setMinSelections: (n: number | null) => void;
+  maxSelections: number | null;
+  setMaxSelections: (n: number | null) => void;
+}) {
+  const max = options.length;
+  return (
+    <div className="space-y-2 rounded-lg border border-dashed border-border bg-surface px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">
+          Opciones que verá el respondente
+        </p>
+        <span className="text-[10px] text-text-tertiary">
+          {options.length}/20
+        </span>
+      </div>
+
+      <ul className="space-y-1">
+        {options.map((opt, idx) => (
+          <li key={idx} className="flex items-center gap-1.5">
+            <span className="w-5 shrink-0 text-center text-[10px] font-medium text-text-tertiary">
+              {idx + 1}.
+            </span>
+            <input
+              value={opt}
+              onChange={(e) => {
+                const next = options.slice();
+                next[idx] = e.target.value;
+                setOptions(next);
+              }}
+              maxLength={200}
+              placeholder={`Opción ${idx + 1}`}
+              className="flex-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (options.length <= 2) return;
+                setOptions(options.filter((_, i) => i !== idx));
+              }}
+              disabled={options.length <= 2}
+              title={
+                options.length <= 2
+                  ? "Mínimo 2 opciones"
+                  : "Eliminar opción"
+              }
+              className="rounded-md p-1 text-red-600 hover:bg-red-50 disabled:opacity-30"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        onClick={() => {
+          if (options.length >= 20) return;
+          setOptions([...options, ""]);
+        }}
+        disabled={options.length >= 20}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50"
+      >
+        <Plus className="h-3 w-3" />
+        Agregar opción
+      </button>
+
+      <div className="grid grid-cols-2 gap-2 border-t border-border pt-2">
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+            Mín. selecciones
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={max || 1}
+            value={minSelections ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setMinSelections(v === "" ? null : Number(v));
+            }}
+            placeholder="Sin mínimo"
+            className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wider text-text-tertiary">
+            Máx. selecciones
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={max || 1}
+            value={maxSelections ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setMaxSelections(v === "" ? null : Number(v));
+            }}
+            placeholder="Sin máximo"
+            className="w-full rounded-md border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+          />
+        </label>
+      </div>
+      <p className="text-[10px] text-text-tertiary">
+        Para forzar &quot;selecciona exactamente N&quot;, poné el mismo valor
+        en ambos campos. Dejá ambos vacíos para multi-selección libre.
+      </p>
+    </div>
+  );
 }
 
 function OptionsPreview({
@@ -180,10 +332,25 @@ function OptionsPreview({
       : preview.mode === "single"
         ? "El respondente elige una de:"
         : "Respuesta:";
+  const bounds = preview.bounds;
+  const boundsText = bounds
+    ? bounds.min != null && bounds.max != null && bounds.min === bounds.max
+      ? ` · debe seleccionar exactamente ${bounds.min}`
+      : bounds.min != null && bounds.max != null
+        ? ` · entre ${bounds.min} y ${bounds.max} opciones`
+        : bounds.min != null
+          ? ` · mínimo ${bounds.min}`
+          : bounds.max != null
+            ? ` · máximo ${bounds.max}`
+            : ""
+    : "";
   return (
     <p className="mt-1 text-[11px] text-text-tertiary">
       <span className="font-medium">{prefix}</span>{" "}
       {preview.options.join(" · ")}
+      {boundsText && (
+        <span className="font-medium text-text-secondary">{boundsText}</span>
+      )}
     </p>
   );
 }
@@ -615,6 +782,19 @@ function QuestionRow({
   const [label, setLabel] = useState(question.label);
   const [description, setDescription] = useState(question.description ?? "");
   const [qType, setQType] = useState<EvaluationQuestionType>(question.type);
+  const [msOptions, setMsOptions] = useState<string[]>(() => {
+    if (!Array.isArray(question.options)) return ["", ""];
+    const arr = (question.options as unknown[]).filter(
+      (o): o is string => typeof o === "string",
+    );
+    return arr.length >= 2 ? arr : ["", ""];
+  });
+  const [msMin, setMsMin] = useState<number | null>(
+    question.minSelections ?? null,
+  );
+  const [msMax, setMsMax] = useState<number | null>(
+    question.maxSelections ?? null,
+  );
   const [error, setError] = useState("");
 
   function run(fn: () => Promise<unknown>) {
@@ -677,8 +857,22 @@ function QuestionRow({
             ))}
           </select>
         </div>
+        {qType === "MULTI_SELECT" && (
+          <MultiSelectOptionsEditor
+            options={msOptions}
+            setOptions={setMsOptions}
+            minSelections={msMin}
+            setMinSelections={setMsMin}
+            maxSelections={msMax}
+            setMaxSelections={setMsMax}
+          />
+        )}
         <OptionsPreview
-          preview={answerOptionsPreview(kind, sectionType, qType)}
+          preview={answerOptionsPreview(kind, sectionType, qType, {
+            options: msOptions,
+            minSelections: msMin,
+            maxSelections: msMax,
+          })}
         />
         {error && <p className="text-[11px] text-red-700">{error}</p>}
         <div className="flex justify-end gap-2">
@@ -704,12 +898,25 @@ function QuestionRow({
                   label,
                   description: description || null,
                   type: qType,
+                  ...(qType === "MULTI_SELECT"
+                    ? {
+                        options: msOptions
+                          .map((o) => o.trim())
+                          .filter((o) => o.length > 0),
+                        minSelections: msMin,
+                        maxSelections: msMax,
+                      }
+                    : {}),
                 });
                 setEditing(false);
               })
             }
             disabled={
-              pending || label.trim().length < 2 || label.length > 500
+              pending ||
+              label.trim().length < 2 ||
+              label.length > 500 ||
+              (qType === "MULTI_SELECT" &&
+                msOptions.filter((o) => o.trim().length > 0).length < 2)
             }
             className="rounded-lg bg-primary-600 px-3 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
           >
@@ -737,7 +944,12 @@ function QuestionRow({
           </p>
         )}
         <OptionsPreview
-          preview={answerOptionsPreview(kind, sectionType, question.type)}
+          preview={answerOptionsPreview(
+            kind,
+            sectionType,
+            question.type,
+            question,
+          )}
         />
       </div>
       <div className="flex items-center gap-1">
@@ -866,6 +1078,9 @@ function AddQuestionForm({
   const [qType, setQType] = useState<EvaluationQuestionType>(
     typeOptions[0]!.value,
   );
+  const [msOptions, setMsOptions] = useState<string[]>(["", ""]);
+  const [msMin, setMsMin] = useState<number | null>(null);
+  const [msMax, setMsMax] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -916,8 +1131,22 @@ function AddQuestionForm({
           ))}
         </select>
       </div>
+      {qType === "MULTI_SELECT" && (
+        <MultiSelectOptionsEditor
+          options={msOptions}
+          setOptions={setMsOptions}
+          minSelections={msMin}
+          setMinSelections={setMsMin}
+          maxSelections={msMax}
+          setMaxSelections={setMsMax}
+        />
+      )}
       <OptionsPreview
-        preview={answerOptionsPreview(kind, sectionType, qType)}
+        preview={answerOptionsPreview(kind, sectionType, qType, {
+          options: msOptions,
+          minSelections: msMin,
+          maxSelections: msMax,
+        })}
       />
       {error && <p className="text-[11px] text-red-700">{error}</p>}
       <div className="flex justify-end gap-2">
@@ -939,6 +1168,15 @@ function AddQuestionForm({
                   label,
                   description: description || null,
                   type: qType,
+                  ...(qType === "MULTI_SELECT"
+                    ? {
+                        options: msOptions
+                          .map((o) => o.trim())
+                          .filter((o) => o.length > 0),
+                        minSelections: msMin,
+                        maxSelections: msMax,
+                      }
+                    : {}),
                 });
                 onDone();
               } catch (err) {
@@ -946,7 +1184,12 @@ function AddQuestionForm({
               }
             });
           }}
-          disabled={pending || label.length < 2}
+          disabled={
+            pending ||
+            label.length < 2 ||
+            (qType === "MULTI_SELECT" &&
+              msOptions.filter((o) => o.trim().length > 0).length < 2)
+          }
           className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
         >
           {pending && <Loader2 className="h-3 w-3 animate-spin" />}

@@ -18,6 +18,10 @@ type Question = {
   label: string;
   description: string | null;
   type: EvaluationQuestionType;
+  /** MULTI_SELECT only: the option strings the respondent picks from. */
+  options: string[];
+  minSelections: number | null;
+  maxSelections: number | null;
 };
 
 type Section = {
@@ -88,6 +92,7 @@ export function EvaluationResponseForm({
   initialValues,
   initialTexts,
   initialFactors,
+  initialSelectedIndexes,
   hasPrevious,
 }: {
   participantId: string;
@@ -96,6 +101,7 @@ export function EvaluationResponseForm({
   initialValues: Record<string, string>;
   initialTexts: Record<string, string>;
   initialFactors: Record<string, EvaluationFactor[]>;
+  initialSelectedIndexes: Record<string, number[]>;
   hasPrevious: boolean;
 }) {
   const router = useRouter();
@@ -117,6 +123,9 @@ export function EvaluationResponseForm({
   const [factorAnswers, setFactorAnswers] = useState<
     Record<string, EvaluationFactor[]>
   >(() => ({ ...initialFactors }));
+  const [selectedIndexes, setSelectedIndexes] = useState<
+    Record<string, number[]>
+  >(() => ({ ...initialSelectedIndexes }));
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<string | null>(null);
@@ -130,6 +139,12 @@ export function EvaluationResponseForm({
     if (q.type === "MULTI_FACTOR") {
       return (factorAnswers[q.id]?.length ?? 0) > 0;
     }
+    if (q.type === "MULTI_SELECT") {
+      const picked = selectedIndexes[q.id] ?? [];
+      const min = q.minSelections ?? 1;
+      const max = q.maxSelections ?? q.options.length;
+      return picked.length >= min && picked.length <= max;
+    }
     return !!answers[q.id];
   }).length;
   const allAnswered = answeredCount === totalCount;
@@ -141,6 +156,18 @@ export function EvaluationResponseForm({
         ? curr.filter((x) => x !== f)
         : [...curr, f];
       return { ...prev, [qId]: next };
+    });
+  }
+
+  function toggleSelection(qId: string, idx: number, max: number | null) {
+    setSelectedIndexes((prev) => {
+      const curr = prev[qId] ?? [];
+      if (curr.includes(idx)) {
+        return { ...prev, [qId]: curr.filter((x) => x !== idx) };
+      }
+      // Respect max: if already at the cap, don't add more.
+      if (max != null && curr.length >= max) return prev;
+      return { ...prev, [qId]: [...curr, idx] };
     });
   }
 
@@ -161,6 +188,11 @@ export function EvaluationResponseForm({
             return { questionId: q.id, text: textAnswers[q.id] ?? "" };
           if (q.type === "MULTI_FACTOR")
             return { questionId: q.id, factors: factorAnswers[q.id] ?? [] };
+          if (q.type === "MULTI_SELECT")
+            return {
+              questionId: q.id,
+              selectedOptionIndexes: selectedIndexes[q.id] ?? [],
+            };
           return { questionId: q.id, value: answers[q.id] };
         });
         const res = await submitEvaluationAnswers(participantId, payload);
@@ -287,6 +319,72 @@ export function EvaluationResponseForm({
                     placeholder="Tu respuesta..."
                     className="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                   />
+                ) : q.type === "MULTI_SELECT" ? (
+                  (() => {
+                    const picked = selectedIndexes[q.id] ?? [];
+                    const min = q.minSelections;
+                    const max = q.maxSelections;
+                    const helper =
+                      min != null && max != null && min === max
+                        ? `Selecciona exactamente ${min} opción${min === 1 ? "" : "es"} · ${picked.length}/${min}`
+                        : min != null && max != null
+                          ? `Selecciona entre ${min} y ${max} opciones · ${picked.length}/${max}`
+                          : min != null
+                            ? `Mínimo ${min} opción${min === 1 ? "" : "es"} · ${picked.length}`
+                            : max != null
+                              ? `Máximo ${max} opciones · ${picked.length}/${max}`
+                              : `Selecciona al menos una · ${picked.length}`;
+                    return (
+                      <div className="mt-2 space-y-2">
+                        <p className="text-[11px] font-medium text-text-tertiary">
+                          {helper}
+                        </p>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {q.options.map((opt, idx) => {
+                            const checked = picked.includes(idx);
+                            const atCap =
+                              !checked &&
+                              max != null &&
+                              picked.length >= max;
+                            return (
+                              <label
+                                key={idx}
+                                className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                  checked
+                                    ? "border-primary-500 bg-primary-50 text-primary-900"
+                                    : atCap
+                                      ? "cursor-not-allowed border-border bg-surface text-text-tertiary opacity-60"
+                                      : "border-border bg-surface text-text-secondary hover:border-primary-200"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={atCap}
+                                  onChange={() =>
+                                    toggleSelection(q.id, idx, max)
+                                  }
+                                  className="sr-only"
+                                />
+                                <span
+                                  className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
+                                    checked
+                                      ? "border-primary-600 bg-primary-600 text-white"
+                                      : "border-border"
+                                  }`}
+                                >
+                                  {checked && (
+                                    <CheckCircle2 className="h-2.5 w-2.5" />
+                                  )}
+                                </span>
+                                <span className="flex-1">{opt}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : q.type === "MULTI_FACTOR" ? (
                   <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {FACTOR_OPTIONS.map((opt) => {

@@ -18,12 +18,15 @@ export default async function AnswerEvaluationPage({
   const initialValues: Record<string, string> = {};
   const initialTexts: Record<string, string> = {};
   const initialFactors: Record<string, EvaluationFactor[]> = {};
+  const initialSelectedIndexes: Record<string, number[]> = {};
   if (latest) {
     for (const a of latest.answers) {
       if (a.value) initialValues[a.questionId] = a.value;
       if (a.text) initialTexts[a.questionId] = a.text;
       if (a.factors && a.factors.length > 0)
         initialFactors[a.questionId] = a.factors;
+      if (a.selectedOptionIndexes && a.selectedOptionIndexes.length > 0)
+        initialSelectedIndexes[a.questionId] = a.selectedOptionIndexes;
     }
   }
 
@@ -78,11 +81,19 @@ export default async function AnswerEvaluationPage({
             label: q.label,
             description: q.description,
             type: q.type,
+            options: Array.isArray(q.options)
+              ? (q.options as unknown[]).filter(
+                  (o): o is string => typeof o === "string",
+                )
+              : [],
+            minSelections: q.minSelections,
+            maxSelections: q.maxSelections,
           })),
         }))}
         initialValues={initialValues}
         initialTexts={initialTexts}
         initialFactors={initialFactors}
+        initialSelectedIndexes={initialSelectedIndexes}
         hasPrevious={!!latest}
       />
     </div>

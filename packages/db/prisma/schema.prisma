@@ -137,6 +137,7 @@ enum EvaluationQuestionType {
   MULTIPLE_CHOICE
   OPEN_TEXT
   MULTI_FACTOR // Multi-selección F/D/O/A (Partes interesadas).
+  MULTI_SELECT // Lista personalizable con multi-selección (opciones en EvaluationQuestion.options).
 }
 
 /// Factor DAFO marcable en preguntas MULTI_FACTOR.
@@ -1275,8 +1276,21 @@ model EvaluationQuestion {
   description String?
   position    Int                    @default(0)
   // MULTIPLE_CHOICE → Fortaleza/Debilidad/No aplica (counts toward DAFO).
-  // OPEN_TEXT → free text answer (does not count in the consolidated DAFO).
+  // OPEN_TEXT      → free text answer (does not count in the consolidated DAFO).
+  // MULTI_FACTOR   → multi-selección F/D/O/A.
+  // MULTI_SELECT   → respondent picks N options from `options` (JSON array of strings).
   type        EvaluationQuestionType @default(MULTIPLE_CHOICE)
+
+  // MULTI_SELECT only: JSON array of strings the respondent picks from.
+  // Null/empty for the other types. The respondent's answer references
+  // these by index in `EvaluationAnswer.selectedOptionIndexes`.
+  options Json?
+
+  // MULTI_SELECT only: min/max number of selections the respondent must
+  // pick. Both null means "any non-empty selection is OK". Both set to
+  // the same value enforces "exactly N" (e.g. "selecciona CINCO").
+  minSelections Int? @map("min_selections")
+  maxSelections Int? @map("max_selections")
 
   answers EvaluationAnswer[]
 
@@ -1364,9 +1378,12 @@ model EvaluationAnswer {
   //  - MULTIPLE_CHOICE → `value` is set (POSITIVE/PARTIAL/NEGATIVE/NOT_APPLICABLE).
   //  - OPEN_TEXT       → `text` is set, free-form participant response.
   //  - MULTI_FACTOR    → `factors` carries one or more F/D/O/A.
-  value   EvaluationAnswerValue?
-  text    String?
-  factors EvaluationFactor[]     @default([])
+  //  - MULTI_SELECT    → `selectedOptionIndexes` carries the indices (into
+  //                       EvaluationQuestion.options) the respondent picked.
+  value                 EvaluationAnswerValue?
+  text                  String?
+  factors               EvaluationFactor[]     @default([])
+  selectedOptionIndexes Int[]                  @default([]) @map("selected_option_indexes")
 
   @@unique([submissionId, questionId])
   @@index([submissionId])

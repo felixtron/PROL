@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   db,
+  Prisma,
   type EvaluationSectionType,
   type EvaluationQuestionType,
   type EvaluationStatus,
@@ -192,6 +193,46 @@ export async function deleteSection(sectionId: string) {
 
 // ─── Questions ───────────────────────────────────────────────────────────────
 
+/**
+ * Normalize and validate a MULTI_SELECT options array. Trims, drops empties,
+ * limits to 20 options of up to 200 chars each. Returns `null` if the input
+ * is invalid (too few/too many or any single option is out of range), so the
+ * caller can throw a clear error.
+ */
+function normalizeMultiSelectOptions(input: unknown): string[] | null {
+  if (!Array.isArray(input)) return null;
+  const cleaned = input
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+  if (cleaned.length < 2 || cleaned.length > 20) return null;
+  if (cleaned.some((v) => v.length > 200)) return null;
+  return cleaned;
+}
+
+/** Validate `minSelections`/`maxSelections` against the options length. */
+function validateSelectionBounds(
+  optionsLength: number,
+  min: number | null | undefined,
+  max: number | null | undefined,
+): void {
+  if (min != null && (min < 1 || min > optionsLength)) {
+    throw new Error(
+      `Selección mínima fuera de rango (1–${optionsLength})`,
+    );
+  }
+  if (max != null && (max < 1 || max > optionsLength)) {
+    throw new Error(
+      `Selección máxima fuera de rango (1–${optionsLength})`,
+    );
+  }
+  if (min != null && max != null && min > max) {
+    throw new Error(
+      "Selección mínima no puede ser mayor que la máxima",
+    );
+  }
+}
+
 export async function createQuestion(
   sectionId: string,
   input: {
@@ -199,6 +240,9 @@ export async function createQuestion(
     label: string;
     description?: string | null;
     type?: EvaluationQuestionType;
+    options?: string[] | null;
+    minSelections?: number | null;
+    maxSelections?: number | null;
   },
 ) {
   const user = await requireEvaluationAuthor();
@@ -217,6 +261,24 @@ export async function createQuestion(
     );
   }
 
+  const type = input.type ?? "MULTIPLE_CHOICE";
+
+  // MULTI_SELECT needs a custom list of options. The other types ignore it.
+  let options: string[] | null = null;
+  let minSelections: number | null = null;
+  let maxSelections: number | null = null;
+  if (type === "MULTI_SELECT") {
+    options = normalizeMultiSelectOptions(input.options);
+    if (!options) {
+      throw new Error(
+        "MULTI_SELECT requiere entre 2 y 20 opciones, cada una de hasta 200 caracteres",
+      );
+    }
+    minSelections = input.minSelections ?? null;
+    maxSelections = input.maxSelections ?? null;
+    validateSelectionBounds(options.length, minSelections, maxSelections);
+  }
+
   const maxPos = await db.evaluationQuestion.aggregate({
     where: { sectionId },
     _max: { position: true },
@@ -227,8 +289,11 @@ export async function createQuestion(
       label,
       code: input.code?.trim() || null,
       description: input.description?.trim() || null,
-      type: input.type ?? "MULTIPLE_CHOICE",
+      type,
       position: (maxPos._max.position ?? -1) + 1,
+      ...(options ? { options } : {}),
+      ...(minSelections != null ? { minSelections } : {}),
+      ...(maxSelections != null ? { maxSelections } : {}),
     },
   });
 
@@ -243,6 +308,9 @@ export async function updateQuestion(
     label?: string;
     description?: string | null;
     type?: EvaluationQuestionType;
+    options?: string[] | null;
+    minSelections?: number | null;
+    maxSelections?: number | null;
   },
 ) {
   const user = await requireEvaluationAuthor();
@@ -263,6 +331,56 @@ export async function updateQuestion(
     }
   }
 
+  // Resolve the effective type for downstream validation: explicit input
+  // wins, otherwise keep the existing one.
+  const effectiveType = input.type ?? q.type;
+
+  let optionsToWrite: string[] | null | undefined = undefined;
+  let minToWrite: number | null | undefined = undefined;
+  let maxToWrite: number | null | undefined = undefined;
+  if (effectiveType === "MULTI_SELECT") {
+    // If options are being changed, validate them. Otherwise keep what's
+    // already in the DB.
+    if (input.options !== undefined) {
+      const normalized = normalizeMultiSelectOptions(input.options);
+      if (!normalized) {
+        throw new Error(
+          "MULTI_SELECT requiere entre 2 y 20 opciones, cada una de hasta 200 caracteres",
+        );
+      }
+      optionsToWrite = normalized;
+    }
+    // For bounds we accept null to mean "clear", a number to set, or
+    // undefined to leave untouched.
+    if (input.minSelections !== undefined) minToWrite = input.minSelections;
+    if (input.maxSelections !== undefined) maxToWrite = input.maxSelections;
+
+    // Validate bounds against the resulting options length (new or existing).
+    const existing = Array.isArray(q.options)
+      ? (q.options as unknown[]).filter(
+          (o): o is string => typeof o === "string",
+        )
+      : [];
+    const resolvedOptions = optionsToWrite ?? existing;
+    const resolvedMin =
+      minToWrite !== undefined ? minToWrite : q.minSelections;
+    const resolvedMax =
+      maxToWrite !== undefined ? maxToWrite : q.maxSelections;
+    if (resolvedOptions.length >= 2) {
+      validateSelectionBounds(
+        resolvedOptions.length,
+        resolvedMin,
+        resolvedMax,
+      );
+    }
+  } else if (input.type !== undefined && input.type !== "MULTI_SELECT") {
+    // Switching AWAY from MULTI_SELECT: clear the related fields so the
+    // shape stays consistent with the new type.
+    optionsToWrite = null;
+    minToWrite = null;
+    maxToWrite = null;
+  }
+
   await db.evaluationQuestion.update({
     where: { id: questionId },
     data: {
@@ -274,6 +392,11 @@ export async function updateQuestion(
         ? { description: input.description?.trim() || null }
         : {}),
       ...(input.type !== undefined ? { type: input.type } : {}),
+      ...(optionsToWrite !== undefined
+        ? { options: optionsToWrite ?? Prisma.JsonNull }
+        : {}),
+      ...(minToWrite !== undefined ? { minSelections: minToWrite } : {}),
+      ...(maxToWrite !== undefined ? { maxSelections: maxToWrite } : {}),
     },
   });
   revalidatePath(`/professor/evaluations/${q.section.evaluationId}`);
@@ -484,6 +607,7 @@ export async function submitEvaluationAnswers(
     value?: EvaluationAnswerValue;
     text?: string;
     factors?: EvaluationFactor[];
+    selectedOptionIndexes?: number[];
   }[],
 ) {
   const caller = await requireUser();
@@ -496,7 +620,17 @@ export async function submitEvaluationAnswers(
           evaluation: {
             include: {
               sections: {
-                include: { questions: { select: { id: true, type: true } } },
+                include: {
+                  questions: {
+                    select: {
+                      id: true,
+                      type: true,
+                      options: true,
+                      minSelections: true,
+                      maxSelections: true,
+                    },
+                  },
+                },
               },
             },
           },
@@ -520,38 +654,73 @@ export async function submitEvaluationAnswers(
   const questions = participant.assignment.evaluation.sections.flatMap(
     (s) => s.questions,
   );
-  const questionType = new Map(questions.map((q) => [q.id, q.type] as const));
+  const questionsById = new Map(questions.map((q) => [q.id, q] as const));
   const allQuestionIds = questions.map((q) => q.id);
   const provided = new Map<
     string,
-    { value?: EvaluationAnswerValue; text?: string; factors?: EvaluationFactor[] }
+    {
+      value?: EvaluationAnswerValue;
+      text?: string;
+      factors?: EvaluationFactor[];
+      selectedOptionIndexes?: number[];
+    }
   >();
   for (const a of answers)
     provided.set(a.questionId, {
       value: a.value,
       text: a.text,
       factors: a.factors,
+      selectedOptionIndexes: a.selectedOptionIndexes,
     });
 
   const missing: string[] = [];
   for (const id of allQuestionIds) {
     const ans = provided.get(id);
-    const type = questionType.get(id);
-    if (!ans) {
+    const q = questionsById.get(id);
+    if (!ans || !q) {
       missing.push(id);
       continue;
     }
-    if (type === "MULTIPLE_CHOICE") {
+    if (q.type === "MULTIPLE_CHOICE") {
       if (!ans.value) missing.push(id);
       // PARTIAL sólo es válido para evaluaciones DIAGNOSTIC; el resto usan
       // POSITIVE/NEGATIVE/NOT_APPLICABLE.
       else if (ans.value === "PARTIAL" && evaluationKind !== "DIAGNOSTIC") {
         throw new Error("Opción 'Parcialmente' no aplica a este tipo de evaluación");
       }
-    } else if (type === "OPEN_TEXT") {
+    } else if (q.type === "OPEN_TEXT") {
       if (!ans.text || ans.text.trim().length === 0) missing.push(id);
-    } else if (type === "MULTI_FACTOR") {
+    } else if (q.type === "MULTI_FACTOR") {
       if (!ans.factors || ans.factors.length === 0) missing.push(id);
+    } else if (q.type === "MULTI_SELECT") {
+      const optionsLen = Array.isArray(q.options)
+        ? (q.options as unknown[]).filter((o) => typeof o === "string").length
+        : 0;
+      const selected = ans.selectedOptionIndexes ?? [];
+      // Each index in range, unique, count within min/max bounds.
+      const valid =
+        selected.length > 0 &&
+        selected.every(
+          (idx) =>
+            Number.isInteger(idx) &&
+            idx >= 0 &&
+            idx < optionsLen,
+        ) &&
+        new Set(selected).size === selected.length;
+      if (!valid) {
+        missing.push(id);
+        continue;
+      }
+      if (q.minSelections != null && selected.length < q.minSelections) {
+        throw new Error(
+          `Debes seleccionar al menos ${q.minSelections} opción(es)`,
+        );
+      }
+      if (q.maxSelections != null && selected.length > q.maxSelections) {
+        throw new Error(
+          `No puedes seleccionar más de ${q.maxSelections} opción(es)`,
+        );
+      }
     }
   }
   if (missing.length > 0) {
@@ -598,6 +767,7 @@ export async function submitEvaluationAnswers(
           value: ans.value ?? null,
           text: ans.text?.trim() || null,
           factors: ans.factors ?? [],
+          selectedOptionIndexes: ans.selectedOptionIndexes ?? [],
         };
       }),
     });
