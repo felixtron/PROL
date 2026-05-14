@@ -169,11 +169,14 @@ export function InteractiveStopOverlay({
       {/* Backdrop */}
       <div className="absolute inset-0 z-40 bg-black/70" />
 
-      {/* Modal */}
+      {/* Modal. Estructura flex en columna con header fijo arriba y cuerpo
+          scrolleable. `max-h-full` mantiene el modal dentro del frame del
+          video (el padre tiene aspect-video); cuando el texto excede el
+          alto disponible, el scroll vive adentro del modal y no fuera. */}
       <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg rounded-xl bg-surface shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-xl bg-surface shadow-2xl">
+          {/* Header (no shrink) */}
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-5 py-4">
             <h3 className="font-heading text-lg font-semibold text-text-primary">
               {activeStop.type === "QUESTION" && "Pregunta"}
               {activeStop.type === "REFLECTION" && "Reflexión"}
@@ -192,8 +195,8 @@ export function InteractiveStopOverlay({
             )}
           </div>
 
-          {/* Content */}
-          <div className="px-5 py-4">
+          {/* Content (scrolleable) */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
             <StopContent
               stop={activeStop}
               lessonProgressId={lessonProgressId}
