@@ -177,11 +177,9 @@ export function SignInForm({ tenant }: { tenant: TenantBranding | null }) {
                 </label>
                 <Link
                   href="/forgot-password"
-                  className="text-xs font-medium hover:underline"
+                  className="text-xs font-medium text-primary-600 hover:text-primary-700 hover:underline"
                   style={
-                    tenant
-                      ? { color: "var(--brand-primary)" }
-                      : undefined
+                    tenant ? { color: "var(--brand-primary)" } : undefined
                   }
                 >
                   ¿Olvidaste tu contraseña?
@@ -221,12 +219,18 @@ export function SignInForm({ tenant }: { tenant: TenantBranding | null }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{
-                backgroundColor: tenant
-                  ? "var(--brand-primary)"
-                  : undefined,
-              }}
+              // `bg-primary-600` y `hover:bg-primary-700` actúan como
+              // fallback cuando NO hay tenant resuelto (apex domain o
+              // subdomain con slug inválido). Sin el fallback el botón
+              // quedaba sin background y, con texto blanco, era invisible.
+              // Cuando hay tenant, el `style.backgroundColor` con
+              // `--brand-primary` pisa al className de Tailwind.
+              className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 hover:opacity-90 disabled:opacity-50"
+              style={
+                tenant
+                  ? { backgroundColor: "var(--brand-primary)" }
+                  : undefined
+              }
             >
               {loading ? "Iniciando sesión..." : "Iniciar sesión"}
             </button>
@@ -236,7 +240,7 @@ export function SignInForm({ tenant }: { tenant: TenantBranding | null }) {
             ¿No tienes cuenta?{" "}
             <Link
               href="/sign-up"
-              className="font-medium hover:underline"
+              className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
               style={
                 tenant ? { color: "var(--brand-primary)" } : undefined
               }
