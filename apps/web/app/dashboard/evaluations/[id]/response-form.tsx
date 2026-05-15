@@ -22,6 +22,9 @@ type Question = {
   options: string[];
   minSelections: number | null;
   maxSelections: number | null;
+  /** When true, DAFO / DIAGNOSTIC MULTIPLE_CHOICE questions also expose
+   *  the "No aplica" option. False by default. */
+  allowNotApplicable: boolean;
 };
 
 type Section = {
@@ -45,11 +48,13 @@ const DAFO_VALUES: EvaluationAnswerValue[] = [
   "NEGATIVE",
   "NOT_APPLICABLE",
 ];
+// Base set of values for DIAGNOSTIC questions. NOT_APPLICABLE is only
+// shown when the specific question has `allowNotApplicable = true`
+// (see `valuesFor` below).
 const DIAGNOSTIC_VALUES: EvaluationAnswerValue[] = [
   "POSITIVE",
   "PARTIAL",
   "NEGATIVE",
-  "NOT_APPLICABLE",
 ];
 
 const DIAGNOSTIC_LABEL: Record<EvaluationAnswerValue, string> = {
@@ -121,12 +126,31 @@ export function EvaluationResponseForm({
   hasPrevious: boolean;
 }) {
   const router = useRouter();
-  const validValues = kind === "DIAGNOSTIC" ? DIAGNOSTIC_VALUES : DAFO_VALUES;
+
+  // Per-question set of allowed values. DIAGNOSTIC defaults to
+  // Sí/Parcial/No; DAFO defaults to Pos/Neg/N-A. `NOT_APPLICABLE` is
+  // appended for DIAGNOSTIC only when the question opts in via
+  // `allowNotApplicable`.
+  function valuesFor(q: Pick<Question, "allowNotApplicable">): EvaluationAnswerValue[] {
+    if (kind === "DIAGNOSTIC") {
+      return q.allowNotApplicable
+        ? [...DIAGNOSTIC_VALUES, "NOT_APPLICABLE"]
+        : DIAGNOSTIC_VALUES;
+    }
+    return DAFO_VALUES;
+  }
+  // Used to filter `initialValues` so a previously-saved NOT_APPLICABLE
+  // doesn't leak in if the question has since had the flag turned off.
+  const allValidValues = new Set<EvaluationAnswerValue>([
+    ...DAFO_VALUES,
+    ...DIAGNOSTIC_VALUES,
+    "NOT_APPLICABLE",
+  ]);
   const [answers, setAnswers] = useState<Record<string, EvaluationAnswerValue>>(
     () => {
       const out: Record<string, EvaluationAnswerValue> = {};
       for (const [k, v] of Object.entries(initialValues)) {
-        if (validValues.includes(v as EvaluationAnswerValue)) {
+        if (allValidValues.has(v as EvaluationAnswerValue)) {
           out[k] = v as EvaluationAnswerValue;
         }
       }
@@ -447,12 +471,15 @@ export function EvaluationResponseForm({
                     })}
                   </div>
                 ) : (
+                  (() => {
+                    const qValues = valuesFor(q);
+                    return (
                   <div
                     className={`mt-2 grid grid-cols-1 gap-2 ${
-                      validValues.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+                      qValues.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
                     }`}
                   >
-                    {validValues.map((v) => {
+                    {qValues.map((v) => {
                       const checked = answers[q.id] === v;
                       const palette =
                         v === "POSITIVE"
@@ -487,6 +514,8 @@ export function EvaluationResponseForm({
                       );
                     })}
                   </div>
+                    );
+                  })()
                 )}
               </li>
             ))}

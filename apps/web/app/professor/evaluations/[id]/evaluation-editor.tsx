@@ -42,6 +42,8 @@ type Question = {
   options?: unknown;
   minSelections?: number | null;
   maxSelections?: number | null;
+  /** When true, MULTIPLE_CHOICE shows "No aplica" as a fourth option. */
+  allowNotApplicable?: boolean;
 };
 
 type Section = {
@@ -93,7 +95,7 @@ const KIND_LABEL: Record<EvaluationKind, string> = {
 
 const KIND_HINT: Record<EvaluationKind, string> = {
   DAFO: "Respuesta única F/D/O/A. Reporte DAFO consolidado.",
-  DIAGNOSTIC: "Respuesta única Sí / Parcialmente / No / No aplica. Reporte de barras GAP.",
+  DIAGNOSTIC: "Respuesta única Sí / Parcialmente / No (con opción 'No aplica' por pregunta). Reporte de barras GAP.",
   GUIDELINES: "Sólo texto abierto. Reporte sin gráfico.",
   STAKEHOLDERS: "Opción múltiple F/D/O/A. Reporte sin gráfico.",
   ROLES: "Sólo texto abierto. Reporte sin gráfico.",
@@ -114,7 +116,7 @@ function questionTypesFor(kind: EvaluationKind): {
       return [
         {
           value: "MULTIPLE_CHOICE",
-          label: "Opción única (Sí / Parcial / No / No aplica)",
+          label: "Opción única (Sí / Parcial / No)",
         },
         { value: "OPEN_TEXT", label: "Texto abierto" },
       ];
@@ -149,7 +151,12 @@ function answerOptionsPreview(
   kind: EvaluationKind,
   sectionType: EvaluationSectionType,
   qType: EvaluationQuestionType,
-  question?: { options?: unknown; minSelections?: number | null; maxSelections?: number | null },
+  question?: {
+    options?: unknown;
+    minSelections?: number | null;
+    maxSelections?: number | null;
+    allowNotApplicable?: boolean;
+  },
 ): {
   mode: "single" | "multi" | "text";
   options: string[];
@@ -168,9 +175,12 @@ function answerOptionsPreview(
     };
   }
   if (kind === "DIAGNOSTIC" && qType === "MULTIPLE_CHOICE") {
+    const base = ["Sí", "Parcialmente", "No"];
     return {
       mode: "single",
-      options: ["Sí", "Parcialmente", "No", "No aplica"],
+      options: question?.allowNotApplicable
+        ? [...base, "No aplica"]
+        : base,
     };
   }
   if (kind === "STAKEHOLDERS" && qType === "MULTI_FACTOR") {
@@ -798,6 +808,9 @@ function QuestionRow({
   const [msMax, setMsMax] = useState<number | null>(
     question.maxSelections ?? null,
   );
+  const [allowNA, setAllowNA] = useState<boolean>(
+    !!question.allowNotApplicable,
+  );
   const [error, setError] = useState("");
 
   function run(fn: () => Promise<unknown>) {
@@ -870,11 +883,23 @@ function QuestionRow({
             setMaxSelections={setMsMax}
           />
         )}
+        {kind === "DIAGNOSTIC" && qType === "MULTIPLE_CHOICE" && (
+          <label className="flex items-center gap-2 rounded-md border border-dashed border-border bg-surface px-2.5 py-1.5 text-[11px] text-text-secondary">
+            <input
+              type="checkbox"
+              checked={allowNA}
+              onChange={(e) => setAllowNA(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary-600"
+            />
+            Permitir &quot;No aplica&quot; como cuarta opción en esta pregunta
+          </label>
+        )}
         <OptionsPreview
           preview={answerOptionsPreview(kind, sectionType, qType, {
             options: msOptions,
             minSelections: msMin,
             maxSelections: msMax,
+            allowNotApplicable: allowNA,
           })}
         />
         {error && <p className="text-[11px] text-red-700">{error}</p>}
@@ -901,6 +926,7 @@ function QuestionRow({
                   label,
                   description: description || null,
                   type: qType,
+                  allowNotApplicable: allowNA,
                   ...(qType === "MULTI_SELECT"
                     ? {
                         options: msOptions
@@ -1084,6 +1110,7 @@ function AddQuestionForm({
   const [msOptions, setMsOptions] = useState<string[]>(["", ""]);
   const [msMin, setMsMin] = useState<number | null>(null);
   const [msMax, setMsMax] = useState<number | null>(null);
+  const [allowNA, setAllowNA] = useState<boolean>(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
@@ -1144,11 +1171,23 @@ function AddQuestionForm({
           setMaxSelections={setMsMax}
         />
       )}
+      {kind === "DIAGNOSTIC" && qType === "MULTIPLE_CHOICE" && (
+        <label className="flex items-center gap-2 rounded-md border border-dashed border-border bg-surface px-2.5 py-1.5 text-[11px] text-text-secondary">
+          <input
+            type="checkbox"
+            checked={allowNA}
+            onChange={(e) => setAllowNA(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary-600"
+          />
+          Permitir &quot;No aplica&quot; como cuarta opción en esta pregunta
+        </label>
+      )}
       <OptionsPreview
         preview={answerOptionsPreview(kind, sectionType, qType, {
           options: msOptions,
           minSelections: msMin,
           maxSelections: msMax,
+          allowNotApplicable: allowNA,
         })}
       />
       {error && <p className="text-[11px] text-red-700">{error}</p>}
@@ -1171,6 +1210,7 @@ function AddQuestionForm({
                   label,
                   description: description || null,
                   type: qType,
+                  allowNotApplicable: allowNA,
                   ...(qType === "MULTI_SELECT"
                     ? {
                         options: msOptions

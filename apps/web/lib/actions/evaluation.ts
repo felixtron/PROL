@@ -243,6 +243,7 @@ export async function createQuestion(
     options?: string[] | null;
     minSelections?: number | null;
     maxSelections?: number | null;
+    allowNotApplicable?: boolean;
   },
 ) {
   const user = await requireEvaluationAuthor();
@@ -294,6 +295,9 @@ export async function createQuestion(
       ...(options ? { options } : {}),
       ...(minSelections != null ? { minSelections } : {}),
       ...(maxSelections != null ? { maxSelections } : {}),
+      ...(input.allowNotApplicable
+        ? { allowNotApplicable: input.allowNotApplicable }
+        : {}),
     },
   });
 
@@ -311,6 +315,7 @@ export async function updateQuestion(
     options?: string[] | null;
     minSelections?: number | null;
     maxSelections?: number | null;
+    allowNotApplicable?: boolean;
   },
 ) {
   const user = await requireEvaluationAuthor();
@@ -397,6 +402,9 @@ export async function updateQuestion(
         : {}),
       ...(minToWrite !== undefined ? { minSelections: minToWrite } : {}),
       ...(maxToWrite !== undefined ? { maxSelections: maxToWrite } : {}),
+      ...(input.allowNotApplicable !== undefined
+        ? { allowNotApplicable: input.allowNotApplicable }
+        : {}),
     },
   });
   revalidatePath(`/professor/evaluations/${q.section.evaluationId}`);
@@ -628,6 +636,7 @@ export async function submitEvaluationAnswers(
                       options: true,
                       minSelections: true,
                       maxSelections: true,
+                      allowNotApplicable: true,
                     },
                   },
                 },
@@ -687,6 +696,19 @@ export async function submitEvaluationAnswers(
       // POSITIVE/NEGATIVE/NOT_APPLICABLE.
       else if (ans.value === "PARTIAL" && evaluationKind !== "DIAGNOSTIC") {
         throw new Error("Opción 'Parcialmente' no aplica a este tipo de evaluación");
+      }
+      // NOT_APPLICABLE is always available for DAFO but for DIAGNOSTIC
+      // it must be explicitly opted-in per question via
+      // `allowNotApplicable`. Reject otherwise to keep the GAP report
+      // consistent with what the respondent was offered.
+      else if (
+        ans.value === "NOT_APPLICABLE" &&
+        evaluationKind === "DIAGNOSTIC" &&
+        !q.allowNotApplicable
+      ) {
+        throw new Error(
+          "Opción 'No aplica' no está habilitada para esta pregunta",
+        );
       }
     } else if (q.type === "OPEN_TEXT") {
       if (!ans.text || ans.text.trim().length === 0) missing.push(id);

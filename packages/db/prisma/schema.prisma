@@ -1292,6 +1292,12 @@ model EvaluationQuestion {
   minSelections Int? @map("min_selections")
   maxSelections Int? @map("max_selections")
 
+  // When true, MULTIPLE_CHOICE questions also expose the "No aplica"
+  // option to the respondent (NOT_APPLICABLE value). Off by default
+  // because most diagnostic questions force a Sí/Parcial/No answer;
+  // turn it on per-question when a control may legitimately not apply.
+  allowNotApplicable Boolean @default(false) @map("allow_not_applicable")
+
   answers EvaluationAnswer[]
 
   @@index([sectionId])

@@ -88,6 +88,7 @@ export default async function AnswerEvaluationPage({
               : [],
             minSelections: q.minSelections,
             maxSelections: q.maxSelections,
+            allowNotApplicable: q.allowNotApplicable,
           })),
         }))}
         initialValues={initialValues}
