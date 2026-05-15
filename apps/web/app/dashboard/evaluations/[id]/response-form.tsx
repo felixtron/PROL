@@ -58,6 +58,17 @@ const DIAGNOSTIC_LABEL: Record<EvaluationAnswerValue, string> = {
   NOT_APPLICABLE: "No aplica",
 };
 
+// Each option control uses a hidden <input class="sr-only"> inside a
+// <label>. Clicking the label triggers an implicit focus() on the hidden
+// input, and because the input is clipped (position: absolute; clip)
+// the browser scroll-into-views it — which feels like the page is
+// jumping to the bottom every time the user selects an option. Calling
+// preventDefault on mousedown blocks the implicit focus without
+// affecting the click → onChange flow.
+function preventLabelAutofocus(e: React.MouseEvent<HTMLLabelElement>) {
+  e.preventDefault();
+}
+
 const FACTOR_OPTIONS: {
   value: EvaluationFactor;
   label: string;
@@ -349,6 +360,7 @@ export function EvaluationResponseForm({
                             return (
                               <label
                                 key={idx}
+                                onMouseDown={preventLabelAutofocus}
                                 className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
                                   checked
                                     ? "border-primary-500 bg-primary-50 text-primary-900"
@@ -394,6 +406,7 @@ export function EvaluationResponseForm({
                       return (
                         <label
                           key={opt.value}
+                          onMouseDown={preventLabelAutofocus}
                           className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
                             checked
                               ? opt.palette
@@ -441,6 +454,7 @@ export function EvaluationResponseForm({
                       return (
                         <label
                           key={v}
+                          onMouseDown={preventLabelAutofocus}
                           className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
                             checked
                               ? palette
