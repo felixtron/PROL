@@ -58,13 +58,17 @@ const DIAGNOSTIC_LABEL: Record<EvaluationAnswerValue, string> = {
   NOT_APPLICABLE: "No aplica",
 };
 
-// Each option control uses a hidden <input class="sr-only"> inside a
-// <label>. Clicking the label triggers an implicit focus() on the hidden
-// input, and because the input is clipped (position: absolute; clip)
-// the browser scroll-into-views it — which feels like the page is
-// jumping to the bottom every time the user selects an option. Calling
-// preventDefault on mousedown blocks the implicit focus without
-// affecting the click → onChange flow.
+// Each option control uses a visually-hidden <input> inside a <label>.
+// We avoid the standard `sr-only` utility on the input because, when an
+// `sr-only` element is clipped outside the viewport, the implicit
+// focus() that fires on label-click makes the browser scrollIntoView()
+// onto it — which yanks the page to the bottom on every selection.
+// Two layers of defense:
+//   1. The input itself is pinned to position:fixed top-left so it is
+//      always inside the viewport — scrollIntoView becomes a no-op.
+//   2. preventLabelAutofocus blocks the implicit focus at mousedown so
+//      we don't even rely on (1) silencing the scroll. The click still
+//      bubbles to the input and fires onChange normally.
 function preventLabelAutofocus(e: React.MouseEvent<HTMLLabelElement>) {
   e.preventDefault();
 }
@@ -376,7 +380,13 @@ export function EvaluationResponseForm({
                                   onChange={() =>
                                     toggleSelection(q.id, idx, max)
                                   }
-                                  className="sr-only"
+                                  // fixed-top-left-pixel trick: keeps the
+                                  // input in the viewport (so the implicit
+                                  // focus() on label click does NOT trigger
+                                  // a scrollIntoView), invisible, and
+                                  // un-clickable so the label remains the
+                                  // single point of interaction.
+                                  className="fixed left-0 top-0 h-px w-px opacity-0 pointer-events-none"
                                 />
                                 <span
                                   className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
@@ -417,7 +427,7 @@ export function EvaluationResponseForm({
                             type="checkbox"
                             checked={checked}
                             onChange={() => toggleFactor(q.id, opt.value)}
-                            className="sr-only"
+                            className="fixed left-0 top-0 h-px w-px opacity-0 pointer-events-none"
                           />
                           <span
                             className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-[10px] ${
@@ -469,7 +479,7 @@ export function EvaluationResponseForm({
                             onChange={() =>
                               setAnswers((prev) => ({ ...prev, [q.id]: v }))
                             }
-                            className="sr-only"
+                            className="fixed left-0 top-0 h-px w-px opacity-0 pointer-events-none"
                           />
                           {labelFor(v, section.type)}
                         </label>
