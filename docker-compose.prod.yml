@@ -75,7 +75,13 @@ services:
       - "traefik.http.routers.prol.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+\\.${APP_DOMAIN_REGEX}$`)"
       - "traefik.http.routers.prol.entrypoints=websecure"
       - "traefik.http.routers.prol.tls=true"
-      - "traefik.http.routers.prol.tls.certresolver=letsencrypt"
+      # `letsencrypt-dns` uses Cloudflare DNS-01 challenge (CF_DNS_API_TOKEN
+      # already mounted into Traefik). HTTP-01 cannot validate wildcards;
+      # DNS-01 can, so we can request a single cert covering the apex and
+      # every tenant subdomain (`<slug>.prol.prosuite.pro`).
+      - "traefik.http.routers.prol.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.prol.tls.domains[0].main=${APP_DOMAIN}"
+      - "traefik.http.routers.prol.tls.domains[0].sans=*.${APP_DOMAIN}"
       - "traefik.http.services.prol.loadbalancer.server.port=3000"
       # HTTP -> HTTPS redirect
       - "traefik.http.routers.prol-http.rule=Host(`${APP_DOMAIN}`) || HostRegexp(`^[a-z0-9-]+\\.${APP_DOMAIN_REGEX}$`)"
