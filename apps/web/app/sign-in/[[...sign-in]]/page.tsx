@@ -1,161 +1,43 @@
-"use client";
+import type { Metadata } from "next";
+import { getCurrentTenant } from "@/lib/tenant";
+import { SignInForm } from "./sign-in-form";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { authClient } from "@/lib/auth-client";
+export const dynamic = "force-dynamic";
 
-export default function SignInPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    const { error: authError } = await authClient.signIn.email({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (authError) {
-      setError(authError.message ?? "Error al iniciar sesión");
-      return;
-    }
-
-    // Check for callback URL from middleware redirect. Restrict to
-    // same-origin relative paths to prevent open-redirect abuse via
-    // /sign-in?callbackUrl=https://evil.example/.
-    const params = new URLSearchParams(window.location.search);
-    const callbackUrlRaw = params.get("callbackUrl");
-    const callbackUrl =
-      callbackUrlRaw &&
-      callbackUrlRaw.startsWith("/") &&
-      !callbackUrlRaw.startsWith("//")
-        ? callbackUrlRaw
-        : null;
-
-    if (callbackUrl) {
-      router.push(callbackUrl);
-      router.refresh();
-      return;
-    }
-
-    // Redirect based on role, reset flag and onboarding status
-    try {
-      const res = await fetch("/api/auth/check-role");
-      const data = await res.json();
-
-      // Force password reset takes priority over everything else
-      if (data.mustResetPassword) {
-        router.push("/force-reset-password");
-      } else if (data.role === "PROFESSOR" && !data.onboardingCompleted) {
-        router.push("/onboarding");
-      } else if (data.role === "ADMIN") {
-        router.push("/tenant-admin");
-      } else if (data.role === "SUPER_ADMIN") {
-        router.push("/admin");
-      } else if (data.role === "PROFESSOR") {
-        router.push("/professor");
-      } else {
-        router.push("/dashboard");
-      }
-    } catch {
-      router.push("/dashboard");
-    }
-    router.refresh();
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getCurrentTenant();
+  if (tenant) {
+    return {
+      title: `Iniciar sesión — ${tenant.name}`,
+      icons: tenant.favicon ? { icon: tenant.favicon } : undefined,
+    };
   }
+  return { title: "Iniciar sesión — PROL" };
+}
 
+/**
+ * Tenant-branded sign-in page.
+ *
+ * Visiting `<slug>.prol.prosuite.pro/sign-in` resolves the tenant via the
+ * `x-tenant-slug` header set by `middleware.ts`. The form is then rendered
+ * with the academy's logo (or name), primary color and accent color so
+ * students of each tenant see their own academy when logging in. Visiting
+ * the apex `prol.prosuite.pro/sign-in` falls back to plain PROL branding.
+ */
+export default async function SignInPage() {
+  const tenant = await getCurrentTenant();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-secondary px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="font-heading text-3xl font-bold text-primary-600">
-            PROL
-          </h1>
-          <p className="mt-2 text-text-secondary">
-            Inicia sesión en tu cuenta
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-border bg-surface p-8 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-1.5 block text-sm font-medium text-text-primary"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                placeholder="tu@email.com"
-              />
-            </div>
-
-            <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-text-primary"
-                >
-                  Contraseña
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs font-medium text-primary-600 hover:text-primary-700"
-                >
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
-            >
-              {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-text-secondary">
-            ¿No tienes cuenta?{" "}
-            <Link
-              href="/sign-up"
-              className="font-medium text-primary-600 hover:text-primary-700"
-            >
-              Crear cuenta
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+    <SignInForm
+      tenant={
+        tenant
+          ? {
+              name: tenant.name,
+              logo: tenant.logo,
+              primaryColor: tenant.primaryColor,
+              accentColor: tenant.accentColor,
+            }
+          : null
+      }
+    />
   );
 }
