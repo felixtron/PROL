@@ -93,7 +93,7 @@ const KIND_LABEL: Record<EvaluationKind, string> = {
 
 const KIND_HINT: Record<EvaluationKind, string> = {
   DAFO: "Respuesta única F/D/O/A. Reporte DAFO consolidado.",
-  DIAGNOSTIC: "Respuesta única Sí / Parcialmente / No. Reporte de barras GAP.",
+  DIAGNOSTIC: "Respuesta única Sí / Parcialmente / No / No aplica. Reporte de barras GAP.",
   GUIDELINES: "Sólo texto abierto. Reporte sin gráfico.",
   STAKEHOLDERS: "Opción múltiple F/D/O/A. Reporte sin gráfico.",
   ROLES: "Sólo texto abierto. Reporte sin gráfico.",
@@ -112,7 +112,10 @@ function questionTypesFor(kind: EvaluationKind): {
       ];
     case "DIAGNOSTIC":
       return [
-        { value: "MULTIPLE_CHOICE", label: "Opción única (Sí/Parcial/No)" },
+        {
+          value: "MULTIPLE_CHOICE",
+          label: "Opción única (Sí / Parcial / No / No aplica)",
+        },
         { value: "OPEN_TEXT", label: "Texto abierto" },
       ];
     case "STAKEHOLDERS":

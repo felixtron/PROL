@@ -49,6 +49,7 @@ const DIAGNOSTIC_VALUES: EvaluationAnswerValue[] = [
   "POSITIVE",
   "PARTIAL",
   "NEGATIVE",
+  "NOT_APPLICABLE",
 ];
 
 const DIAGNOSTIC_LABEL: Record<EvaluationAnswerValue, string> = {
