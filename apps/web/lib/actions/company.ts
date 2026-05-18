@@ -41,6 +41,72 @@ async function uniqueCompanySlug(tenantId: string, name: string): Promise<string
   return `${base}-${Date.now().toString(36).slice(-4)}`;
 }
 
+// ─── Auto-enroll helpers ──────────────────────────────────────────────────────
+//
+// Cuando una empresa tiene un curso asignado, todos sus miembros deben verlo
+// en su dashboard. El dashboard sólo lee `Enrollment`, así que hace falta
+// materializar una fila por (miembro, curso). Estos helpers son idempotentes
+// — el unique `studentId_courseId` + `skipDuplicates` evita duplicados.
+
+async function enrollCompanyMembersInCourse(
+  companyId: string,
+  courseId: string,
+  tenantId: string
+): Promise<number> {
+  // Sólo enrolamos cuando el curso está publicado: un DRAFT no debería
+  // aparecer en el dashboard del alumno.
+  const course = await db.course.findFirst({
+    where: { id: courseId, tenantId, status: "PUBLISHED" },
+    select: { id: true },
+  });
+  if (!course) return 0;
+
+  const members = await db.user.findMany({
+    where: { companyId, tenantId, role: "STUDENT" },
+    select: { id: true },
+  });
+  if (members.length === 0) return 0;
+
+  const result = await db.enrollment.createMany({
+    data: members.map((m) => ({
+      studentId: m.id,
+      courseId,
+      tenantId,
+    })),
+    skipDuplicates: true,
+  });
+  return result.count;
+}
+
+async function enrollUserInCompanyCourses(
+  userId: string,
+  companyId: string,
+  tenantId: string
+): Promise<number> {
+  // Asignaciones activas + no expiradas + curso PUBLISHED.
+  const now = new Date();
+  const assignments = await db.companyCourseAssignment.findMany({
+    where: {
+      companyId,
+      isActive: true,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      course: { status: "PUBLISHED", tenantId },
+    },
+    select: { courseId: true },
+  });
+  if (assignments.length === 0) return 0;
+
+  const result = await db.enrollment.createMany({
+    data: assignments.map((a) => ({
+      studentId: userId,
+      courseId: a.courseId,
+      tenantId,
+    })),
+    skipDuplicates: true,
+  });
+  return result.count;
+}
+
 // ─── Company CRUD (TENANT_ADMIN) ──────────────────────────────────────────────
 
 export async function createCompany(formData: FormData) {
@@ -448,6 +514,18 @@ export async function acceptCompanyInvitation(token: string) {
     }),
   ]);
 
+  // Auto-enroll en las asignaciones vigentes de la empresa. Side-effect:
+  // un fallo aquí no debe bloquear la aceptación de la invitación.
+  try {
+    await enrollUserInCompanyCourses(
+      user.id,
+      invitation.companyId,
+      invitation.company.tenantId
+    );
+  } catch (err) {
+    console.error("Auto-enroll al aceptar invitación falló:", err);
+  }
+
   // Notify the inviter
   try {
     await createNotification({
@@ -504,8 +582,22 @@ export async function assignCourseToCompany(
     },
   });
 
+  // Materializar enrollments para los miembros actuales. Side-effect: no
+  // queremos que un fallo aquí rompa la asignación administrativa, así que
+  // se loguea y se sigue.
+  let enrolledCount = 0;
+  try {
+    enrolledCount = await enrollCompanyMembersInCourse(
+      companyId,
+      courseId,
+      company.tenantId
+    );
+  } catch (err) {
+    console.error("Auto-enroll de miembros al asignar curso falló:", err);
+  }
+
   revalidatePath(`/tenant-admin/companies/${companyId}`);
-  return { success: true, assignmentId: assignment.id };
+  return { success: true, assignmentId: assignment.id, enrolledCount };
 }
 
 export async function revokeCourseFromCompany(
