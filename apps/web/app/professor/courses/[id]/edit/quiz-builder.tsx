@@ -38,14 +38,27 @@ interface QuizData {
 interface QuizBuilderProps {
   lessonId: string;
   existingQuiz?: QuizData | null;
+  // `null` ⇒ no hay examen final aún en el curso (este quiz puede serlo).
+  // Si trae el id de OTRO quiz, el toggle se deshabilita: solo se permite uno
+  // por curso y la regla la valida también el servidor en `createQuiz`/`updateQuiz`.
+  courseFinalExamId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
+export function QuizBuilder({
+  lessonId,
+  existingQuiz,
+  courseFinalExamId,
+}: QuizBuilderProps) {
   const isEditing = !!existingQuiz;
+  // El toggle se bloquea cuando ya existe otro quiz marcado como examen final
+  // en el curso. Si `courseFinalExamId` es el propio quiz, el toggle queda
+  // libre para que se pueda destildar.
+  const finalExamLocked =
+    !!courseFinalExamId && courseFinalExamId !== existingQuiz?.id;
 
   const [title, setTitle] = useState(existingQuiz?.title ?? "");
   const [passingScore, setPassingScore] = useState(existingQuiz?.passingScore ?? 70);
@@ -169,10 +182,14 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
           isFinalExam,
         };
 
-        if (isEditing && existingQuiz) {
-          await updateQuiz(existingQuiz.id, data);
-        } else {
-          await createQuiz(lessonId, data);
+        const result =
+          isEditing && existingQuiz
+            ? await updateQuiz(existingQuiz.id, data)
+            : await createQuiz(lessonId, data);
+
+        if (!result.success) {
+          setError(result.error);
+          return;
         }
 
         setSuccess(true);
@@ -192,7 +209,10 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
 
     startDeleteTransition(async () => {
       try {
-        await deleteQuiz(existingQuiz.id);
+        const result = await deleteQuiz(existingQuiz.id);
+        if (!result.success) {
+          setError(result.error);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al eliminar quiz");
       }
@@ -319,22 +339,26 @@ export function QuizBuilder({ lessonId, existingQuiz }: QuizBuilderProps) {
             type="checkbox"
             id="isFinalExam"
             checked={isFinalExam}
+            disabled={finalExamLocked}
             onChange={(e) => {
               setIsFinalExam(e.target.checked);
               if (e.target.checked && passingScore < 80) {
                 setPassingScore(80);
               }
             }}
-            className="mt-1 h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
+            className="mt-1 h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <label htmlFor="isFinalExam" className="text-sm">
+          <label
+            htmlFor="isFinalExam"
+            className={`text-sm ${finalExamLocked ? "opacity-60" : ""}`}
+          >
             <span className="font-medium text-text-primary">
               Marcar como examen final del curso
             </span>
             <p className="mt-0.5 text-xs text-text-tertiary">
-              Al aprobar este quiz con &ge; 80%, el alumno completa el curso y
-              recibe automáticamente su certificado con QR. Solo puede haber un
-              examen final por curso.
+              {finalExamLocked
+                ? "Ya hay otro quiz marcado como examen final en este curso. Destildá esa opción en aquel quiz para poder marcar éste."
+                : "Al aprobar este quiz con ≥ 80%, el alumno completa el curso y recibe automáticamente su certificado con QR. Solo puede haber un examen final por curso."}
             </p>
           </label>
         </div>

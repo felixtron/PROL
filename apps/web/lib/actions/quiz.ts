@@ -36,6 +36,17 @@ function normalizeTimeLimit(v: number | null | undefined): number | null {
 
 const FINAL_EXAM_MIN_PASSING_SCORE = 80;
 
+type QuizActionResult =
+  | { success: true; quizId?: string }
+  | { success: false; error: string };
+
+function toActionError(err: unknown): QuizActionResult {
+  return {
+    success: false,
+    error: err instanceof Error ? err.message : "Error inesperado",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
@@ -43,7 +54,18 @@ const FINAL_EXAM_MIN_PASSING_SCORE = 80;
 /**
  * Create a quiz for a QUIZ-type lesson
  */
-export async function createQuiz(lessonId: string, data: CreateQuizData) {
+export async function createQuiz(
+  lessonId: string,
+  data: CreateQuizData,
+): Promise<QuizActionResult> {
+  try {
+    return await createQuizUnsafe(lessonId, data);
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+async function createQuizUnsafe(lessonId: string, data: CreateQuizData) {
   const user = await requireUser();
 
   // Verify lesson exists and user is the professor
@@ -134,13 +156,24 @@ export async function createQuiz(lessonId: string, data: CreateQuizData) {
   });
 
   revalidatePath(`/professor/courses/${lesson.module.course.id}/edit`);
-  return { success: true, quizId: quiz.id };
+  return { success: true as const, quizId: quiz.id };
 }
 
 /**
  * Update an existing quiz
  */
-export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) {
+export async function updateQuiz(
+  quizId: string,
+  data: Partial<CreateQuizData>,
+): Promise<QuizActionResult> {
+  try {
+    return await updateQuizUnsafe(quizId, data);
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+async function updateQuizUnsafe(quizId: string, data: Partial<CreateQuizData>) {
   const user = await requireUser();
 
   const quiz = await db.quiz.findFirst({
@@ -232,13 +265,21 @@ export async function updateQuiz(quizId: string, data: Partial<CreateQuizData>) 
   });
 
   revalidatePath(`/professor/courses/${quiz.lesson.module.course.id}/edit`);
-  return { success: true };
+  return { success: true as const };
 }
 
 /**
  * Delete a quiz
  */
-export async function deleteQuiz(quizId: string) {
+export async function deleteQuiz(quizId: string): Promise<QuizActionResult> {
+  try {
+    return await deleteQuizUnsafe(quizId);
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+async function deleteQuizUnsafe(quizId: string) {
   const user = await requireUser();
 
   const quiz = await db.quiz.findFirst({
@@ -266,7 +307,7 @@ export async function deleteQuiz(quizId: string) {
   await db.quiz.delete({ where: { id: quizId } });
 
   revalidatePath(`/professor/courses/${quiz.lesson.module.course.id}/edit`);
-  return { success: true };
+  return { success: true as const };
 }
 
 /**

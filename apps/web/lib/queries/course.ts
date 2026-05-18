@@ -50,10 +50,11 @@ export const getCourseForEdit = cache(async (courseId: string) => {
   if (!course) throw new Error("Curso no encontrado");
 
   // All quizzes in the course — used by the MULTI block editor to reference
-  // existing quizzes as quiz-blocks.
+  // existing quizzes as quiz-blocks, and by the quiz builder to know whether
+  // another quiz already holds the "final exam" flag (disables the toggle).
   const quizzes = await db.quiz.findMany({
     where: { lesson: { module: { courseId } } },
-    select: { id: true, title: true },
+    select: { id: true, title: true, isFinalExam: true },
     orderBy: { createdAt: "asc" },
   });
 

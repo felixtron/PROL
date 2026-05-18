@@ -95,7 +95,7 @@ type CourseData = {
   category: string | null;
   certificateDescription: string | null;
   modules: ModuleData[];
-  quizzes?: { id: string; title: string }[];
+  quizzes?: { id: string; title: string; isFinalExam: boolean }[];
   _count: { enrollments: number };
   aiEnabled?: boolean;
 };
@@ -169,6 +169,11 @@ function formatCurrency(cents: number): string {
 // ---------------------------------------------------------------------------
 
 export function CourseEditor({ course }: { course: CourseData }) {
+  // Pre-compute which quiz (if any) is currently the course final exam.
+  // `null` means there's no final yet, so the toggle is free for any quiz.
+  const courseFinalExamId =
+    course.quizzes?.find((q) => q.isFinalExam)?.id ?? null;
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Left Column — Content */}
@@ -178,6 +183,7 @@ export function CourseEditor({ course }: { course: CourseData }) {
           modules={course.modules}
           aiEnabled={course.aiEnabled ?? false}
           availableQuizzes={course.quizzes ?? []}
+          courseFinalExamId={courseFinalExamId}
         />
       </div>
 
@@ -199,11 +205,13 @@ function ModulesSection({
   modules,
   aiEnabled,
   availableQuizzes,
+  courseFinalExamId,
 }: {
   courseId: string;
   modules: ModuleData[];
   aiEnabled: boolean;
-  availableQuizzes: { id: string; title: string }[];
+  availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
+  courseFinalExamId: string | null;
 }) {
   const [showNewModule, setShowNewModule] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -252,6 +260,7 @@ function ModulesSection({
             index={idx}
             aiEnabled={aiEnabled}
             availableQuizzes={availableQuizzes}
+            courseFinalExamId={courseFinalExamId}
           />
         ))}
       </div>
@@ -304,11 +313,13 @@ function ModuleCard({
   index,
   aiEnabled,
   availableQuizzes,
+  courseFinalExamId,
 }: {
   module: ModuleData;
   index: number;
   aiEnabled: boolean;
-  availableQuizzes: { id: string; title: string }[];
+  availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
+  courseFinalExamId: string | null;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -452,6 +463,7 @@ function ModuleCard({
               lesson={lesson}
               aiEnabled={aiEnabled}
               availableQuizzes={availableQuizzes}
+              courseFinalExamId={courseFinalExamId}
             />
           ))}
 
@@ -487,10 +499,12 @@ function LessonRow({
   lesson,
   aiEnabled,
   availableQuizzes,
+  courseFinalExamId,
 }: {
   lesson: LessonData;
   aiEnabled: boolean;
-  availableQuizzes: { id: string; title: string }[];
+  availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
+  courseFinalExamId: string | null;
 }) {
   const [isDeleting, startTransition] = useTransition();
   const [showVideo, setShowVideo] = useState(false);
@@ -741,7 +755,11 @@ function LessonRow({
       {/* Quiz builder section for QUIZ lessons */}
       {lesson.type === "QUIZ" && showQuiz && (
         <div className="px-4 pb-3">
-          <QuizBuilder lessonId={lesson.id} existingQuiz={quizData} />
+          <QuizBuilder
+            lessonId={lesson.id}
+            existingQuiz={quizData}
+            courseFinalExamId={courseFinalExamId}
+          />
         </div>
       )}
 
