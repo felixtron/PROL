@@ -9,8 +9,26 @@ import { assertCriticalServerEnv } from "@/lib/env";
 // Falla rápido al primer import si faltan variables críticas en producción.
 assertCriticalServerEnv();
 
+// Multi-tenant: cada tenant vive en su propio subdominio
+// (<slug>.prol.prosuite.pro). Better Auth rechaza con 403 "Invalid origin"
+// cualquier origen que no esté en la lista (sólo el `baseURL` por default),
+// así que aceptamos el apex + cualquier subdominio del dominio base.
+// Para dev (`localhost:3000`) sólo aceptamos el origen literal.
+function buildTrustedOrigins(): string[] {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const domain = process.env.NEXT_PUBLIC_DOMAIN;
+  const origins = new Set<string>();
+  if (appUrl) origins.add(appUrl);
+  if (domain && !domain.startsWith("localhost")) {
+    origins.add(`https://${domain}`);
+    origins.add(`https://*.${domain}`);
+  }
+  return Array.from(origins);
+}
+
 export const auth = betterAuth({
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  trustedOrigins: buildTrustedOrigins(),
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
