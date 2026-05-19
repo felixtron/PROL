@@ -32,6 +32,30 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        // B2C: cuando alguien crea cuenta desde un subdomain de tenant
+        // (`<slug>.prol.prosuite.pro/sign-up`), el middleware ya inyectó
+        // `x-tenant-slug` en la request. Acá resolvemos el tenant y lo
+        // pegamos al user; sin esto, los compradores B2C se crearían con
+        // `tenantId = null` y no podrían ver ningún curso.
+        // En el apex (sin subdomain) tenantSlug queda null y el user se
+        // crea sin tenant — ese caso corresponde a SUPER_ADMIN/onboarding.
+        before: async (data) => {
+          const h = await headers();
+          const slug = h.get("x-tenant-slug");
+          if (!slug) return { data };
+          const tenant = await db.tenant.findUnique({
+            where: { slug },
+            select: { id: true },
+          });
+          if (!tenant) return { data };
+          return { data: { ...data, tenantId: tenant.id } };
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     sendResetPassword: async ({ user, url }) => {

@@ -312,12 +312,25 @@ export default async function CourseDetailPage({
                   coveredByCompany={coveredByCompany}
                 />
               ) : (
-                <Link
-                  href="/sign-in"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
-                >
-                  Iniciar Sesion para Inscribirse
-                </Link>
+                // B2C: el visitante llega desde un frontend externo (p.ej.
+                // bmb.mx) sin cuenta. Ofrecemos "Crear cuenta" como acción
+                // primaria y "Iniciar sesión" como secundaria. `callbackUrl`
+                // devuelve al usuario a esta misma página de curso después
+                // de autenticarse, donde verá `CheckoutButton`.
+                <div className="space-y-2">
+                  <Link
+                    href={`/sign-up?callbackUrl=${encodeURIComponent(`/courses/${slug}`)}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+                  >
+                    Crear cuenta para inscribirse
+                  </Link>
+                  <Link
+                    href={`/sign-in?callbackUrl=${encodeURIComponent(`/courses/${slug}`)}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-surface-secondary"
+                  >
+                    Ya tengo cuenta
+                  </Link>
+                </div>
               )}
             </div>
 
