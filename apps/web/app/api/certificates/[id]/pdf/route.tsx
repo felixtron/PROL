@@ -48,6 +48,21 @@ async function loadAsDataUrl(url: string | null | undefined): Promise<string | n
   }
 }
 
+/**
+ * Carga un asset bundled de apps/web/public/cert-assets/ como data URL.
+ * Resuelve con process.cwd() para funcionar igual en `next dev` y en
+ * builds standalone de Next.
+ */
+async function loadBundledCertAsset(filename: string, mime: string): Promise<string | null> {
+  try {
+    const filePath = join(process.cwd(), "public", "cert-assets", filename);
+    const buf = await readFile(filePath);
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 const styles = StyleSheet.create({
   page: {
     flexDirection: "column",
@@ -164,21 +179,28 @@ interface CertificatePDFProps {
   isRevoked: boolean;
 }
 
+// Recorta a `n` caracteres con elipsis para impedir que campos largos
+// empujen contenido a una segunda página.
+function truncate(s: string, n: number): string {
+  if (!s) return "";
+  return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
+}
+
 const CertificatePDF = (p: CertificatePDFProps) => (
   <Document>
-    <Page size="A4" orientation="landscape" style={styles.page}>
+    <Page size="A4" orientation="landscape" style={styles.page} wrap={false}>
       <View style={styles.border}>
         <View style={styles.innerBorder}>
           <View style={styles.header}>
-            <Text style={styles.tenantName}>{p.tenantName}</Text>
+            <Text style={styles.tenantName}>{truncate(p.tenantName, 60)}</Text>
           </View>
 
           <View>
-            <Text style={styles.title}>CERTIFICADO DE FINALIZACION</Text>
-            <Text style={styles.subtitle}>Se certifica que</Text>
-            <Text style={styles.studentName}>{p.studentName}</Text>
-            <Text style={styles.subtitle}>ha aprobado el examen final del curso</Text>
-            <Text style={styles.courseName}>{p.courseName}</Text>
+            <Text style={styles.title}>DIPLOMA DE FINALIZACIÓN</Text>
+            <Text style={styles.subtitle}>Se otorga a</Text>
+            <Text style={styles.studentName}>{truncate(p.studentName, 48)}</Text>
+            <Text style={styles.subtitle}>por haber aprobado el examen final del curso</Text>
+            <Text style={styles.courseName}>{truncate(p.courseName, 90)}</Text>
             {p.finalScore !== null && (
               <Text style={styles.scoreBadge}>
                 Calificacion: {p.finalScore}%
@@ -186,7 +208,7 @@ const CertificatePDF = (p: CertificatePDFProps) => (
             )}
             <View style={styles.professorSection}>
               <Text style={styles.subtitle}>Impartido por</Text>
-              <Text style={styles.professorName}>{p.professorName}</Text>
+              <Text style={styles.professorName}>{truncate(p.professorName, 60)}</Text>
             </View>
           </View>
 
@@ -275,11 +297,17 @@ export async function GET(
       const authorizedByName = typeof meta.authorizedByName === "string"
         ? meta.authorizedByName
         : certificate.tenant.name;
-      const authorizedSignatureUrl = typeof meta.authorizedSignatureUrl === "string"
-        ? await loadAsDataUrl(meta.authorizedSignatureUrl)
-        : null;
-
-      const brandLogoDataUrl = await loadAsDataUrl(certificate.tenant.logo);
+      // Logo y firma canónicos bundled en el repo: garantizan que TODOS
+      // los diplomas de Ibiza salgan con el mismo logo y misma firma
+      // (sin depender de qué se haya subido en tenant.logo o metadata).
+      const brandLogoDataUrl =
+        (await loadBundledCertAsset("ibiza-white.png", "image/png"))
+        ?? (await loadAsDataUrl(certificate.tenant.logo));
+      const authorizedSignatureUrl =
+        (await loadBundledCertAsset("firma-diploma.png", "image/png"))
+        ?? (typeof meta.authorizedSignatureUrl === "string"
+          ? await loadAsDataUrl(meta.authorizedSignatureUrl)
+          : null);
 
       const pdf = (
         <IbizaCertificate
@@ -328,7 +356,7 @@ export async function GET(
     return new NextResponse(stream as unknown as ReadableStream, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="certificado-${certificate.folio}.pdf"`,
+        "Content-Disposition": `inline; filename="diploma-${certificate.folio}.pdf"`,
       },
     });
   } catch (error) {

@@ -42,15 +42,15 @@ const styles = StyleSheet.create({
   },
   brandBox: {
     backgroundColor: PRIMARY,
-    width: 130,
-    height: 130,
+    width: 143,
+    height: 143,
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
+    padding: 13,
   },
   brandLogo: {
-    maxWidth: 110,
-    maxHeight: 80,
+    maxWidth: 121,
+    maxHeight: 88,
     objectFit: "contain",
   },
   brandTextWrapper: {
@@ -58,14 +58,14 @@ const styles = StyleSheet.create({
   },
   brandTextLine1: {
     color: "white",
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     letterSpacing: 1,
     textAlign: "center",
   },
   brandTextLine2: {
     color: "white",
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     letterSpacing: 1,
     textAlign: "center",
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
   brandTagline: {
     color: "white",
-    fontSize: 7,
+    fontSize: 8,
     letterSpacing: 1,
     marginTop: 4,
     textAlign: "center",
@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   evolutionStrong: { fontWeight: "bold", color: PRIMARY },
-
   // Title
   title: {
     fontSize: 48,
@@ -275,10 +274,17 @@ function SecurityPattern() {
   );
 }
 
+// Recorta a `n` caracteres con elipsis para evitar que campos largos rompan
+// el layout y empujen contenido a una segunda página.
+function truncate(s: string, n: number): string {
+  if (!s) return "";
+  return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
+}
+
 export function IbizaCertificate(p: IbizaCertificateProps) {
   return (
     <Document>
-      <Page size="LETTER" orientation="portrait" style={styles.page}>
+      <Page size="LETTER" orientation="portrait" style={styles.page} wrap={false}>
         <SecurityPattern />
         {/* Header */}
         <View style={styles.headerRow}>
@@ -309,17 +315,17 @@ export function IbizaCertificate(p: IbizaCertificateProps) {
           <View style={styles.leftBar} />
           <View style={styles.bodyContent}>
             <Text style={styles.studentName}>
-              {p.studentName.toUpperCase()}
+              {truncate(p.studentName.toUpperCase(), 48)}
             </Text>
             <Text style={styles.introLine}>
               <Text style={styles.introStrong}>IBIZA Consultores</Text> hace
               constar que cursó la siguiente formación:
             </Text>
             {p.courseCode && (
-              <Text style={styles.courseCode}>{p.courseCode}</Text>
+              <Text style={styles.courseCode}>{truncate(p.courseCode, 32)}</Text>
             )}
-            <Text style={styles.courseName}>{p.courseName}</Text>
-            <Text style={styles.description}>{p.description}</Text>
+            <Text style={styles.courseName}>{truncate(p.courseName, 90)}</Text>
+            <Text style={styles.description}>{truncate(p.description, 420)}</Text>
           </View>
         </View>
 
