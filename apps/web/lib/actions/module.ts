@@ -69,6 +69,53 @@ export async function deleteModule(moduleId: string) {
   return { success: true };
 }
 
+/**
+ * Move a module up or down within its course by swapping its `position`
+ * with the adjacent module. No-op if the module is already at the edge.
+ */
+export async function moveModule(
+  moduleId: string,
+  direction: "up" | "down",
+) {
+  const user = await requireUser();
+
+  const module = await db.module.findFirst({
+    where: { id: moduleId },
+    include: { course: { select: { professorId: true, id: true } } },
+  });
+  if (!module || module.course.professorId !== user.id)
+    throw new Error("No autorizado");
+
+  const neighbor = await db.module.findFirst({
+    where: {
+      courseId: module.course.id,
+      position:
+        direction === "up"
+          ? { lt: module.position }
+          : { gt: module.position },
+    },
+    orderBy: { position: direction === "up" ? "desc" : "asc" },
+  });
+
+  if (!neighbor) {
+    return { success: true, moved: false };
+  }
+
+  await db.$transaction([
+    db.module.update({
+      where: { id: module.id },
+      data: { position: neighbor.position },
+    }),
+    db.module.update({
+      where: { id: neighbor.id },
+      data: { position: module.position },
+    }),
+  ]);
+
+  revalidatePath(`/professor/courses/${module.course.id}/edit`);
+  return { success: true, moved: true };
+}
+
 export async function createLesson(moduleId: string, formData: FormData) {
   const user = await requireUser();
 

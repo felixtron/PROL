@@ -36,6 +36,7 @@ import {
   createModule,
   updateModule,
   deleteModule,
+  moveModule,
   createLesson,
   deleteLesson,
   moveLesson,
@@ -258,6 +259,7 @@ function ModulesSection({
             key={mod.id}
             module={mod}
             index={idx}
+            totalModules={modules.length}
             aiEnabled={aiEnabled}
             availableQuizzes={availableQuizzes}
             courseFinalExamId={courseFinalExamId}
@@ -311,12 +313,14 @@ function ModulesSection({
 function ModuleCard({
   module: mod,
   index,
+  totalModules,
   aiEnabled,
   availableQuizzes,
   courseFinalExamId,
 }: {
   module: ModuleData;
   index: number;
+  totalModules: number;
   aiEnabled: boolean;
   availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
   courseFinalExamId: string | null;
@@ -326,6 +330,19 @@ function ModuleCard({
   const [showNewLesson, setShowNewLesson] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [isUpdating, startUpdateTransition] = useTransition();
+  const [isMoving, startMoveTransition] = useTransition();
+  const isFirst = index === 0;
+  const isLast = index === totalModules - 1;
+
+  function handleMove(direction: "up" | "down") {
+    startMoveTransition(async () => {
+      try {
+        await moveModule(mod.id, direction);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Error al mover módulo");
+      }
+    });
+  }
 
   function handleUpdateTitle(formData: FormData) {
     startUpdateTransition(async () => {
@@ -373,7 +390,26 @@ function ModuleCard({
           )}
         </button>
 
-        <GripVertical className="h-4 w-4 shrink-0 text-text-tertiary" />
+        <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => handleMove("up")}
+            disabled={isMoving || isFirst}
+            title="Mover módulo arriba"
+            className="rounded p-0.5 text-text-tertiary hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMove("down")}
+            disabled={isMoving || isLast}
+            title="Mover módulo abajo"
+            className="rounded p-0.5 text-text-tertiary hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </div>
 
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-100 text-xs font-semibold text-primary-700">
           {index + 1}
