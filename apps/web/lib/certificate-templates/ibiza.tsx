@@ -40,17 +40,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 28,
   },
+  // brandBox: +30% sobre el tamaño anterior (143 → 186) para acercarse
+  // al certificado manual de referencia. Logo y texto interno escalados
+  // proporcionalmente; objectFit:contain preserva el aspect ratio del PNG.
   brandBox: {
     backgroundColor: PRIMARY,
-    width: 143,
-    height: 143,
+    width: 186,
+    height: 186,
     alignItems: "center",
     justifyContent: "center",
-    padding: 13,
+    padding: 17,
   },
   brandLogo: {
-    maxWidth: 121,
-    maxHeight: 88,
+    maxWidth: 158,
+    maxHeight: 115,
     objectFit: "contain",
   },
   brandTextWrapper: {
@@ -58,14 +61,14 @@ const styles = StyleSheet.create({
   },
   brandTextLine1: {
     color: "white",
-    fontSize: 24,
+    fontSize: 31,
     fontWeight: "bold",
     letterSpacing: 1,
     textAlign: "center",
   },
   brandTextLine2: {
     color: "white",
-    fontSize: 24,
+    fontSize: 31,
     fontWeight: "bold",
     letterSpacing: 1,
     textAlign: "center",
@@ -73,24 +76,29 @@ const styles = StyleSheet.create({
   },
   brandTagline: {
     color: "white",
-    fontSize: 8,
+    fontSize: 10,
     letterSpacing: 1,
     marginTop: 4,
     textAlign: "center",
   },
   evolutionText: {
-    fontSize: 11,
+    fontSize: 14,
     color: TEXT_DARK,
     textAlign: "right",
   },
   evolutionStrong: { fontWeight: "bold", color: PRIMARY },
-  // Title
+  // Título "DIPLOMA": el wrapper fija el ancho al del brandBox (186pt)
+  // y el fontSize+letterSpacing están calibrados para llenarlo casi
+  // exacto (≈185pt con Helvetica-Bold).
+  titleBlock: {
+    width: 186,
+    marginBottom: 36,
+  },
   title: {
-    fontSize: 48,
+    fontSize: 32,
     fontWeight: "bold",
     color: TEXT_DARK,
-    letterSpacing: 6,
-    marginBottom: 36,
+    letterSpacing: 4,
   },
 
   // Body with the left vertical bar
@@ -231,8 +239,8 @@ export interface IbizaCertificateProps {
  * SVG primitives.
  */
 function SecurityPattern() {
-  const width = 612; // LETTER portrait in pt
-  const height = 792;
+  const width = 595; // A4 portrait in pt
+  const height = 842;
   const step = 8;
   const stroke = "#3aa1d6";
   const opacity = 0.06;
@@ -284,7 +292,7 @@ function truncate(s: string, n: number): string {
 export function IbizaCertificate(p: IbizaCertificateProps) {
   return (
     <Document>
-      <Page size="LETTER" orientation="portrait" style={styles.page} wrap={false}>
+      <Page size="A4" orientation="portrait" style={styles.page}>
         <SecurityPattern />
         {/* Header */}
         <View style={styles.headerRow}>
@@ -307,8 +315,10 @@ export function IbizaCertificate(p: IbizaCertificateProps) {
           </Text>
         </View>
 
-        {/* Title */}
-        <Text style={styles.title}>D I P L O M A</Text>
+        {/* Title — ancho fijado al del brandBox */}
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>DIPLOMA</Text>
+        </View>
 
         {/* Body */}
         <View style={styles.bodyWrap}>
