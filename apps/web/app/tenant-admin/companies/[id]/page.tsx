@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Building2, Users, GraduationCap, Mail, Crown } from "lucide-react";
+import { ArrowLeft, Building2, Users, GraduationCap, Mail, Crown, Pencil } from "lucide-react";
 import {
   getCompanyDetail,
   listAssignableUsersForTenant,
@@ -8,6 +8,7 @@ import {
 import { MembersTab } from "./members-tab";
 import { CoursesTab } from "./courses-tab";
 import { InvitationsTab } from "./invitations-tab";
+import { DeleteCompanyButton } from "../delete-company-button";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,22 @@ export default async function CompanyDetailPage({
                   </p>
                 ) : null;
               })()}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/tenant-admin/companies/${company.id}/edit`}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface-tertiary"
+            >
+              <Pencil className="h-4 w-4" />
+              Editar
+            </Link>
+            <DeleteCompanyButton
+              companyId={company.id}
+              companyName={company.name}
+              membersCount={company._count.members}
+              assignmentsCount={company._count.courseAssignments}
+              redirectTo="/tenant-admin/companies"
+            />
           </div>
         </div>
       </div>

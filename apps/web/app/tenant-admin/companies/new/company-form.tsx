@@ -3,10 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { createCompany } from "@/lib/actions/company";
+import { createCompany, updateCompany } from "@/lib/actions/company";
 
-export function CompanyForm() {
+type Initial = {
+  id: string;
+  name: string;
+  contactEmail: string | null;
+  seatsLimit: number | null;
+  allowMemberInvitations: boolean;
+};
+
+export function CompanyForm({ initial }: { initial?: Initial }) {
   const router = useRouter();
+  const isEdit = !!initial;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,11 +25,27 @@ export function CompanyForm() {
     setLoading(true);
     try {
       const fd = new FormData(e.currentTarget);
-      const result = await createCompany(fd);
-      router.push(`/tenant-admin/companies/${result.companyId}`);
-      router.refresh();
+      if (isEdit) {
+        const seatsRaw = fd.get("seatsLimit") as string | null;
+        const seatsLimit = seatsRaw && seatsRaw.length > 0
+          ? Math.max(1, parseInt(seatsRaw, 10))
+          : null;
+        const contactEmailRaw = (fd.get("contactEmail") as string | null)?.trim() ?? "";
+        await updateCompany(initial!.id, {
+          name: (fd.get("name") as string).trim(),
+          contactEmail: contactEmailRaw.length > 0 ? contactEmailRaw : null,
+          seatsLimit,
+          allowMemberInvitations: fd.get("allowMemberInvitations") === "true",
+        });
+        router.push(`/tenant-admin/companies/${initial!.id}`);
+        router.refresh();
+      } else {
+        const result = await createCompany(fd);
+        router.push(`/tenant-admin/companies/${result.companyId}`);
+        router.refresh();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear");
+      setError(err instanceof Error ? err.message : "Error al guardar");
       setLoading(false);
     }
   }
@@ -46,6 +71,7 @@ export function CompanyForm() {
           required
           minLength={2}
           maxLength={80}
+          defaultValue={initial?.name ?? ""}
           placeholder="Ej. Acme Corp"
           className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
@@ -58,6 +84,7 @@ export function CompanyForm() {
         <input
           type="email"
           name="contactEmail"
+          defaultValue={initial?.contactEmail ?? ""}
           placeholder="rh@acme.com"
           className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
@@ -71,6 +98,7 @@ export function CompanyForm() {
           type="number"
           name="seatsLimit"
           min={1}
+          defaultValue={initial?.seatsLimit ?? ""}
           placeholder="Ej. 50"
           className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
@@ -85,6 +113,7 @@ export function CompanyForm() {
           id="allowMemberInvitations"
           name="allowMemberInvitations"
           value="true"
+          defaultChecked={initial?.allowMemberInvitations ?? false}
           className="mt-1 h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500"
         />
         <label htmlFor="allowMemberInvitations" className="text-sm">
@@ -105,7 +134,9 @@ export function CompanyForm() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-          {loading ? "Creando..." : "Crear empresa"}
+          {loading
+            ? isEdit ? "Guardando..." : "Creando..."
+            : isEdit ? "Guardar cambios" : "Crear empresa"}
         </button>
       </div>
     </form>
