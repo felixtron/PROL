@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Plus, Upload, Users } from "lucide-react";
+import { db } from "@prol/db";
+import { requireTenantAdmin } from "@/lib/auth";
 import {
   listTenantUsers,
   listTenantCompaniesForFilter,
@@ -31,9 +33,17 @@ export default async function UsersListPage({
       sp.disabled === "true" ? true : sp.disabled === "false" ? false : undefined,
   };
 
-  const [users, companies] = await Promise.all([
+  const admin = await requireTenantAdmin();
+  const [users, companies, courses] = await Promise.all([
     listTenantUsers(filter),
     listTenantCompaniesForFilter(),
+    admin.tenantId
+      ? db.course.findMany({
+          where: { tenantId: admin.tenantId, status: { not: "ARCHIVED" } },
+          orderBy: { title: "asc" },
+          select: { id: true, title: true, priceInCents: true, currency: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -79,6 +89,7 @@ export default async function UsersListPage({
         <UsersTable
           users={users}
           companies={companies}
+          courses={courses}
           initialFilter={filter}
         />
       )}

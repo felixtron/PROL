@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
 import { sendEmail, enrollmentConfirmation } from "@prol/email";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireTenantAdmin, assertSameTenant } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 import crypto from "crypto";
@@ -94,6 +94,169 @@ export async function enrollInCourse(courseId: string) {
   }
 
   return { success: true, enrollmentId: enrollment.id };
+}
+
+/**
+ * Inscripción manual hecha por un tenant admin. Pensado para casos donde el
+ * pago ocurre por fuera del checkout (transferencia, efectivo, regalo, beca).
+ * Crea (idempotente) un Enrollment y, opcionalmente, un CoursePayment con
+ * stripePaymentId prefijado `manual-` para distinguirlo de los pagos Stripe.
+ *
+ * El admin no necesita pasar por `enrollInCourse`, que rechaza B2C en cursos
+ * de pago — esa restricción protege contra usuarios bypassando Stripe, no
+ * contra administradores.
+ */
+export async function manualEnrollStudent(input: {
+  studentId: string;
+  courseId: string;
+  recordPayment: boolean;
+  amountInCents?: number; // si recordPayment, default = course.priceInCents
+  paymentMethod?: "SPEI" | "OXXO" | "CARD"; // default SPEI (transferencia)
+  sendWelcomeEmail: boolean;
+}): Promise<{
+  success: true;
+  enrollmentId: string;
+  paymentId: string | null;
+  alreadyEnrolled: boolean;
+}> {
+  const admin = await requireTenantAdmin();
+
+  const [student, course] = await Promise.all([
+    db.user.findUnique({
+      where: { id: input.studentId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        tenantId: true,
+        disabledAt: true,
+        tenant: { select: { name: true } },
+      },
+    }),
+    db.course.findUnique({
+      where: { id: input.courseId },
+      select: {
+        id: true,
+        title: true,
+        tenantId: true,
+        status: true,
+        priceInCents: true,
+        currency: true,
+        tenant: { select: { revenueShareRate: true } },
+      },
+    }),
+  ]);
+
+  if (!student) throw new Error("Alumno no encontrado");
+  if (!course) throw new Error("Curso no encontrado");
+  if (!student.tenantId) throw new Error("El usuario no pertenece a ningún tenant");
+  if (student.tenantId !== course.tenantId) {
+    throw new Error("Alumno y curso pertenecen a tenants distintos");
+  }
+  assertSameTenant(admin, student.tenantId);
+  if (student.role !== "STUDENT") {
+    throw new Error("Solo se pueden inscribir usuarios con rol Alumno");
+  }
+  if (student.disabledAt) {
+    throw new Error("El alumno está deshabilitado");
+  }
+  if (course.status === "ARCHIVED") {
+    throw new Error("No se puede inscribir a un curso archivado");
+  }
+
+  const existing = await db.enrollment.findUnique({
+    where: { studentId_courseId: { studentId: student.id, courseId: course.id } },
+    select: { id: true },
+  });
+
+  const amount = input.recordPayment
+    ? Math.max(0, input.amountInCents ?? course.priceInCents)
+    : 0;
+  const paymentMethod = input.paymentMethod ?? "SPEI";
+
+  let paymentId: string | null = null;
+
+  if (input.recordPayment) {
+    const revenueShareRate = course.tenant.revenueShareRate;
+    const prolFee = Math.round(amount * revenueShareRate);
+    const creatorReceives = amount - prolFee;
+
+    const payment = await db.coursePayment.create({
+      data: {
+        tenantId: course.tenantId,
+        studentId: student.id,
+        courseId: course.id,
+        amount,
+        currency: course.currency,
+        revenueShareRate,
+        prolFee,
+        creatorReceives,
+        stripeFee: 0,
+        stripePaymentId: `manual-${crypto.randomBytes(12).toString("base64url")}`,
+        paymentMethod,
+        status: "COMPLETED",
+        paidAt: new Date(),
+      },
+    });
+    paymentId = payment.id;
+  }
+
+  // Upsert para que dos clicks del admin no fallen con violation de unique.
+  const enrollment = await db.enrollment.upsert({
+    where: { studentId_courseId: { studentId: student.id, courseId: course.id } },
+    create: {
+      studentId: student.id,
+      courseId: course.id,
+      tenantId: course.tenantId,
+    },
+    update: {}, // ya estaba inscrito, no tocamos progreso ni status
+  });
+
+  try {
+    await createNotification({
+      userId: student.id,
+      tenantId: course.tenantId,
+      type: "ENROLLMENT",
+      title: existing ? "Curso reactivado" : "Inscripción exitosa",
+      message: `Te han inscrito al curso "${course.title}".`,
+      link: `/dashboard/courses/${course.id}`,
+    });
+  } catch (err) {
+    console.error("Error creando notificación de inscripción manual:", err);
+  }
+
+  if (input.sendWelcomeEmail) {
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+      const courseUrl = `${appUrl}/dashboard/courses/${course.id}`;
+      const tenantName = student.tenant?.name ?? "PROL";
+      const emailData = enrollmentConfirmation({
+        name: student.name ?? "Estudiante",
+        courseName: course.title,
+        courseUrl,
+        tenantName,
+      });
+      await sendEmail({
+        to: student.email,
+        subject: emailData.subject,
+        html: emailData.html,
+      });
+    } catch (err) {
+      console.error("Error enviando email de inscripción manual:", err);
+    }
+  }
+
+  revalidatePath("/tenant-admin/users");
+  revalidatePath("/tenant-admin/courses");
+  revalidatePath(`/dashboard/courses/${course.id}`);
+
+  return {
+    success: true,
+    enrollmentId: enrollment.id,
+    paymentId,
+    alreadyEnrolled: !!existing,
+  };
 }
 
 export async function updateLessonProgress(

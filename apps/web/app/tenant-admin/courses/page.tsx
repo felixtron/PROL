@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GraduationCap, Users, DollarSign, BookOpen, ExternalLink, Eye } from "lucide-react";
 import { db } from "@prol/db";
 import { requireTenantAdmin } from "@/lib/auth";
+import { EnrollToCourseButton } from "./enroll-to-course-button";
 
 export const dynamic = "force-dynamic";
 
@@ -35,14 +36,22 @@ export default async function TenantAdminCoursesPage() {
     );
   }
 
-  const courses = await db.course.findMany({
-    where: { tenantId: admin.tenantId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      professor: { select: { id: true, name: true, email: true, avatar: true } },
-      _count: { select: { enrollments: true, modules: true } },
-    },
-  });
+  const [courses, students] = await Promise.all([
+    db.course.findMany({
+      where: { tenantId: admin.tenantId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        professor: { select: { id: true, name: true, email: true, avatar: true } },
+        _count: { select: { enrollments: true, modules: true } },
+      },
+    }),
+    db.user.findMany({
+      where: { tenantId: admin.tenantId, role: "STUDENT", disabledAt: null },
+      orderBy: [{ name: "asc" }, { email: "asc" }],
+      select: { id: true, name: true, email: true },
+      take: 500,
+    }),
+  ]);
 
   // Aggregate revenue per course
   const revenueByCourse = await db.coursePayment.groupBy({
@@ -175,6 +184,15 @@ export default async function TenantAdminCoursesPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-3">
+                          <EnrollToCourseButton
+                            course={{
+                              id: c.id,
+                              title: c.title,
+                              priceInCents: c.priceInCents,
+                              currency: c.currency,
+                            }}
+                            students={students}
+                          />
                           <Link
                             href={`/preview/courses/${c.id}`}
                             target="_blank"

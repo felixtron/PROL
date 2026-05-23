@@ -16,6 +16,8 @@ import {
   updateTenantUser,
   resendWelcomeEmail,
 } from "@/lib/actions/tenant-users";
+import { EnrollUserButton } from "./enroll-user-button";
+import type { DialogCourse } from "../manual-enroll-dialog";
 
 type AssignableRole = "STUDENT" | "PROFESSOR" | "ADMIN";
 
@@ -60,10 +62,12 @@ const roleLabels: Record<string, { label: string; color: string }> = {
 export function UsersTable({
   users,
   companies,
+  courses,
   initialFilter,
 }: {
   users: User[];
   companies: Company[];
+  courses: DialogCourse[];
   initialFilter: {
     search?: string;
     role?: string;
@@ -268,6 +272,16 @@ export function UsersTable({
                           onClick={() => setEditingId(isEditing ? null : u.id)}
                           icon={isEditing ? X : Pencil}
                         />
+                        {u.role === "STUDENT" && !u.disabledAt && (
+                          <EnrollUserButton
+                            student={{
+                              id: u.id,
+                              name: u.name,
+                              email: u.email,
+                            }}
+                            courses={courses}
+                          />
+                        )}
                         <IconButton
                           title="Reenviar invitación"
                           onClick={() =>
