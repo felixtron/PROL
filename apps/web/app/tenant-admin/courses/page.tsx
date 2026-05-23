@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { GraduationCap, Users, DollarSign, BookOpen, ExternalLink, Eye } from "lucide-react";
+import { GraduationCap, Users, DollarSign, BookOpen } from "lucide-react";
 import { db } from "@prol/db";
 import { requireTenantAdmin } from "@/lib/auth";
-import { EnrollToCourseButton } from "./enroll-to-course-button";
+import { CourseActionsMenu } from "./course-actions-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -183,38 +182,21 @@ export default async function TenantAdminCoursesPage() {
                         ${(revenueMap.get(c.id) ?? 0).toFixed(2)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-3">
-                          <EnrollToCourseButton
-                            course={{
-                              id: c.id,
-                              title: c.title,
-                              priceInCents: c.priceInCents,
-                              currency: c.currency,
-                            }}
-                            students={students}
-                          />
-                          <Link
-                            href={`/preview/courses/${c.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-primary-700"
-                            title="Ver el curso como un alumno (modo vista previa)"
-                          >
-                            <Eye className="h-3 w-3" />
-                            Vista previa
-                          </Link>
-                          {c.status === "PUBLISHED" && (
-                            <Link
-                              href={`/courses/${c.slug}`}
-                              target="_blank"
-                              className="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
-                              title="Abrir página pública del curso"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              Ver
-                            </Link>
-                          )}
-                        </div>
+                        <CourseActionsMenu
+                          course={{
+                            id: c.id,
+                            title: c.title,
+                            slug: c.slug,
+                            status: c.status as
+                              | "DRAFT"
+                              | "REVIEW"
+                              | "PUBLISHED"
+                              | "ARCHIVED",
+                            priceInCents: c.priceInCents,
+                            currency: c.currency,
+                          }}
+                          students={students}
+                        />
                       </td>
                     </tr>
                   );
