@@ -61,7 +61,7 @@ export function CourseActionsMenu({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+          className="absolute left-0 z-20 mt-1 w-52 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
         >
           <button
             type="button"

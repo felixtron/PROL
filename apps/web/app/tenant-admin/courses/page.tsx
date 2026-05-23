@@ -120,13 +120,13 @@ export default async function TenantAdminCoursesPage() {
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-surface-secondary">
                 <tr>
+                  <th className="w-10 px-4 py-2.5"></th>
                   <Th>Curso</Th>
                   <Th>Profesor</Th>
                   <Th>Estado</Th>
                   <Th className="text-right">Precio</Th>
                   <Th className="text-right">Alumnos</Th>
                   <Th className="text-right">Ingresos</Th>
-                  <th className="px-4 py-2.5"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -134,6 +134,23 @@ export default async function TenantAdminCoursesPage() {
                   const status = statusStyles[c.status] ?? statusStyles.DRAFT!;
                   return (
                     <tr key={c.id}>
+                      <td className="w-10 px-3 py-3">
+                        <CourseActionsMenu
+                          course={{
+                            id: c.id,
+                            title: c.title,
+                            slug: c.slug,
+                            status: c.status as
+                              | "DRAFT"
+                              | "REVIEW"
+                              | "PUBLISHED"
+                              | "ARCHIVED",
+                            priceInCents: c.priceInCents,
+                            currency: c.currency,
+                          }}
+                          students={students}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex min-w-0 items-center gap-3">
                           {c.thumbnail ? (
@@ -180,23 +197,6 @@ export default async function TenantAdminCoursesPage() {
                       </td>
                       <td className="px-4 py-3 text-right text-sm text-text-secondary">
                         ${(revenueMap.get(c.id) ?? 0).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <CourseActionsMenu
-                          course={{
-                            id: c.id,
-                            title: c.title,
-                            slug: c.slug,
-                            status: c.status as
-                              | "DRAFT"
-                              | "REVIEW"
-                              | "PUBLISHED"
-                              | "ARCHIVED",
-                            priceInCents: c.priceInCents,
-                            currency: c.currency,
-                          }}
-                          students={students}
-                        />
                       </td>
                     </tr>
                   );
