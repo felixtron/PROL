@@ -3,6 +3,131 @@ import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
+// Final exam gate
+// ---------------------------------------------------------------------------
+
+// Umbral fijo para considerar aprobado un quiz intermedio antes de poder
+// presentar el examen final. NO usamos quiz.passingScore aquí: ese campo
+// determina si el quiz se marca como `passed` (afecta progreso y certificado
+// auto), pero el gate exige ≥80% sí o sí. La regla es de negocio, no del
+// profesor — así un quiz intermedio configurado con passingScore=70 sigue
+// otorgando "lesson completed" con 70, pero no abre el examen final hasta
+// que el alumno saque al menos 80 en él (en cualquiera de sus intentos).
+const FINAL_EXAM_GATE_MIN_SCORE = 80;
+
+export interface FinalExamGateStatus {
+  /** Hay un examen final asignado al curso (sea o no que aplique gate). */
+  hasFinalExam: boolean;
+  /** Id de la lección que contiene el examen final, o null. */
+  finalExamLessonId: string | null;
+  /** ¿El alumno puede presentar el examen final ahora? */
+  canTake: boolean;
+  /** Umbral mínimo (en porcentaje) por quiz intermedio. */
+  minScore: number;
+  /** Total de quizzes intermedios en el curso. */
+  totalIntermediate: number;
+  /** Quizzes intermedios que aún no alcanzan el umbral. */
+  pending: Array<{
+    quizId: string;
+    lessonId: string;
+    title: string;
+    bestScore: number | null;
+    attemptsUsed: number;
+    attemptsRemaining: number;
+  }>;
+  /** Quizzes intermedios ya aprobados con el umbral. */
+  passed: Array<{
+    quizId: string;
+    lessonId: string;
+    title: string;
+    bestScore: number;
+  }>;
+}
+
+/**
+ * Verifica si un enrollment puede presentar el examen final del curso.
+ *
+ * "Aprobado" para fines de este gate = al menos un QuizAttempt con
+ * `score >= 80` en el quiz intermedio. Si el alumno agotó intentos sin
+ * llegar a 80, queda bloqueado (escenario raro: el profesor puede subir
+ * `maxAttempts` o restablecerlo a mano si hace falta).
+ *
+ * El curso no necesita tener examen final; si no lo tiene, `canTake` es
+ * false y `hasFinalExam` también — la UI no debe ofrecer el gate.
+ */
+export const getFinalExamGateStatus = cache(
+  async (
+    enrollmentId: string,
+    courseId: string,
+  ): Promise<FinalExamGateStatus> => {
+    const finalExam = await db.quiz.findFirst({
+      where: {
+        isFinalExam: true,
+        lesson: { module: { courseId } },
+      },
+      select: { id: true, lessonId: true },
+    });
+
+    const intermediates = await db.quiz.findMany({
+      where: {
+        isFinalExam: false,
+        lesson: { module: { courseId } },
+      },
+      orderBy: [
+        { lesson: { module: { position: "asc" } } },
+        { lesson: { position: "asc" } },
+      ],
+      select: {
+        id: true,
+        title: true,
+        lessonId: true,
+        maxAttempts: true,
+        attempts: {
+          where: { enrollmentId },
+          orderBy: { score: "desc" },
+          select: { score: true },
+        },
+      },
+    });
+
+    const passed: FinalExamGateStatus["passed"] = [];
+    const pending: FinalExamGateStatus["pending"] = [];
+    for (const q of intermediates) {
+      const bestScore = q.attempts[0]?.score ?? null;
+      const attemptsUsed = q.attempts.length;
+      const attemptsRemaining = Math.max(0, q.maxAttempts - attemptsUsed);
+      if (bestScore !== null && bestScore >= FINAL_EXAM_GATE_MIN_SCORE) {
+        passed.push({
+          quizId: q.id,
+          lessonId: q.lessonId,
+          title: q.title,
+          bestScore,
+        });
+      } else {
+        pending.push({
+          quizId: q.id,
+          lessonId: q.lessonId,
+          title: q.title,
+          bestScore,
+          attemptsUsed,
+          attemptsRemaining,
+        });
+      }
+    }
+
+    return {
+      hasFinalExam: !!finalExam,
+      finalExamLessonId: finalExam?.lessonId ?? null,
+      canTake: !!finalExam && pending.length === 0,
+      minScore: FINAL_EXAM_GATE_MIN_SCORE,
+      totalIntermediate: intermediates.length,
+      pending,
+      passed,
+    };
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -113,6 +238,11 @@ export const getQuizForStudent = cache(
     const quiz = await db.quiz.findFirst({
       where: { lessonId },
       include: {
+        lesson: {
+          select: {
+            module: { select: { courseId: true } },
+          },
+        },
         attempts: isPreview
           ? false
           : {
@@ -123,6 +253,17 @@ export const getQuizForStudent = cache(
     });
 
     if (!quiz) return null;
+
+    // Cuando el quiz es el examen final del curso, computamos el estado
+    // del gate (prerequisitos de quizzes intermedios). En preview no aplica:
+    // el profesor/admin debe poder simular sin enroll real.
+    const finalExamGate =
+      !isPreview && quiz.isFinalExam
+        ? await getFinalExamGateStatus(
+            enrollmentId,
+            quiz.lesson.module.courseId,
+          )
+        : null;
 
     // Remove correct answers from questions for student view
     const questions = quiz.questions as unknown as QuizQuestion[];
@@ -152,8 +293,10 @@ export const getQuizForStudent = cache(
       questions: questionsForStudent,
       timeLimit: quiz.timeLimit,
       maxAttempts: quiz.maxAttempts,
+      isFinalExam: quiz.isFinalExam,
       attempts,
       attemptsRemaining: Math.max(0, quiz.maxAttempts - attempts.length),
+      finalExamGate,
     };
   }
 );

@@ -5,6 +5,7 @@ import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 import { createNotification } from "@/lib/notifications";
+import { getFinalExamGateStatus } from "@/lib/queries/quiz";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -352,6 +353,23 @@ export async function submitQuizAttempt(
 
   if (previousAttempts.length >= quiz.maxAttempts) {
     throw new Error(`Has alcanzado el máximo de ${quiz.maxAttempts} intentos`);
+  }
+
+  // Gate del examen final: si este es el examen final del curso, exigir
+  // que el alumno haya aprobado (≥80%) todos los quizzes intermedios
+  // antes de aceptar el intento. Defensa en profundidad: el UI también
+  // bloquea, pero esto evita un POST directo bypassando el cliente.
+  if (quiz.isFinalExam) {
+    const gate = await getFinalExamGateStatus(
+      enrollmentId,
+      enrollment.course.id,
+    );
+    if (!gate.canTake) {
+      const titles = gate.pending.map((p) => `"${p.title}"`).join(", ");
+      throw new Error(
+        `Debes aprobar con al menos ${gate.minScore}% cada quiz de los módulos antes de presentar el examen final. Falta(n): ${titles}`,
+      );
+    }
   }
 
   // Calculate score

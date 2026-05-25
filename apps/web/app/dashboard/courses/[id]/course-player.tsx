@@ -19,6 +19,7 @@ import {
   X,
   List,
   Download,
+  Lock,
 } from "lucide-react";
 import { updateLessonProgress } from "@/lib/actions/enrollment";
 import { QuizPlayer } from "./quiz-player";
@@ -75,6 +76,12 @@ interface CoursePlayerProps {
   completedLessonIds: string[];
   totalLessons: number;
   lessonProgressMap: Map<string, string>;
+  /** Id de la lección que contiene el examen final del curso, o null. */
+  finalExamLessonId?: string | null;
+  /** ¿El examen final está bloqueado por el gate de quizzes intermedios? */
+  finalExamLocked?: boolean;
+  /** Cuántos quizzes intermedios faltan por aprobar. */
+  finalExamPendingCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +126,9 @@ export function CoursePlayer({
   completedLessonIds: initialCompletedIds,
   totalLessons,
   lessonProgressMap,
+  finalExamLessonId = null,
+  finalExamLocked = false,
+  finalExamPendingCount = 0,
 }: CoursePlayerProps) {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [completedIds, setCompletedIds] = useState<Set<string>>(
@@ -314,6 +324,8 @@ export function CoursePlayer({
                     const isActive = lesson.id === activeLessonId;
                     const isComplete = completedIds.has(lesson.id);
                     const duration = formatDuration(lesson.videoDurationSeconds);
+                    const isLockedFinalExam =
+                      finalExamLocked && lesson.id === finalExamLessonId;
 
                     return (
                       <li key={lesson.id}>
@@ -323,10 +335,14 @@ export function CoursePlayer({
                           className={`flex w-full items-center gap-3 px-4 py-2.5 pl-10 text-sm transition-colors ${
                             isActive
                               ? "border-l-2 border-primary-600 bg-primary-50 text-primary-700"
-                              : "text-text-primary active:bg-surface-tertiary"
+                              : isLockedFinalExam
+                                ? "text-amber-800 active:bg-amber-50"
+                                : "text-text-primary active:bg-surface-tertiary"
                           }`}
                         >
-                          {isComplete ? (
+                          {isLockedFinalExam ? (
+                            <Lock className="h-4 w-4 shrink-0 text-amber-600" />
+                          ) : isComplete ? (
                             <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
                           ) : (
                             <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
@@ -337,8 +353,14 @@ export function CoursePlayer({
                             >
                               {lesson.title}
                             </p>
+                            {isLockedFinalExam && (
+                              <p className="mt-0.5 truncate text-[10px] font-medium text-amber-700">
+                                Bloqueado · faltan {finalExamPendingCount}{" "}
+                                evaluación{finalExamPendingCount === 1 ? "" : "es"}
+                              </p>
+                            )}
                           </div>
-                          {duration && (
+                          {duration && !isLockedFinalExam && (
                             <span className="flex shrink-0 items-center gap-1 text-xs text-text-tertiary">
                               <Clock className="h-3 w-3" />
                               {duration}

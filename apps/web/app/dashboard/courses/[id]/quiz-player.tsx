@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Trophy,
+  Lock,
 } from "lucide-react";
 import { submitQuizAttempt } from "@/lib/actions/quiz";
 
@@ -33,6 +34,28 @@ interface QuizAttempt {
   completedAt: Date | null;
 }
 
+interface FinalExamGateData {
+  hasFinalExam: boolean;
+  finalExamLessonId: string | null;
+  canTake: boolean;
+  minScore: number;
+  totalIntermediate: number;
+  pending: Array<{
+    quizId: string;
+    lessonId: string;
+    title: string;
+    bestScore: number | null;
+    attemptsUsed: number;
+    attemptsRemaining: number;
+  }>;
+  passed: Array<{
+    quizId: string;
+    lessonId: string;
+    title: string;
+    bestScore: number;
+  }>;
+}
+
 interface QuizData {
   id: string;
   lessonId: string;
@@ -41,8 +64,10 @@ interface QuizData {
   questions: QuizQuestion[];
   timeLimit: number | null;
   maxAttempts: number;
+  isFinalExam?: boolean;
   attempts: QuizAttempt[];
   attemptsRemaining: number;
+  finalExamGate?: FinalExamGateData | null;
 }
 
 interface QuizPlayerProps {
@@ -199,6 +224,107 @@ export function QuizPlayer({ quiz, enrollmentId, onQuizPassed }: QuizPlayerProps
   // ---------------------------------------------------------------------------
   // Render states
   // ---------------------------------------------------------------------------
+
+  // Gate del examen final: si este es el examen final y al alumno le faltan
+  // quizzes intermedios por aprobar (≥80%), bloqueamos antes del botón
+  // "Comenzar". El gate también se valida en submitQuizAttempt; esto es solo
+  // UX. Si gate.canTake === true cae al render normal de abajo.
+  if (
+    !isStarted &&
+    quiz.isFinalExam &&
+    quiz.finalExamGate &&
+    !quiz.finalExamGate.canTake
+  ) {
+    const gate = quiz.finalExamGate;
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100">
+            <Lock className="h-5 w-5 text-amber-700" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-heading text-xl font-bold text-amber-900">
+              Examen final bloqueado
+            </h2>
+            <p className="mt-1 text-sm text-amber-800">
+              Para presentar <strong>{quiz.title}</strong>, primero debes
+              aprobar con al menos <strong>{gate.minScore}%</strong> los
+              quizzes de cada módulo. Te faltan {gate.pending.length} de{" "}
+              {gate.totalIntermediate}.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <h3 className="text-sm font-semibold text-amber-900">
+            Quizzes pendientes
+          </h3>
+          <ul className="space-y-2">
+            {gate.pending.map((p) => (
+              <li
+                key={p.quizId}
+                className="rounded-lg border border-amber-200 bg-surface p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text-primary">
+                      {p.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-text-tertiary">
+                      {p.bestScore === null
+                        ? "Sin intentos todavía"
+                        : `Mejor puntaje: ${p.bestScore}%`}
+                      {" · "}
+                      {p.attemptsRemaining > 0
+                        ? `${p.attemptsRemaining} intento(s) disponible(s)`
+                        : "Sin intentos disponibles"}
+                    </p>
+                  </div>
+                  {p.attemptsRemaining > 0 ? (
+                    <a
+                      href={`?lesson=${p.lessonId}`}
+                      className="shrink-0 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+                    >
+                      Ir al quiz
+                    </a>
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                      <XCircle className="h-3 w-3" />
+                      Sin intentos
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {gate.passed.length > 0 && (
+            <details className="mt-4 rounded-lg border border-amber-200 bg-surface px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold text-text-secondary">
+                Ver quizzes aprobados ({gate.passed.length})
+              </summary>
+              <ul className="mt-2 space-y-1.5">
+                {gate.passed.map((p) => (
+                  <li
+                    key={p.quizId}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 text-xs text-text-primary">
+                      <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                      <span className="truncate">{p.title}</span>
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-emerald-700">
+                      {p.bestScore}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Show previous attempts and start button
   if (!isStarted) {

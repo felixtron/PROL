@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getStudentCourseDetail } from "@/lib/queries/course-detail";
+import { getFinalExamGateStatus } from "@/lib/queries/quiz";
 import { CoursePlayer } from "./course-player";
 
 export default async function CourseDetailPage({
@@ -15,6 +16,11 @@ export default async function CourseDetailPage({
   } catch {
     notFound();
   }
+
+  // El gate del examen final solo aplica para enrollments reales (no preview).
+  const finalExamGate = data.isPreview
+    ? null
+    : await getFinalExamGateStatus(data.enrollment.id, data.course.id);
 
   const allLessons = data.modules.flatMap((m) =>
     m.lessons.map((l) => ({
@@ -69,6 +75,11 @@ export default async function CourseDetailPage({
       completedLessonIds={Array.from(completedLessonIds)}
       totalLessons={allLessons.length}
       lessonProgressMap={lessonProgressMap}
+      finalExamLessonId={finalExamGate?.finalExamLessonId ?? null}
+      finalExamLocked={
+        !!finalExamGate?.hasFinalExam && !finalExamGate.canTake
+      }
+      finalExamPendingCount={finalExamGate?.pending.length ?? 0}
     />
   );
 }
