@@ -364,6 +364,13 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
     THREAT: 0,
   });
   const perQuestionFactorCounts = new Map<string, FactorCounts>();
+  // MULTI_SELECT answers: questionId -> Array of { author, indexes }
+  const perQuestionSelected = new Map<
+    string,
+    { author: string; indexes: number[] }[]
+  >();
+  // MULTI_SELECT counts: questionId -> { optionIndex: voteCount }
+  const perQuestionSelectedCounts = new Map<string, Map<number, number>>();
   for (const sub of latestSubmissions) {
     const author = sub.participantUser.name ?? sub.participantUser.email;
     for (const ans of sub.answers) {
@@ -385,6 +392,17 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
           perQuestionFactorCounts.get(ans.questionId) ?? emptyFactorCounts();
         for (const f of ans.factors) fc[f] += 1;
         perQuestionFactorCounts.set(ans.questionId, fc);
+      }
+      if (ans.selectedOptionIndexes && ans.selectedOptionIndexes.length > 0) {
+        const arr = perQuestionSelected.get(ans.questionId) ?? [];
+        arr.push({ author, indexes: ans.selectedOptionIndexes });
+        perQuestionSelected.set(ans.questionId, arr);
+        const counts =
+          perQuestionSelectedCounts.get(ans.questionId) ?? new Map();
+        for (const idx of ans.selectedOptionIndexes) {
+          counts.set(idx, (counts.get(idx) ?? 0) + 1);
+        }
+        perQuestionSelectedCounts.set(ans.questionId, counts);
       }
     }
   }
@@ -416,6 +434,17 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
   const sections = assignment.evaluation.sections.map((s) => {
     const questions = s.questions.map((q) => {
       const counts = perQuestion.get(q.id) ?? emptyCounts();
+      // Para MULTI_SELECT, exponer las opciones (strings) y el conteo por
+      // índice. `options` viene como Prisma.JsonValue; se asume string[]
+      // según contrato del modelo y se defiende contra otros shapes.
+      const options: string[] =
+        Array.isArray(q.options) && q.options.every((o) => typeof o === "string")
+          ? (q.options as string[])
+          : [];
+      const selectedCountsMap = perQuestionSelectedCounts.get(q.id);
+      const selectedOptionCounts: number[] = options.map(
+        (_, idx) => selectedCountsMap?.get(idx) ?? 0,
+      );
       return {
         id: q.id,
         code: q.code,
@@ -426,6 +455,11 @@ export const getEvaluationResults = cache(async (assignmentId: string) => {
         textAnswers: perQuestionText.get(q.id) ?? [],
         factorAnswers: perQuestionFactors.get(q.id) ?? [],
         factorCounts: perQuestionFactorCounts.get(q.id) ?? emptyFactorCounts(),
+        options,
+        selectedOptionAnswers: perQuestionSelected.get(q.id) ?? [],
+        selectedOptionCounts,
+        minSelections: q.minSelections,
+        maxSelections: q.maxSelections,
       };
     });
     // OPEN_TEXT questions don't count toward aggregates.

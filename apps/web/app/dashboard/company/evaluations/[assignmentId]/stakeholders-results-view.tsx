@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, MessageSquare } from "lucide-react";
+import { CheckCircle2, Clock, MessageSquare, ListChecks } from "lucide-react";
 import type { EvaluationQuestionType } from "@prol/db";
 
 interface SectionData {
@@ -17,6 +17,11 @@ interface SectionData {
       THREAT: number;
     };
     textAnswers: { author: string; text: string }[];
+    options: string[];
+    selectedOptionAnswers: { author: string; indexes: number[] }[];
+    selectedOptionCounts: number[];
+    minSelections: number | null;
+    maxSelections: number | null;
   }[];
 }
 
@@ -84,6 +89,7 @@ export function StakeholdersResultsView({ data }: { data: Data }) {
           <ul className="divide-y divide-border">
             {s.questions.map((q) => {
               const isOpenText = q.type === "OPEN_TEXT";
+              const isMultiSelect = q.type === "MULTI_SELECT";
               const totalMarks = FACTOR_ORDER.reduce(
                 (acc, f) => acc + q.factorCounts[f],
                 0,
@@ -95,11 +101,23 @@ export function StakeholdersResultsView({ data }: { data: Data }) {
                       className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
                         isOpenText
                           ? "bg-amber-100 text-amber-700"
-                          : "bg-indigo-100 text-indigo-700"
+                          : isMultiSelect
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-indigo-100 text-indigo-700"
                       }`}
-                      aria-label={isOpenText ? "Texto abierto" : "Multi-factor"}
+                      aria-label={
+                        isOpenText
+                          ? "Texto abierto"
+                          : isMultiSelect
+                            ? "Selección múltiple"
+                            : "Multi-factor"
+                      }
                     >
-                      <MessageSquare className="h-3 w-3" />
+                      {isMultiSelect ? (
+                        <ListChecks className="h-3 w-3" />
+                      ) : (
+                        <MessageSquare className="h-3 w-3" />
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-text-primary">
@@ -132,6 +150,8 @@ export function StakeholdersResultsView({ data }: { data: Data }) {
                             ))}
                           </ul>
                         )
+                      ) : isMultiSelect ? (
+                        <MultiSelectResults q={q} />
                       ) : q.factorAnswers.length === 0 ? (
                         <p className="mt-0.5 text-[11px] text-text-tertiary">
                           Sin respuestas todavía
@@ -202,6 +222,100 @@ export function StakeholdersResultsView({ data }: { data: Data }) {
       ))}
 
       <ParticipantsList data={data} />
+    </div>
+  );
+}
+
+function MultiSelectResults({
+  q,
+}: {
+  q: SectionData["questions"][number];
+}) {
+  if (q.options.length === 0) {
+    return (
+      <p className="mt-0.5 text-[11px] text-text-tertiary">
+        Esta pregunta no tiene opciones configuradas.
+      </p>
+    );
+  }
+  if (q.selectedOptionAnswers.length === 0) {
+    return (
+      <p className="mt-0.5 text-[11px] text-text-tertiary">
+        Sin respuestas todavía
+      </p>
+    );
+  }
+
+  const totalRespondents = q.selectedOptionAnswers.length;
+  const maxCount = Math.max(...q.selectedOptionCounts, 0);
+
+  // Para mostrar quién marcó cada opción debajo de la barra.
+  const authorsByOption: string[][] = q.options.map(() => []);
+  for (const ans of q.selectedOptionAnswers) {
+    for (const idx of ans.indexes) {
+      if (idx >= 0 && idx < authorsByOption.length) {
+        authorsByOption[idx]!.push(ans.author);
+      }
+    }
+  }
+
+  // Orden: opciones más votadas primero. Empate → orden original.
+  const order = q.options
+    .map((_, idx) => idx)
+    .sort(
+      (a, b) =>
+        (q.selectedOptionCounts[b] ?? 0) - (q.selectedOptionCounts[a] ?? 0),
+    );
+
+  const limits =
+    q.minSelections !== null && q.maxSelections !== null
+      ? q.minSelections === q.maxSelections
+        ? `Cada participante eligió exactamente ${q.minSelections}.`
+        : `Cada participante eligió entre ${q.minSelections} y ${q.maxSelections} opciones.`
+      : null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      <p className="text-[11px] text-text-tertiary">
+        {totalRespondents}{" "}
+        {totalRespondents === 1
+          ? "respuesta registrada"
+          : "respuestas registradas"}
+        {limits ? ` · ${limits}` : ""}
+      </p>
+      <ul className="space-y-1.5">
+        {order.map((idx) => {
+          const label = q.options[idx]!;
+          const count = q.selectedOptionCounts[idx] ?? 0;
+          const pct =
+            totalRespondents > 0
+              ? Math.round((count / totalRespondents) * 100)
+              : 0;
+          const barPct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+          const authors = authorsByOption[idx] ?? [];
+          return (
+            <li key={idx} className="rounded-lg border border-border bg-surface-secondary px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-text-primary">{label}</span>
+                <span className="shrink-0 text-[11px] font-medium text-text-tertiary">
+                  {count} / {totalRespondents} · {pct}%
+                </span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-tertiary">
+                <div
+                  className="h-full rounded-full bg-emerald-500"
+                  style={{ width: `${barPct}%` }}
+                />
+              </div>
+              {authors.length > 0 && (
+                <p className="mt-1 truncate text-[10px] text-text-tertiary">
+                  {authors.join(" · ")}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
