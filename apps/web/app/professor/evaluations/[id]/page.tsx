@@ -5,6 +5,7 @@ import { db } from "@prol/db";
 import { requireEvaluationAuthor } from "@/lib/auth";
 import {
   getEvaluationDetail,
+  getEvaluationResultsSummary,
   listAssignableCompaniesForEvaluation,
 } from "@/lib/queries/evaluation";
 import { EvaluationEditor } from "./evaluation-editor";
@@ -27,9 +28,10 @@ export default async function EvaluationDetailPage({
     if (!tenant.evaluationsEnabled) redirect("/professor");
   }
 
-  const [evaluation, companies] = await Promise.all([
+  const [evaluation, companies, resultsSummary] = await Promise.all([
     getEvaluationDetail(id),
     listAssignableCompaniesForEvaluation(id),
+    getEvaluationResultsSummary(id),
   ]);
 
   return (
@@ -44,7 +46,11 @@ export default async function EvaluationDetailPage({
         </Link>
       </div>
 
-      <EvaluationEditor evaluation={evaluation} companies={companies} />
+      <EvaluationEditor
+        evaluation={evaluation}
+        companies={companies}
+        resultsSummary={resultsSummary}
+      />
     </div>
   );
 }

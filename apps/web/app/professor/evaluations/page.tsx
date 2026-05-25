@@ -4,6 +4,7 @@ import { Plus, ClipboardCheck, Building2 } from "lucide-react";
 import { db, type EvaluationKind } from "@prol/db";
 import { requireEvaluationAuthor } from "@/lib/auth";
 import { listEvaluationsForTenant } from "@/lib/queries/evaluation";
+import { ResultsShortcut } from "./results-shortcut";
 
 export const dynamic = "force-dynamic";
 
@@ -82,10 +83,13 @@ export default async function EvaluationsListPage() {
             {evaluations.map((ev) => {
               const st = STATUS_LABEL[ev.status] ?? STATUS_LABEL.DRAFT!;
               return (
-                <li key={ev.id}>
+                <li
+                  key={ev.id}
+                  className="flex items-stretch gap-2 px-2 transition-colors hover:bg-surface-secondary"
+                >
                   <Link
                     href={`/professor/evaluations/${ev.id}`}
-                    className="flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-surface-secondary"
+                    className="flex flex-1 items-start justify-between gap-4 px-3 py-4"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -122,6 +126,14 @@ export default async function EvaluationsListPage() {
                       })}
                     </span>
                   </Link>
+                  {ev.assignments.length > 0 && (
+                    <div className="flex items-center pr-2">
+                      <ResultsShortcut
+                        evaluationId={ev.id}
+                        assignments={ev.assignments}
+                      />
+                    </div>
+                  )}
                 </li>
               );
             })}

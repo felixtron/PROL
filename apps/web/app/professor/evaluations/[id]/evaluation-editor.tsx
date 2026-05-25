@@ -11,6 +11,7 @@ import {
   ArrowRight,
   FileQuestion,
   BarChart3,
+  FileText,
 } from "lucide-react";
 import {
   updateEvaluation,
@@ -78,6 +79,15 @@ interface CompanyOption {
   slug: string;
   leaderId: string | null;
   _count: { members: number };
+}
+
+interface AssignmentResultsSummary {
+  id: string;
+  assignedAt: Date;
+  company: { id: string; name: string; slug: string };
+  totalParticipants: number;
+  respondents: number;
+  lastResponseAt: Date | null;
 }
 
 const TYPE_LABEL: Record<EvaluationSectionType, string> = {
@@ -377,9 +387,11 @@ const STATUS_LABEL: Record<EvaluationStatus, string> = {
 export function EvaluationEditor({
   evaluation,
   companies,
+  resultsSummary,
 }: {
   evaluation: EvaluationData;
   companies: CompanyOption[];
+  resultsSummary: AssignmentResultsSummary[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -509,6 +521,12 @@ export function EvaluationEditor({
           )}
         </div>
       </section>
+
+      {/* Results panel — only shown when at least one company has responded */}
+      <ResultsPanel
+        evaluationId={evaluation.id}
+        assignments={resultsSummary}
+      />
 
       {/* Sections */}
       <section className="space-y-3">
@@ -1240,6 +1258,101 @@ function AddQuestionForm({
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── Resultados por empresa ─────────────────────────────────────────────────
+
+function ResultsPanel({
+  evaluationId,
+  assignments,
+}: {
+  evaluationId: string;
+  assignments: AssignmentResultsSummary[];
+}) {
+  const withResponses = assignments.filter((a) => a.respondents > 0);
+  if (withResponses.length === 0) return null;
+
+  return (
+    <section className="rounded-xl border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
+          <BarChart3 className="h-4 w-4 text-primary-600" />
+          Resultados por empresa
+        </h2>
+        <span className="text-[11px] text-text-tertiary">
+          {withResponses.length} con respuestas
+        </span>
+      </div>
+      <ul className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
+        {withResponses.map((a) => {
+          const fullyResponded =
+            a.totalParticipants > 0 &&
+            a.respondents === a.totalParticipants;
+          return (
+            <li
+              key={a.id}
+              className="flex flex-col rounded-lg border border-border bg-surface p-4 transition-shadow hover:shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                    <Building2 className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+                    <span className="truncate">{a.company.name}</span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-tertiary">
+                    {a.lastResponseAt ? (
+                      <>
+                        Última respuesta:{" "}
+                        {new Date(a.lastResponseAt).toLocaleDateString(
+                          "es-MX",
+                          { day: "numeric", month: "short", year: "numeric" },
+                        )}
+                      </>
+                    ) : (
+                      "Aún sin respuestas"
+                    )}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-pill px-2 py-0.5 text-[10px] font-semibold ${
+                    fullyResponded
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}
+                  title={
+                    fullyResponded
+                      ? "Todos los participantes respondieron"
+                      : "Faltan respuestas"
+                  }
+                >
+                  {a.respondents}/{a.totalParticipants}
+                </span>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Link
+                  href={`/professor/evaluations/${evaluationId}/results/${a.id}`}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Ver resultados
+                </Link>
+                <a
+                  href={`/api/evaluations/results/${a.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:bg-primary-50 hover:text-primary-700"
+                  title="Descargar PDF"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  PDF
+                </a>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

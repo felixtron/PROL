@@ -2,7 +2,9 @@ import { cache } from "react";
 import { db } from "@prol/db";
 import { requireEvaluationAuthor, requireUser } from "@/lib/auth";
 
-/** List all evaluation templates for the current user's tenant. */
+/** List all evaluation templates for the current user's tenant. Includes a
+ * lightweight `assignments` array so the listing UI can offer a direct
+ * shortcut to results per company without re-fetching. */
 export const listEvaluationsForTenant = cache(async () => {
   const user = await requireEvaluationAuthor();
   if (!user.tenantId) return [];
@@ -12,9 +14,77 @@ export const listEvaluationsForTenant = cache(async () => {
     include: {
       createdBy: { select: { id: true, name: true, email: true } },
       _count: { select: { sections: true, assignments: true } },
+      assignments: {
+        orderBy: { assignedAt: "desc" },
+        select: {
+          id: true,
+          company: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 });
+
+/**
+ * Per-assignment response summary for an evaluation: total participants,
+ * how many have submitted at least once, and the most recent response
+ * timestamp. Used by the editor's "Resultados por empresa" panel and by
+ * the company selector on the results page.
+ *
+ * Authz: same as `getEvaluationDetail` (tenant member with author role,
+ * or SUPER_ADMIN).
+ */
+export const getEvaluationResultsSummary = cache(
+  async (evaluationId: string) => {
+    const user = await requireEvaluationAuthor();
+    const ev = await db.evaluation.findUnique({
+      where: { id: evaluationId },
+      select: { tenantId: true },
+    });
+    if (!ev) throw new Error("Evaluación no encontrada");
+    if (user.role !== "SUPER_ADMIN" && ev.tenantId !== user.tenantId) {
+      throw new Error("No autorizado");
+    }
+    const assignments = await db.evaluationAssignment.findMany({
+      where: { evaluationId },
+      orderBy: { assignedAt: "desc" },
+      select: {
+        id: true,
+        assignedAt: true,
+        company: { select: { id: true, name: true, slug: true } },
+        participants: {
+          select: {
+            id: true,
+            submissions: {
+              orderBy: { version: "desc" },
+              take: 1,
+              select: { submittedAt: true },
+            },
+          },
+        },
+      },
+    });
+    return assignments.map((a) => {
+      const responded = a.participants.filter(
+        (p) => p.submissions.length > 0,
+      );
+      const lastResponseAt = responded.reduce<Date | null>((latest, p) => {
+        const ts = p.submissions[0]?.submittedAt ?? null;
+        if (!ts) return latest;
+        if (!latest || ts > latest) return ts;
+        return latest;
+      }, null);
+      return {
+        id: a.id,
+        assignedAt: a.assignedAt,
+        company: a.company,
+        totalParticipants: a.participants.length,
+        respondents: responded.length,
+        lastResponseAt,
+      };
+    });
+  },
+);
 
 /** Detailed view of a single evaluation with all sections, questions and
  * current company assignments. Authz: same-tenant or SUPER_ADMIN. */
