@@ -54,7 +54,8 @@ export function SignUpForm({ tenant }: { tenant: TenantBranding | null }) {
     const callbackUrl =
       callbackUrlRaw &&
       callbackUrlRaw.startsWith("/") &&
-      !callbackUrlRaw.startsWith("//")
+      !callbackUrlRaw.startsWith("//") &&
+      !callbackUrlRaw.startsWith("/\\")
         ? callbackUrlRaw
         : null;
 
