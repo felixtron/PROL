@@ -72,11 +72,14 @@ export default async function StudentsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {students.map(({ student, enrollments, workshops }) => {
+                  // enrollment.progress está en escala 0..1; multiplicar
+                  // por 100 antes del round (antes redondeaba a 0 o 1).
                   const avgProgress =
                     enrollments.length > 0
                       ? Math.round(
-                          enrollments.reduce((sum, e) => sum + e.progress, 0) /
-                            enrollments.length
+                          (enrollments.reduce((sum, e) => sum + e.progress, 0) /
+                            enrollments.length) *
+                            100
                         )
                       : 0;
                   const courseNames = enrollments

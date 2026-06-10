@@ -280,6 +280,26 @@ export async function updateLessonProgress(
   });
   if (!enrollment) throw new Error("Inscripción no encontrada");
 
+  // Defensa: las lecciones QUIZ y ASSIGNMENT no se pueden marcar como
+  // COMPLETED por esta acción genérica — tienen su propia ruta
+  // (submitQuizAttempt para QUIZ, submit/upload para ASSIGNMENT) que
+  // valida lo necesario antes de marcar progreso. Sin este check, un
+  // alumno puede saltarse el examen final marcando manualmente la
+  // lección que lo contiene como completed (caso reportado en prod).
+  if (data.status === "COMPLETED") {
+    const lesson = await db.lesson.findUnique({
+      where: { id: lessonId },
+      select: { type: true },
+    });
+    if (lesson && (lesson.type === "QUIZ" || lesson.type === "ASSIGNMENT")) {
+      throw new Error(
+        lesson.type === "QUIZ"
+          ? "Las lecciones de tipo Quiz se completan al aprobar el quiz."
+          : "Las actividades se completan al entregar la tarea.",
+      );
+    }
+  }
+
   // Atomically: upsert lesson progress and recompute enrollment progress
   // (and mark COMPLETED if all lessons done). Certificate issuance + the
   // notification are post-commit side-effects: issueCertificateForEnrollment

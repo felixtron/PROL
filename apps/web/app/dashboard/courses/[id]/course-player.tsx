@@ -895,9 +895,26 @@ function LessonView({
 
         {/* ─── Actions bar ─── */}
         <div className="flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between md:pt-6">
-          {/* Mark as complete */}
+          {/* Mark as complete — solo para lecciones que NO se autocompletan
+              al evaluarse. Los QUIZ se marcan al aprobar el quiz; los
+              ASSIGNMENT al entregar. Permitir el click manual aquí dejaba
+              al alumno saltarse el examen final (lección QUIZ con isFinalExam)
+              quedando enrollment 100% pero sin certificado. */}
           <div>
-            {!isCompleted ? (
+            {lesson.type === "QUIZ" || lesson.type === "ASSIGNMENT" ? (
+              isCompleted ? (
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
+                  <CheckCircle className="h-4 w-4" />
+                  Lección completada
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-sm text-text-tertiary">
+                  {lesson.type === "QUIZ"
+                    ? "Aprueba el quiz para completar la lección"
+                    : "Entrega la actividad para completar la lección"}
+                </span>
+              )
+            ) : !isCompleted ? (
               <button
                 type="button"
                 onClick={onMarkComplete}
