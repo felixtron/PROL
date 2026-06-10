@@ -58,12 +58,32 @@ export async function deleteModule(moduleId: string) {
 
   const module = await db.module.findFirst({
     where: { id: moduleId },
-    include: { course: { select: { professorId: true, id: true } } },
+    include: {
+      course: { select: { professorId: true, id: true } },
+      _count: { select: { lessons: true } },
+    },
   });
   if (!module || module.course.professorId !== user.id)
     throw new Error("No autorizado");
 
-  await db.module.delete({ where: { id: moduleId } });
+  // Borrado del módulo + cascade de sus lecciones. Tenemos que decrementar
+  // course.totalLessons por la cantidad borrada — sin esto el contador
+  // queda desfasado y los enrollments se atascan por debajo del 100%
+  // (caso ISO 27001: contador quedó en 177 con 140 reales tras borrar
+  // módulos completos en producción).
+  await db.$transaction([
+    db.module.delete({ where: { id: moduleId } }),
+    ...(module._count.lessons > 0
+      ? [
+          db.course.update({
+            where: { id: module.course.id },
+            data: {
+              totalLessons: { decrement: module._count.lessons },
+            },
+          }),
+        ]
+      : []),
+  ]);
 
   revalidatePath(`/professor/courses/${module.course.id}/edit`);
   return { success: true };
