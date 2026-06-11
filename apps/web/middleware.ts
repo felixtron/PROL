@@ -146,8 +146,11 @@ export function middleware(req: NextRequest) {
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       scriptSrc,
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://player.vimeo.com https://www.youtube.com https://www.youtube-nocookie.com https://iframe.cloudflarestream.com https://iframe.videodelivery.net https://embed.videodelivery.net",
-      "connect-src 'self' https://api.stripe.com https://upload.cloudflarestream.com https://api.cloudflare.com https://api.assemblyai.com https://api.anthropic.com https://player.vimeo.com https://*.vimeocdn.com https://www.youtube.com https://www.youtube-nocookie.com https://videodelivery.net https://*.cloudflarestream.com",
+      // challenges.cloudflare.com: Turnstile renderiza su challenge en un
+      // iframe y hace fetch a ese host. Sin estos dos, el CSP bloquearía el
+      // widget y dejaría a los usuarios sin poder completar el captcha.
+      "frame-src 'self' https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com https://player.vimeo.com https://www.youtube.com https://www.youtube-nocookie.com https://iframe.cloudflarestream.com https://iframe.videodelivery.net https://embed.videodelivery.net",
+      "connect-src 'self' https://challenges.cloudflare.com https://api.stripe.com https://upload.cloudflarestream.com https://api.cloudflare.com https://api.assemblyai.com https://api.anthropic.com https://player.vimeo.com https://*.vimeocdn.com https://www.youtube.com https://www.youtube-nocookie.com https://videodelivery.net https://*.cloudflarestream.com",
     ].join("; "),
   );
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
