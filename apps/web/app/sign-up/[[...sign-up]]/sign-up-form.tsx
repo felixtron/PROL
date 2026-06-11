@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 interface TenantBranding {
   name: string;
@@ -13,7 +14,13 @@ interface TenantBranding {
   accentColor: string;
 }
 
-export function SignUpForm({ tenant }: { tenant: TenantBranding | null }) {
+export function SignUpForm({
+  tenant,
+  turnstileSiteKey,
+}: {
+  tenant: TenantBranding | null;
+  turnstileSiteKey: string | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [name, setName] = useState("");
@@ -22,6 +29,8 @@ export function SignUpForm({ tenant }: { tenant: TenantBranding | null }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   // Pre-fill email from query string (e.g. invitation flow).
   useEffect(() => {
@@ -34,16 +43,18 @@ export function SignUpForm({ tenant }: { tenant: TenantBranding | null }) {
     setError("");
     setLoading(true);
 
-    const { error: authError } = await authClient.signUp.email({
-      name,
-      email,
-      password,
-    });
+    const { error: authError } = await authClient.signUp.email(
+      { name, email, password },
+      captchaToken
+        ? { headers: { "x-captcha-response": captchaToken } }
+        : undefined,
+    );
 
     setLoading(false);
 
     if (authError) {
       setError(authError.message ?? "Error al crear la cuenta");
+      if (turnstileSiteKey) setCaptchaResetKey((k) => k + 1);
       return;
     }
 
@@ -195,9 +206,15 @@ export function SignUpForm({ tenant }: { tenant: TenantBranding | null }) {
               </div>
             </div>
 
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onToken={setCaptchaToken}
+              resetKey={captchaResetKey}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (!!turnstileSiteKey && !captchaToken)}
               className="w-full rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 hover:opacity-90 disabled:opacity-50"
               style={
                 tenant

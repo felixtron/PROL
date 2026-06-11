@@ -1,7 +1,26 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV"],
+  "globalEnv": [
+    "NODE_ENV",
+    "NEXT_PHASE",
+    "DATABASE_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_DOMAIN",
+    "BETTER_AUTH_SECRET",
+    "TURNSTILE_SITE_KEY",
+    "TURNSTILE_SECRET_KEY",
+    "ANTHROPIC_API_KEY",
+    "ASSEMBLYAI_API_KEY",
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_STREAM_API_TOKEN",
+    "RESEND_API_KEY",
+    "RESEND_DOMAIN",
+    "SEED_FORCE",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "UPLOAD_DIR"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

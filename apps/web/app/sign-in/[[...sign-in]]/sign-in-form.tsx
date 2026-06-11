@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 interface TenantBranding {
   name: string;
@@ -13,28 +14,40 @@ interface TenantBranding {
   accentColor: string;
 }
 
-export function SignInForm({ tenant }: { tenant: TenantBranding | null }) {
+export function SignInForm({
+  tenant,
+  turnstileSiteKey,
+}: {
+  tenant: TenantBranding | null;
+  turnstileSiteKey: string | null;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const { error: authError } = await authClient.signIn.email({
-      email,
-      password,
-    });
+    const { error: authError } = await authClient.signIn.email(
+      { email, password },
+      captchaToken
+        ? { headers: { "x-captcha-response": captchaToken } }
+        : undefined,
+    );
 
     setLoading(false);
 
     if (authError) {
       setError(authError.message ?? "Error al iniciar sesión");
+      // El token de Turnstile es de un solo uso: reiniciar para el reintento.
+      if (turnstileSiteKey) setCaptchaResetKey((k) => k + 1);
       return;
     }
 
@@ -216,9 +229,16 @@ export function SignInForm({ tenant }: { tenant: TenantBranding | null }) {
               </div>
             </div>
 
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onToken={setCaptchaToken}
+              resetKey={captchaResetKey}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              // Si el captcha está activo, exigir token antes de permitir el envío.
+              disabled={loading || (!!turnstileSiteKey && !captchaToken)}
               // `bg-primary-600` y `hover:bg-primary-700` actúan como
               // fallback cuando NO hay tenant resuelto (apex domain o
               // subdomain con slug inválido). Sin el fallback el botón

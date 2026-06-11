@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { captcha } from "better-auth/plugins";
 import { db } from "@prol/db";
 import { headers } from "next/headers";
 import { cache } from "react";
@@ -8,6 +9,29 @@ import { assertCriticalServerEnv } from "@/lib/env";
 
 // Falla rápido al primer import si faltan variables críticas en producción.
 assertCriticalServerEnv();
+
+// Plugins de Better Auth. El captcha (Cloudflare Turnstile) solo se activa
+// si `TURNSTILE_SECRET_KEY` está presente — así, si por algún motivo la
+// variable no está en el entorno (dev local sin llaves, o un .env a medio
+// configurar), el login sigue funcionando en vez de bloquear a todos por
+// "MISSING_RESPONSE". En prod la llave SÍ está, y entonces protege
+// sign-up / sign-in / request-password-reset (endpoints por defecto del
+// plugin). El cliente envía el token en el header `x-captcha-response`.
+function buildAuthPlugins() {
+  const plugins = [];
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+  if (turnstileSecret) {
+    plugins.push(
+      captcha({
+        provider: "cloudflare-turnstile",
+        secretKey: turnstileSecret,
+      }),
+    );
+  }
+  // nextCookies debe ir al final (es un plugin de respuesta).
+  plugins.push(nextCookies());
+  return plugins;
+}
 
 // Multi-tenant: cada tenant vive en su propio subdominio
 // (<slug>.prol.prosuite.pro). Better Auth rechaza con 403 "Invalid origin"
@@ -58,6 +82,10 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    // Política de contraseña aplicada en el server (antes solo vivía en el
+    // cliente con minLength=8, bypasseable por POST directo a la API).
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
     sendResetPassword: async ({ user, url }) => {
       const { sendEmail } = await import("@prol/email");
       await sendEmail({
@@ -95,7 +123,24 @@ export const auth = betterAuth({
       enabled: false,
     },
   },
-  plugins: [nextCookies()],
+  // Rate limiting por path. Complementa al limiter genérico del middleware
+  // (20/min para /api/auth) con reglas finas en los endpoints sensibles.
+  // `storage: "memory"` evita migración; los contadores se reinician en
+  // cada deploy — aceptable para brute-force por ráfagas. Umbrales
+  // generosos para no afectar a usuarios legítimos.
+  rateLimit: {
+    enabled: true,
+    storage: "memory",
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 3 },
+      "/request-password-reset": { window: 300, max: 3 },
+      "/reset-password": { window: 300, max: 5 },
+    },
+  },
+  plugins: buildAuthPlugins(),
 });
 
 export const getCurrentUser = cache(async () => {

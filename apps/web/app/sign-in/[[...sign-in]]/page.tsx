@@ -38,6 +38,7 @@ export default async function SignInPage() {
             }
           : null
       }
+      turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? null}
     />
   );
 }
