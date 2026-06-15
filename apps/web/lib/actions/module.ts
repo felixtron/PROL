@@ -328,6 +328,61 @@ export async function moveLesson(
   return { success: true, moved: true };
 }
 
+/**
+ * Mueve una lección a otro contenedor (módulo o submódulo) DENTRO del mismo
+ * curso — reparenting. Caso de uso: agrupar lecciones sueltas de un módulo
+ * dentro de un submódulo, o sacarlas de vuelta al módulo principal.
+ *
+ * Solo cambia `moduleId` + `position` (al final del destino). NO toca
+ * course.totalLessons (la lección sigue en el curso) y la navegación
+ * lesson → module → course se mantiene (el destino conserva su courseId).
+ */
+export async function moveLessonToContainer(
+  lessonId: string,
+  targetModuleId: string,
+) {
+  const user = await requireUser();
+
+  const lesson = await db.lesson.findFirst({
+    where: { id: lessonId },
+    include: {
+      module: {
+        include: { course: { select: { professorId: true, id: true } } },
+      },
+    },
+  });
+  if (!lesson || lesson.module.course.professorId !== user.id)
+    throw new Error("No autorizado");
+
+  if (targetModuleId === lesson.moduleId) {
+    return { success: true, moved: false };
+  }
+
+  const target = await db.module.findFirst({
+    where: { id: targetModuleId },
+    include: {
+      course: { select: { id: true } },
+      lessons: { select: { position: true } },
+    },
+  });
+  if (!target) throw new Error("Destino no encontrado");
+  if (target.course.id !== lesson.module.course.id)
+    throw new Error("El destino pertenece a otro curso");
+
+  const maxPosition = target.lessons.reduce(
+    (max, l) => Math.max(max, l.position),
+    -1,
+  );
+
+  await db.lesson.update({
+    where: { id: lessonId },
+    data: { moduleId: targetModuleId, position: maxPosition + 1 },
+  });
+
+  revalidatePath(`/professor/courses/${lesson.module.course.id}/edit`);
+  return { success: true, moved: true };
+}
+
 export async function deleteLesson(lessonId: string) {
   const user = await requireUser();
 

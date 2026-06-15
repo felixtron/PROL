@@ -31,6 +31,7 @@ import {
   Palette,
   List,
   ListOrdered,
+  FolderInput,
 } from "lucide-react";
 import {
   createModule,
@@ -41,6 +42,7 @@ import {
   createLesson,
   deleteLesson,
   moveLesson,
+  moveLessonToContainer,
   publishCourse,
   updateLesson,
 } from "@/lib/actions/module";
@@ -524,6 +526,12 @@ function ModuleCard({
               aiEnabled={aiEnabled}
               availableQuizzes={availableQuizzes}
               courseFinalExamId={courseFinalExamId}
+              // Una lección directa del módulo puede moverse a cualquiera de
+              // sus submódulos.
+              moveTargets={mod.submodules.map((s) => ({
+                id: s.id,
+                label: `Submódulo: ${s.title}`,
+              }))}
             />
           ))}
 
@@ -558,6 +566,17 @@ function ModuleCard({
                   aiEnabled={aiEnabled}
                   availableQuizzes={availableQuizzes}
                   courseFinalExamId={courseFinalExamId}
+                  // Las lecciones de un submódulo pueden volver al módulo
+                  // principal o pasar a otro submódulo hermano.
+                  lessonMoveTargets={[
+                    { id: mod.id, label: `Módulo: ${mod.title}` },
+                    ...mod.submodules
+                      .filter((o) => o.id !== sub.id)
+                      .map((o) => ({
+                        id: o.id,
+                        label: `Submódulo: ${o.title}`,
+                      })),
+                  ]}
                 />
               ))}
             </div>
@@ -629,6 +648,7 @@ function SubmoduleCard({
   aiEnabled,
   availableQuizzes,
   courseFinalExamId,
+  lessonMoveTargets,
 }: {
   submodule: SubmoduleData;
   index: number;
@@ -636,6 +656,7 @@ function SubmoduleCard({
   aiEnabled: boolean;
   availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
   courseFinalExamId: string | null;
+  lessonMoveTargets: { id: string; label: string }[];
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -811,6 +832,7 @@ function SubmoduleCard({
               aiEnabled={aiEnabled}
               availableQuizzes={availableQuizzes}
               courseFinalExamId={courseFinalExamId}
+              moveTargets={lessonMoveTargets}
             />
           ))}
 
@@ -846,11 +868,15 @@ function LessonRow({
   aiEnabled,
   availableQuizzes,
   courseFinalExamId,
+  moveTargets = [],
 }: {
   lesson: LessonData;
   aiEnabled: boolean;
   availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
   courseFinalExamId: string | null;
+  // Contenedores (módulo / submódulos) a los que se puede mover esta
+  // lección dentro del mismo módulo. Vacío ⇒ no se muestra el control.
+  moveTargets?: { id: string; label: string }[];
 }) {
   const [isDeleting, startTransition] = useTransition();
   const [showVideo, setShowVideo] = useState(false);
@@ -862,6 +888,19 @@ function LessonRow({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(lesson.title);
   const [titleError, setTitleError] = useState("");
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [isMovingTo, startMoveToTransition] = useTransition();
+
+  function handleMoveTo(targetModuleId: string) {
+    setShowMoveMenu(false);
+    startMoveToTransition(async () => {
+      try {
+        await moveLessonToContainer(lesson.id, targetModuleId);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Error al mover la lección");
+      }
+    });
+  }
   const Icon = lessonTypeIcons[lesson.type] ?? Video;
 
   function handleSaveTitle() {
@@ -1065,6 +1104,53 @@ function LessonRow({
         <span className="shrink-0 rounded-md bg-surface-tertiary px-1.5 py-0.5 text-[10px] font-medium uppercase text-text-tertiary">
           {lesson.type}
         </span>
+        {moveTargets.length > 0 && (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowMoveMenu((v) => !v)}
+              disabled={isMovingTo}
+              title="Mover a otro módulo/submódulo"
+              aria-haspopup="menu"
+              aria-expanded={showMoveMenu}
+              className="rounded-lg p-1 text-text-tertiary transition-colors hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-50"
+            >
+              {isMovingTo ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FolderInput className="h-3.5 w-3.5" />
+              )}
+            </button>
+            {showMoveMenu && (
+              <>
+                {/* Backdrop para cerrar al click fuera */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowMoveMenu(false)}
+                />
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+                >
+                  <p className="border-b border-border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+                    Mover lección a
+                  </p>
+                  {moveTargets.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleMoveTo(t.id)}
+                      className="block w-full truncate px-3 py-2 text-left text-xs text-text-primary transition-colors hover:bg-surface-secondary"
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <button
           type="button"
           onClick={handleDelete}
