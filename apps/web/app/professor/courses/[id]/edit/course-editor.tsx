@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import {
   createModule,
+  createSubmodule,
   updateModule,
   deleteModule,
   moveModule,
@@ -77,11 +78,19 @@ type LessonData = {
   }>;
 };
 
+type SubmoduleData = {
+  id: string;
+  title: string;
+  position: number;
+  lessons: LessonData[];
+};
+
 type ModuleData = {
   id: string;
   title: string;
   position: number;
   lessons: LessonData[];
+  submodules: SubmoduleData[];
 };
 
 type CourseData = {
@@ -328,11 +337,26 @@ function ModuleCard({
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showNewLesson, setShowNewLesson] = useState(false);
+  const [showNewSubmodule, setShowNewSubmodule] = useState(false);
+  const [isCreatingSub, startCreateSubTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const [isUpdating, startUpdateTransition] = useTransition();
   const [isMoving, startMoveTransition] = useTransition();
   const isFirst = index === 0;
   const isLast = index === totalModules - 1;
+
+  function handleCreateSubmodule(formData: FormData) {
+    startCreateSubTransition(async () => {
+      try {
+        await createSubmodule(mod.id, formData);
+        setShowNewSubmodule(false);
+      } catch (err) {
+        alert(
+          err instanceof Error ? err.message : "Error al crear submódulo",
+        );
+      }
+    });
+  }
 
   function handleMove(direction: "up" | "down") {
     startMoveTransition(async () => {
@@ -507,6 +531,292 @@ function ModuleCard({
           {showNewLesson ? (
             <NewLessonForm
               moduleId={mod.id}
+              onClose={() => setShowNewLesson(false)}
+            />
+          ) : (
+            <div className="px-4 py-2.5">
+              <button
+                type="button"
+                onClick={() => setShowNewLesson(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Agregar Lección
+              </button>
+            </div>
+          )}
+
+          {/* Submódulos */}
+          {mod.submodules.length > 0 && (
+            <div className="space-y-2 border-t border-border px-3 py-3">
+              {mod.submodules.map((sub, subIdx) => (
+                <SubmoduleCard
+                  key={sub.id}
+                  submodule={sub}
+                  index={subIdx}
+                  total={mod.submodules.length}
+                  aiEnabled={aiEnabled}
+                  availableQuizzes={availableQuizzes}
+                  courseFinalExamId={courseFinalExamId}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Add Submodule */}
+          {showNewSubmodule ? (
+            <form
+              action={handleCreateSubmodule}
+              className="border-t border-border px-4 py-3"
+            >
+              <label className="mb-1.5 block text-xs font-medium text-text-secondary">
+                Título del submódulo
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  name="title"
+                  required
+                  minLength={2}
+                  autoFocus
+                  placeholder="Ej: Casos prácticos"
+                  className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isCreatingSub}
+                  className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {isCreatingSub && <Loader2 className="h-3 w-3 animate-spin" />}
+                  Crear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewSubmodule(false)}
+                  className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-tertiary"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="border-t border-border px-4 py-2.5">
+              <button
+                type="button"
+                onClick={() => setShowNewSubmodule(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary hover:text-primary-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Agregar Submódulo
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Submodule Card — calca ModuleCard pero para un submódulo. Reutiliza las
+// mismas acciones: updateModule, deleteModule, moveModule (acotado a
+// hermanos), createLesson y LessonRow.
+// ---------------------------------------------------------------------------
+
+function SubmoduleCard({
+  submodule: sub,
+  index,
+  total,
+  aiEnabled,
+  availableQuizzes,
+  courseFinalExamId,
+}: {
+  submodule: SubmoduleData;
+  index: number;
+  total: number;
+  aiEnabled: boolean;
+  availableQuizzes: { id: string; title: string; isFinalExam: boolean }[];
+  courseFinalExamId: string | null;
+}) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showNewLesson, setShowNewLesson] = useState(false);
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const [isUpdating, startUpdateTransition] = useTransition();
+  const [isMoving, startMoveTransition] = useTransition();
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+
+  function handleMove(direction: "up" | "down") {
+    startMoveTransition(async () => {
+      try {
+        await moveModule(sub.id, direction);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Error al mover submódulo");
+      }
+    });
+  }
+
+  function handleUpdateTitle(formData: FormData) {
+    startUpdateTransition(async () => {
+      try {
+        await updateModule(sub.id, formData);
+        setIsEditing(false);
+      } catch (err) {
+        alert(
+          err instanceof Error ? err.message : "Error al actualizar submódulo",
+        );
+      }
+    });
+  }
+
+  function handleDelete() {
+    if (
+      !confirm(
+        `¿Eliminar el submódulo "${sub.title}" y todas sus lecciones? Esta acción no se puede deshacer.`,
+      )
+    )
+      return;
+    startDeleteTransition(async () => {
+      try {
+        await deleteModule(sub.id);
+      } catch (err) {
+        alert(
+          err instanceof Error ? err.message : "Error al eliminar submódulo",
+        );
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-text-tertiary hover:text-text-secondary"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+        </button>
+
+        <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => handleMove("up")}
+            disabled={isMoving || isFirst}
+            title="Mover submódulo arriba"
+            className="rounded p-0.5 text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMove("down")}
+            disabled={isMoving || isLast}
+            title="Mover submódulo abajo"
+            className="rounded p-0.5 text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </div>
+
+        <span className="rounded bg-surface-tertiary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+          Sub
+        </span>
+
+        {isEditing ? (
+          <form action={handleUpdateTitle} className="flex flex-1 items-center gap-2">
+            <input
+              name="title"
+              defaultValue={sub.title}
+              required
+              minLength={2}
+              autoFocus
+              className="flex-1 rounded-lg border border-border bg-surface px-3 py-1 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+            >
+              {isUpdating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <CheckCircle className="h-3 w-3" />
+              )}
+              Guardar
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-text-secondary hover:bg-surface-tertiary"
+            >
+              Cancelar
+            </button>
+          </form>
+        ) : (
+          <>
+            <span className="flex-1 truncate text-sm font-medium text-text-primary">
+              {sub.title}
+            </span>
+            <span className="shrink-0 text-xs text-text-tertiary">
+              {sub.lessons.length}{" "}
+              {sub.lessons.length === 1 ? "lección" : "lecciones"}
+            </span>
+          </>
+        )}
+
+        {!isEditing && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-surface-tertiary hover:text-text-secondary"
+              title="Editar título"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="rounded-lg p-1.5 text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+              title="Eliminar submódulo"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isExpanded && (
+        <div className="border-t border-border">
+          {sub.lessons.length === 0 && !showNewLesson && (
+            <p className="px-4 py-3 text-center text-xs text-text-tertiary">
+              Sin lecciones aún.
+            </p>
+          )}
+
+          {sub.lessons.map((lesson) => (
+            <LessonRow
+              key={lesson.id}
+              lesson={lesson}
+              aiEnabled={aiEnabled}
+              availableQuizzes={availableQuizzes}
+              courseFinalExamId={courseFinalExamId}
+            />
+          ))}
+
+          {showNewLesson ? (
+            <NewLessonForm
+              moduleId={sub.id}
               onClose={() => setShowNewLesson(false)}
             />
           ) : (
@@ -1202,7 +1512,10 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
 
 function CourseStatsCard({ course }: { course: CourseData }) {
   const totalLessons = course.modules.reduce(
-    (sum, m) => sum + m.lessons.length,
+    (sum, m) =>
+      sum +
+      m.lessons.length +
+      m.submodules.reduce((s, sub) => s + sub.lessons.length, 0),
     0
   );
 

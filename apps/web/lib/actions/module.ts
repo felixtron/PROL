@@ -100,6 +100,53 @@ export async function deleteModule(moduleId: string) {
 }
 
 /**
+ * Crea un submódulo dentro de un módulo (1 nivel de anidamiento). El
+ * submódulo es un Module con `parentModuleId` apuntando al padre y el mismo
+ * `courseId` — así toda la navegación lesson → module → course sigue válida.
+ * La posición es la siguiente entre los submódulos hermanos.
+ */
+export async function createSubmodule(
+  parentModuleId: string,
+  formData: FormData,
+) {
+  const user = await requireUser();
+
+  const parent = await db.module.findFirst({
+    where: { id: parentModuleId },
+    include: {
+      course: { select: { professorId: true, id: true } },
+      submodules: { select: { position: true } },
+    },
+  });
+  if (!parent || parent.course.professorId !== user.id)
+    throw new Error("No autorizado");
+  // Defensa: no permitir anidar un submódulo dentro de otro submódulo
+  // (solo 1 nivel). Un módulo top-level tiene parentModuleId null.
+  if (parent.parentModuleId !== null)
+    throw new Error("No se permite anidar submódulos en más de un nivel");
+
+  const title = formData.get("title") as string;
+  if (!title || title.length < 2) throw new Error("El título es requerido");
+
+  const maxPosition = parent.submodules.reduce(
+    (max, s) => Math.max(max, s.position),
+    -1,
+  );
+
+  await db.module.create({
+    data: {
+      title,
+      position: maxPosition + 1,
+      courseId: parent.course.id,
+      parentModuleId,
+    },
+  });
+
+  revalidatePath(`/professor/courses/${parent.course.id}/edit`);
+  return { success: true };
+}
+
+/**
  * Move a module up or down within its course by swapping its `position`
  * with the adjacent module. No-op if the module is already at the edge.
  */
@@ -116,9 +163,12 @@ export async function moveModule(
   if (!module || module.course.professorId !== user.id)
     throw new Error("No autorizado");
 
+  // El swap es entre HERMANOS: módulos top-level entre sí (parentModuleId
+  // null) y submódulos entre los de su mismo padre.
   const neighbor = await db.module.findFirst({
     where: {
       courseId: module.course.id,
+      parentModuleId: module.parentModuleId,
       position:
         direction === "up"
           ? { lt: module.position }
