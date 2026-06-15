@@ -2,6 +2,31 @@ import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 
+// Shape de lección para el editor; reutilizado en lecciones directas del
+// módulo y en lecciones de submódulos.
+const lessonEditSelect = {
+  id: true,
+  title: true,
+  type: true,
+  position: true,
+  videoDurationSeconds: true,
+  videoUrl: true,
+  videoProvider: true,
+  videoRawUrl: true,
+  content: true,
+  aiStatus: true,
+  interactiveStops: {
+    orderBy: { timestampSeconds: "asc" },
+    select: {
+      id: true,
+      timestampSeconds: true,
+      type: true,
+      content: true,
+      isRequired: true,
+    },
+  },
+} as const;
+
 export const getCourseForEdit = cache(async (courseId: string) => {
   const user = await requireUser();
 
@@ -12,30 +37,20 @@ export const getCourseForEdit = cache(async (courseId: string) => {
     },
     include: {
       modules: {
+        // Solo módulos de nivel superior; los submódulos se cargan anidados.
+        where: { parentModuleId: null },
         orderBy: { position: "asc" },
         include: {
           lessons: {
             orderBy: { position: "asc" },
-            select: {
-              id: true,
-              title: true,
-              type: true,
-              position: true,
-              videoDurationSeconds: true,
-              videoUrl: true,
-              videoProvider: true,
-              videoRawUrl: true,
-              content: true,
-              aiStatus: true,
-              interactiveStops: {
-                orderBy: { timestampSeconds: "asc" },
-                select: {
-                  id: true,
-                  timestampSeconds: true,
-                  type: true,
-                  content: true,
-                  isRequired: true,
-                },
+            select: lessonEditSelect,
+          },
+          submodules: {
+            orderBy: { position: "asc" },
+            include: {
+              lessons: {
+                orderBy: { position: "asc" },
+                select: lessonEditSelect,
               },
             },
           },

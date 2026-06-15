@@ -483,6 +483,15 @@ model Module {
   courseId String @map("course_id")
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  // Submódulos: un módulo puede contener otros módulos (1 nivel de
+  // anidamiento). El submódulo conserva su `courseId` (= el del padre) para
+  // que toda la navegación `lesson → module → course` siga funcionando sin
+  // cambios. `parentModuleId = null` ⇒ módulo de nivel superior (el caso de
+  // todos los módulos existentes tras la migración aditiva).
+  parentModuleId String? @map("parent_module_id")
+  parentModule   Module? @relation("SubModules", fields: [parentModuleId], references: [id], onDelete: Cascade)
+  submodules     Module[] @relation("SubModules")
+
   title       String
   description String?
   position    Int
@@ -497,6 +506,7 @@ model Module {
 
   @@index([courseId])
   @@index([courseId, position])
+  @@index([parentModuleId])
   @@map("modules")
 }
 

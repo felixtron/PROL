@@ -51,11 +51,25 @@ interface Lesson {
   content: unknown;
 }
 
+interface Submodule {
+  id: string;
+  title: string;
+  position: number;
+  lessons: Lesson[];
+}
+
 interface Module {
   id: string;
   title: string;
   position: number;
   lessons: Lesson[];
+  submodules: Submodule[];
+}
+
+// Todas las lecciones de un módulo en orden de reproducción: directas primero,
+// luego las de cada submódulo.
+function moduleLessons(m: Module): Lesson[] {
+  return [...m.lessons, ...m.submodules.flatMap((s) => s.lessons)];
 }
 
 interface CoursePlayerProps {
@@ -145,7 +159,7 @@ export function CoursePlayer({
   >(() => new Map(lessonProgressMap));
 
   const flatLessons = useMemo(
-    () => modules.flatMap((m) => m.lessons),
+    () => modules.flatMap((m) => moduleLessons(m)),
     [modules],
   );
 
@@ -159,7 +173,13 @@ export function CoursePlayer({
 
   const lessonsByModule = useMemo(() => {
     const map = new Map<string, string>();
-    for (const m of modules) for (const l of m.lessons) map.set(l.id, m.id);
+    // Las lecciones de un submódulo se mapean al módulo top-level (el padre)
+    // para que el acordeón abra el módulo correcto.
+    for (const m of modules) {
+      for (const l of m.lessons) map.set(l.id, m.id);
+      for (const s of m.submodules)
+        for (const l of s.lessons) map.set(l.id, m.id);
+    }
     return map;
   }, [modules]);
 
@@ -254,6 +274,60 @@ export function CoursePlayer({
   // Lesson navigation panel (shared between mobile sheet and desktop sidebar)
   // ---------------------------------------------------------------------------
 
+  // Render de una lección en el sidebar. `indentClass` controla la sangría
+  // (más profunda para lecciones dentro de un submódulo).
+  function renderLessonNavItem(lesson: Lesson, indentClass: string) {
+    const Icon = lessonTypeIcon[lesson.type];
+    const isActive = lesson.id === activeLessonId;
+    const isComplete = completedIds.has(lesson.id);
+    const duration = formatDuration(lesson.videoDurationSeconds);
+    const isLockedFinalExam =
+      finalExamLocked && lesson.id === finalExamLessonId;
+
+    return (
+      <li key={lesson.id}>
+        <button
+          type="button"
+          onClick={() => goToLesson(lesson.id)}
+          className={`flex w-full items-center gap-3 px-4 py-2.5 ${indentClass} text-sm transition-colors ${
+            isActive
+              ? "border-l-2 border-primary-600 bg-primary-50 text-primary-700"
+              : isLockedFinalExam
+                ? "text-amber-800 active:bg-amber-50"
+                : "text-text-primary active:bg-surface-tertiary"
+          }`}
+        >
+          {isLockedFinalExam ? (
+            <Lock className="h-4 w-4 shrink-0 text-amber-600" />
+          ) : isComplete ? (
+            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
+          ) : (
+            <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
+          )}
+          <div className="min-w-0 flex-1 text-left">
+            <p
+              className={`truncate ${isComplete ? "text-text-tertiary line-through" : ""}`}
+            >
+              {lesson.title}
+            </p>
+            {isLockedFinalExam && (
+              <p className="mt-0.5 truncate text-[10px] font-medium text-amber-700">
+                Bloqueado · faltan {finalExamPendingCount}{" "}
+                evaluación{finalExamPendingCount === 1 ? "" : "es"}
+              </p>
+            )}
+          </div>
+          {duration && !isLockedFinalExam && (
+            <span className="flex shrink-0 items-center gap-1 text-xs text-text-tertiary">
+              <Clock className="h-3 w-3" />
+              {duration}
+            </span>
+          )}
+        </button>
+      </li>
+    );
+  }
+
   const lessonNav = (
     <>
       {/* Progress header */}
@@ -281,7 +355,8 @@ export function CoursePlayer({
       <nav className="flex-1 overflow-y-auto py-2">
         {modules.map((mod, moduleIndex) => {
           const isExpanded = expandedModuleIds.has(mod.id);
-          const moduleCompleted = mod.lessons.filter((l) =>
+          const moduleAllLessons = moduleLessons(mod);
+          const moduleCompleted = moduleAllLessons.filter((l) =>
             completedIds.has(l.id),
           ).length;
           return (
@@ -314,62 +389,28 @@ export function CoursePlayer({
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-medium text-text-tertiary">
-                  {moduleCompleted}/{mod.lessons.length}
+                  {moduleCompleted}/{moduleAllLessons.length}
                 </span>
               </button>
               {isExpanded && (
                 <ul className="pb-2">
-                  {mod.lessons.map((lesson) => {
-                    const Icon = lessonTypeIcon[lesson.type];
-                    const isActive = lesson.id === activeLessonId;
-                    const isComplete = completedIds.has(lesson.id);
-                    const duration = formatDuration(lesson.videoDurationSeconds);
-                    const isLockedFinalExam =
-                      finalExamLocked && lesson.id === finalExamLessonId;
-
-                    return (
-                      <li key={lesson.id}>
-                        <button
-                          type="button"
-                          onClick={() => goToLesson(lesson.id)}
-                          className={`flex w-full items-center gap-3 px-4 py-2.5 pl-10 text-sm transition-colors ${
-                            isActive
-                              ? "border-l-2 border-primary-600 bg-primary-50 text-primary-700"
-                              : isLockedFinalExam
-                                ? "text-amber-800 active:bg-amber-50"
-                                : "text-text-primary active:bg-surface-tertiary"
-                          }`}
-                        >
-                          {isLockedFinalExam ? (
-                            <Lock className="h-4 w-4 shrink-0 text-amber-600" />
-                          ) : isComplete ? (
-                            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
-                          ) : (
-                            <Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
-                          )}
-                          <div className="min-w-0 flex-1 text-left">
-                            <p
-                              className={`truncate ${isComplete ? "text-text-tertiary line-through" : ""}`}
-                            >
-                              {lesson.title}
-                            </p>
-                            {isLockedFinalExam && (
-                              <p className="mt-0.5 truncate text-[10px] font-medium text-amber-700">
-                                Bloqueado · faltan {finalExamPendingCount}{" "}
-                                evaluación{finalExamPendingCount === 1 ? "" : "es"}
-                              </p>
-                            )}
-                          </div>
-                          {duration && !isLockedFinalExam && (
-                            <span className="flex shrink-0 items-center gap-1 text-xs text-text-tertiary">
-                              <Clock className="h-3 w-3" />
-                              {duration}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {/* Lecciones directas del módulo */}
+                  {mod.lessons.map((lesson) =>
+                    renderLessonNavItem(lesson, "pl-10"),
+                  )}
+                  {/* Submódulos: sub-encabezado + lecciones indentadas */}
+                  {mod.submodules.map((sub) => (
+                    <li key={sub.id}>
+                      <div className="px-4 py-1.5 pl-10 text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+                        {sub.title}
+                      </div>
+                      <ul>
+                        {sub.lessons.map((lesson) =>
+                          renderLessonNavItem(lesson, "pl-16"),
+                        )}
+                      </ul>
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>

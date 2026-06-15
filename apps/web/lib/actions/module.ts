@@ -9,7 +9,11 @@ export async function createModule(courseId: string, formData: FormData) {
 
   const course = await db.course.findFirst({
     where: { id: courseId, professorId: user.id },
-    include: { modules: { select: { position: true } } },
+    // Solo módulos de nivel superior para calcular la siguiente posición
+    // (los submódulos tienen su propio espacio de posiciones por padre).
+    include: {
+      modules: { where: { parentModuleId: null }, select: { position: true } },
+    },
   });
   if (!course) throw new Error("Curso no encontrado");
 
@@ -60,25 +64,31 @@ export async function deleteModule(moduleId: string) {
     where: { id: moduleId },
     include: {
       course: { select: { professorId: true, id: true } },
-      _count: { select: { lessons: true } },
     },
   });
   if (!module || module.course.professorId !== user.id)
     throw new Error("No autorizado");
 
-  // Borrado del módulo + cascade de sus lecciones. Tenemos que decrementar
-  // course.totalLessons por la cantidad borrada — sin esto el contador
-  // queda desfasado y los enrollments se atascan por debajo del 100%
-  // (caso ISO 27001: contador quedó en 177 con 140 reales tras borrar
-  // módulos completos en producción).
+  // Borrado del módulo + cascade de sus lecciones Y de sus submódulos (con
+  // las lecciones de éstos). Decrementamos course.totalLessons por el
+  // SUBÁRBOL completo — lecciones directas del módulo + lecciones de sus
+  // submódulos — si no, el contador queda desfasado y los enrollments se
+  // atascan por debajo del 100% (caso ISO 27001: 177 vs 140 reales tras
+  // borrar módulos en producción).
+  const subtreeLessons = await db.lesson.count({
+    where: {
+      OR: [{ moduleId }, { module: { parentModuleId: moduleId } }],
+    },
+  });
+
   await db.$transaction([
     db.module.delete({ where: { id: moduleId } }),
-    ...(module._count.lessons > 0
+    ...(subtreeLessons > 0
       ? [
           db.course.update({
             where: { id: module.course.id },
             data: {
-              totalLessons: { decrement: module._count.lessons },
+              totalLessons: { decrement: subtreeLessons },
             },
           }),
         ]
@@ -299,14 +309,15 @@ export async function publishCourse(courseId: string) {
 
   const course = await db.course.findFirst({
     where: { id: courseId, professorId: user.id },
-    include: { modules: { include: { lessons: true } } },
+    select: { id: true, title: true },
   });
   if (!course) throw new Error("Curso no encontrado");
 
-  const totalLessons = course.modules.reduce(
-    (sum, m) => sum + m.lessons.length,
-    0
-  );
+  // Cuenta TODAS las lecciones del curso (módulos + submódulos) vía la
+  // relación lesson → module → course, sin asumir la jerarquía.
+  const totalLessons = await db.lesson.count({
+    where: { module: { courseId } },
+  });
   if (totalLessons === 0)
     throw new Error("El curso debe tener al menos una lección");
 

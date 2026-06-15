@@ -216,7 +216,7 @@ export const getCourseBySlug = cache(
           },
         },
         modules: {
-          where: { isPublished: true },
+          where: { isPublished: true, parentModuleId: null },
           orderBy: { position: "asc" },
           include: {
             lessons: {
@@ -227,6 +227,22 @@ export const getCourseBySlug = cache(
                 type: true,
                 videoDurationSeconds: true,
                 isFree: true,
+              },
+            },
+            submodules: {
+              where: { isPublished: true },
+              orderBy: { position: "asc" },
+              include: {
+                lessons: {
+                  where: { isPublished: true },
+                  orderBy: { position: "asc" },
+                  select: {
+                    title: true,
+                    type: true,
+                    videoDurationSeconds: true,
+                    isFree: true,
+                  },
+                },
               },
             },
           },
@@ -303,7 +319,12 @@ export const getCourseBySlug = cache(
         studentsCount: course._count.enrollments,
         modules: course.modules.map((mod) => ({
           title: mod.title,
-          lessons: mod.lessons.map((lesson) => ({
+          // Outline público: lecciones directas + lecciones de submódulos
+          // (aplanadas; el detalle de agrupación se ve dentro del curso).
+          lessons: [
+            ...mod.lessons,
+            ...mod.submodules.flatMap((s) => s.lessons),
+          ].map((lesson) => ({
             title: lesson.title,
             type: lesson.type,
             videoDurationSeconds: lesson.videoDurationSeconds,

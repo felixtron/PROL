@@ -41,7 +41,13 @@ export default async function TenantAdminCoursesPage() {
       orderBy: { createdAt: "desc" },
       include: {
         professor: { select: { id: true, name: true, email: true, avatar: true } },
-        _count: { select: { enrollments: true, modules: true } },
+        // Solo módulos de nivel superior (excluye submódulos del conteo).
+        _count: {
+          select: {
+            enrollments: true,
+            modules: { where: { parentModuleId: null } },
+          },
+        },
       },
     }),
     db.user.findMany({

@@ -25,13 +25,30 @@ export default async function CoursePreviewPage({
     notFound();
   }
 
-  const allLessons = data.modules.flatMap((m) =>
-    m.lessons.map((l) => ({
-      ...l,
-      moduleId: m.id,
-      moduleTitle: m.title,
-    }))
-  );
+  const allLessons = data.modules.flatMap((m) => [
+    ...m.lessons.map((l) => ({ ...l, moduleId: m.id, moduleTitle: m.title })),
+    ...m.submodules.flatMap((s) =>
+      s.lessons.map((l) => ({ ...l, moduleId: s.id, moduleTitle: s.title })),
+    ),
+  ]);
+
+  const mapLesson = (l: (typeof data.modules)[number]["lessons"][number]) => ({
+    id: l.id,
+    title: l.title,
+    type: l.type as
+      | "VIDEO"
+      | "TEXT"
+      | "QUIZ"
+      | "ASSIGNMENT"
+      | "MULTI"
+      | "DOWNLOAD",
+    position: l.position,
+    videoDurationSeconds: l.videoDurationSeconds,
+    videoUrl: l.videoUrl,
+    videoProvider: l.videoProvider,
+    videoHash: l.videoHash,
+    content: l.content,
+  });
 
   return (
     <CoursePlayer
@@ -50,22 +67,12 @@ export default async function CoursePreviewPage({
         id: m.id,
         title: m.title,
         position: m.position,
-        lessons: m.lessons.map((l) => ({
-          id: l.id,
-          title: l.title,
-          type: l.type as
-            | "VIDEO"
-            | "TEXT"
-            | "QUIZ"
-            | "ASSIGNMENT"
-            | "MULTI"
-            | "DOWNLOAD",
-          position: l.position,
-          videoDurationSeconds: l.videoDurationSeconds,
-          videoUrl: l.videoUrl,
-          videoProvider: l.videoProvider,
-          videoHash: l.videoHash,
-          content: l.content,
+        lessons: m.lessons.map(mapLesson),
+        submodules: m.submodules.map((s) => ({
+          id: s.id,
+          title: s.title,
+          position: s.position,
+          lessons: s.lessons.map(mapLesson),
         })),
       }))}
       enrollmentId={data.enrollment.id}

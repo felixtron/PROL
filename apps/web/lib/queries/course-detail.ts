@@ -14,6 +14,23 @@ const lessonSelect = {
   content: true,
 } as const;
 
+// Carga módulos de nivel superior (parentModuleId = null) con sus lecciones
+// directas y sus submódulos anidados (cada uno con sus lecciones). Reutilizado
+// en el modo enrolled y en el preview.
+const moduleInclude = {
+  where: { parentModuleId: null },
+  orderBy: { position: "asc" },
+  include: {
+    lessons: { orderBy: { position: "asc" }, select: lessonSelect },
+    submodules: {
+      orderBy: { position: "asc" },
+      include: {
+        lessons: { orderBy: { position: "asc" }, select: lessonSelect },
+      },
+    },
+  },
+} as const;
+
 export const getStudentCourseDetail = cache(async (courseId: string) => {
   const user = await requireUser();
 
@@ -27,12 +44,7 @@ export const getStudentCourseDetail = cache(async (courseId: string) => {
       course: {
         include: {
           professor: { select: { id: true, name: true, avatar: true } },
-          modules: {
-            orderBy: { position: "asc" },
-            include: {
-              lessons: { orderBy: { position: "asc" }, select: lessonSelect },
-            },
-          },
+          modules: moduleInclude,
         },
       },
       lessonProgresses: true,
@@ -59,12 +71,7 @@ export const getStudentCourseDetail = cache(async (courseId: string) => {
     where: { id: courseId },
     include: {
       professor: { select: { id: true, name: true, avatar: true } },
-      modules: {
-        orderBy: { position: "asc" },
-        include: {
-          lessons: { orderBy: { position: "asc" }, select: lessonSelect },
-        },
-      },
+      modules: moduleInclude,
     },
   });
   if (!course) throw new Error("Curso no encontrado");

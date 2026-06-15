@@ -69,6 +69,7 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
     const earlier = await db.module.count({
       where: {
         courseId: workshop.course.id,
+        parentModuleId: null,
         position: { lt: workshop.module.position },
       },
     });
@@ -147,6 +148,7 @@ export const getProfessorCourseOptions = cache(async () => {
       id: true,
       title: true,
       modules: {
+        where: { parentModuleId: null },
         select: { id: true, title: true, position: true },
         orderBy: { position: "asc" },
       },

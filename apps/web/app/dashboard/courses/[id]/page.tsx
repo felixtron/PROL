@@ -22,13 +22,13 @@ export default async function CourseDetailPage({
     ? null
     : await getFinalExamGateStatus(data.enrollment.id, data.course.id);
 
-  const allLessons = data.modules.flatMap((m) =>
-    m.lessons.map((l) => ({
-      ...l,
-      moduleId: m.id,
-      moduleTitle: m.title,
-    }))
-  );
+  // Aplana lecciones directas + lecciones de submódulos para el conteo total.
+  const allLessons = data.modules.flatMap((m) => [
+    ...m.lessons.map((l) => ({ ...l, moduleId: m.id, moduleTitle: m.title })),
+    ...m.submodules.flatMap((s) =>
+      s.lessons.map((l) => ({ ...l, moduleId: s.id, moduleTitle: s.title })),
+    ),
+  ]);
 
   const completedLessonIds = new Set(
     data.lessonProgress
@@ -68,6 +68,22 @@ export default async function CourseDetailPage({
           videoProvider: l.videoProvider,
           videoHash: l.videoHash,
           content: l.content,
+        })),
+        submodules: m.submodules.map((s) => ({
+          id: s.id,
+          title: s.title,
+          position: s.position,
+          lessons: s.lessons.map((l) => ({
+            id: l.id,
+            title: l.title,
+            type: l.type as "VIDEO" | "TEXT" | "QUIZ" | "ASSIGNMENT" | "MULTI",
+            position: l.position,
+            videoDurationSeconds: l.videoDurationSeconds,
+            videoUrl: l.videoUrl,
+            videoProvider: l.videoProvider,
+            videoHash: l.videoHash,
+            content: l.content,
+          })),
         })),
       }))}
       enrollmentId={data.enrollment.id}
