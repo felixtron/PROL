@@ -414,24 +414,24 @@ function ModuleCard({
           )}
         </button>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col overflow-hidden rounded-md border border-border bg-surface">
           <button
             type="button"
             onClick={() => handleMove("up")}
             disabled={isMoving || isFirst}
             title="Mover módulo arriba"
-            className="rounded p-0.5 text-text-tertiary hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+            className="px-1 text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-25 disabled:hover:bg-transparent"
           >
-            <ChevronUp className="h-3 w-3" />
+            <ChevronUp className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => handleMove("down")}
             disabled={isMoving || isLast}
             title="Mover módulo abajo"
-            className="rounded p-0.5 text-text-tertiary hover:bg-surface hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+            className="border-t border-border px-1 text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-25 disabled:hover:bg-transparent"
           >
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className="h-4 w-4" />
           </button>
         </div>
 
@@ -702,24 +702,24 @@ function SubmoduleCard({
           )}
         </button>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col overflow-hidden rounded-md border border-border bg-surface">
           <button
             type="button"
             onClick={() => handleMove("up")}
             disabled={isMoving || isFirst}
             title="Mover submódulo arriba"
-            className="rounded p-0.5 text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+            className="px-1 text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-25 disabled:hover:bg-transparent"
           >
-            <ChevronUp className="h-3 w-3" />
+            <ChevronUp className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => handleMove("down")}
             disabled={isMoving || isLast}
             title="Mover submódulo abajo"
-            className="rounded p-0.5 text-text-tertiary hover:bg-surface-tertiary hover:text-text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+            className="border-t border-border px-1 text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-25 disabled:hover:bg-transparent"
           >
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className="h-4 w-4" />
           </button>
         </div>
 
