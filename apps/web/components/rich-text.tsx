@@ -196,55 +196,88 @@ export function RichText({ text }: { text: string }) {
     <div className="space-y-4 text-text-secondary">
       {blocks.map((block, i) => {
         const trimmed = block.trim();
-        // Standalone image block.
-        const imgOnly = trimmed.match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)$/);
+
+        // Normaliza formatos combinados: un bloque puede traer un wrapper de
+        // alineación (<center>/<right>/<justify>/<left>) Y un encabezado
+        // (## tamaño), en CUALQUIER orden — porque la barra los inserta por
+        // separado. Se pelan hasta 2 capas para que un título quede a la vez
+        // centrado, grande y (vía tokens) en negrita. Tanto
+        // `<center>## x</center>` como `## <center>x</center>` normalizan a
+        // { align: "center", heading: 2 }.
+        let inner = trimmed;
+        let align: "center" | "right" | "justify" | "left" | null = null;
+        let heading: 1 | 2 | 3 | null = null;
+        for (let pass = 0; pass < 2; pass++) {
+          const am = inner.match(
+            /^<(center|right|justify|left)>([\s\S]*)<\/\1>$/,
+          );
+          if (am) {
+            align = am[1] as "center" | "right" | "justify" | "left";
+            inner = (am[2] ?? "").trim();
+            continue;
+          }
+          const hm = inner.match(/^(#{1,3})\s+([\s\S]+)$/);
+          if (hm && heading === null) {
+            heading = (hm[1]?.length ?? 1) as 1 | 2 | 3;
+            inner = (hm[2] ?? "").trim();
+            continue;
+          }
+          break;
+        }
+        const alignCls =
+          align === "center"
+            ? "text-center"
+            : align === "right"
+              ? "text-right"
+              : align === "justify"
+                ? "text-justify"
+                : "";
+
+        // Imagen como contenido (alineable). Por defecto centrada; con
+        // <right>/<left> se alinea a ese lado.
+        const imgOnly = inner.match(
+          /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)$/,
+        );
         if (imgOnly) {
+          const imgAlign =
+            align === "right"
+              ? "ml-auto"
+              : align === "left"
+                ? "mr-auto"
+                : "mx-auto";
           return (
             <img
               key={i}
               src={imgOnly[2]}
               alt={imgOnly[1] ?? ""}
-              className="mx-auto max-w-full rounded-lg"
+              className={`block max-w-full rounded-lg ${imgAlign}`}
             />
           );
         }
-        // Alignment wrappers: <center>...</center>, <right>...</right>,
-        // <justify>...</justify>. Strip the wrapper, render inline.
-        const alignMatch = trimmed.match(
-          /^<(center|right|justify)>([\s\S]*?)<\/\1>$/,
-        );
-        if (alignMatch) {
-          const align = alignMatch[1] as "center" | "right" | "justify";
-          const body = alignMatch[2] ?? "";
-          const cls =
-            align === "center"
-              ? "text-center"
-              : align === "right"
-                ? "text-right"
-                : "text-justify";
-          return (
-            <p
-              key={i}
-              className={`whitespace-pre-wrap leading-relaxed ${cls}`}
-            >
-              {renderTokens(body, `a${i}`)}
-            </p>
-          );
-        }
-        // Headings: #, ##, ###  → larger text.
-        const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
-        if (headingMatch) {
-          const level = headingMatch[1]?.length ?? 1;
-          const body = headingMatch[2] ?? "";
-          const cls =
-            level === 1
+
+        // Encabezado (opcionalmente alineado).
+        if (heading) {
+          const hcls =
+            heading === 1
               ? "text-2xl font-heading font-bold text-text-primary"
-              : level === 2
+              : heading === 2
                 ? "text-xl font-heading font-bold text-text-primary"
                 : "text-lg font-heading font-semibold text-text-primary";
           return (
-            <p key={i} className={cls}>
-              {renderTokens(body, `h${i}`)}
+            <p key={i} className={`${hcls} ${alignCls}`.trim()}>
+              {renderTokens(inner, `h${i}`)}
+            </p>
+          );
+        }
+
+        // Párrafo alineado (sin encabezado).
+        if (align) {
+          return (
+            <p
+              key={i}
+              className={`whitespace-pre-wrap leading-relaxed ${alignCls}`.trim()}
+            >
+              {renderTokens(inner, `a${i}`)}
             </p>
           );
         }
