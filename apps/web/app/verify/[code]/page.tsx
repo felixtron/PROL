@@ -209,6 +209,7 @@ export default async function VerifyCertificatePage({ params }: PageProps) {
                 <a
                   href={`/api/certificates/${certificate.id}/pdf`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
                 >
                   <Download className="h-4 w-4" />
