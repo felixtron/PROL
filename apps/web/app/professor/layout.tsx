@@ -57,6 +57,7 @@ export default async function ProfessorLayout({
       ? [{ label: "Encuestas", href: "/professor/surveys", icon: "ListChecks" as const }]
       : []),
     { label: "Configuración", href: "/professor/settings", icon: "Settings" },
+    { label: "Documentación", href: "/professor/docs", icon: "HelpCircle" },
   ];
 
   return (

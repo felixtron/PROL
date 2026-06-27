@@ -10,6 +10,7 @@ const navItems: SidebarNavItem[] = [
   { label: "Ingresos", href: "/admin/revenue", icon: "DollarSign" },
   { label: "Profesores", href: "/admin/professors", icon: "GraduationCap" },
   { label: "Configuración", href: "/admin/settings", icon: "Settings" },
+  { label: "Base de Conocimientos", href: "/admin/docs", icon: "HelpCircle" },
 ];
 
 export default async function AdminLayout({

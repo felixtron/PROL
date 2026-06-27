@@ -18,6 +18,7 @@ import {
   Award,
   ClipboardCheck,
   ListChecks,
+  HelpCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -36,6 +37,7 @@ const ICONS: Record<string, LucideIcon> = {
   Award,
   ClipboardCheck,
   ListChecks,
+  HelpCircle,
 };
 
 export type SidebarIcon = keyof typeof ICONS;

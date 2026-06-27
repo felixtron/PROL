@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Home, BookOpen, Calendar, Award, Settings, Building2 } from "lucide-react";
+import { Home, BookOpen, Calendar, Award, Settings, Building2, HelpCircle } from "lucide-react";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
@@ -17,6 +17,7 @@ const navItems = [
   { href: "/dashboard/workshops", label: "Sesiones y Talleres", icon: Calendar },
   { href: "/dashboard/certificates", label: "Certificados", icon: Award },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
+  { href: "/dashboard/docs", label: "Ayuda", icon: HelpCircle },
 ];
 
 export default async function DashboardLayout({
