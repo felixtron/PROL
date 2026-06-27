@@ -12,6 +12,7 @@ const navItems: SidebarNavItem[] = [
   { label: "Usuarios", href: "/tenant-admin/users", icon: "Users" },
   { label: "Cursos", href: "/tenant-admin/courses", icon: "GraduationCap" },
   { label: "Configuración", href: "/tenant-admin/settings", icon: "Settings" },
+  { label: "Base de Conocimientos", href: "/tenant-admin/docs", icon: "HelpCircle" },
 ];
 
 export default async function TenantAdminLayout({
