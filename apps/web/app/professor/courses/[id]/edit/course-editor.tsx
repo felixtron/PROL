@@ -1674,6 +1674,8 @@ function TextLessonEditor({
   const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [isAttachingPdf, setIsAttachingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [isSaving, startSaving] = useTransition();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1936,6 +1938,56 @@ function TextLessonEditor({
     }
   }
 
+  async function handleAttachPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    setPdfError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setPdfError("Solo archivos PDF.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setPdfError("El PDF supera 10 MB.");
+      e.target.value = "";
+      return;
+    }
+    setIsAttachingPdf(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload/pdf", { method: "POST", body: fd });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "No se pudo subir el PDF");
+      }
+      // Brackets/parens in the filename would break the markdown link.
+      const label = file.name.replace(/\.pdf$/i, "").replace(/[[\]()]/g, "");
+      const markdown = `\n\n[📄 ${label} (PDF)](${data.url})\n\n`;
+      const ta = textareaRef.current;
+      if (ta) {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        setContent((prev) => prev.slice(0, start) + markdown + prev.slice(end));
+        requestAnimationFrame(() => {
+          ta.focus();
+          const pos = start + markdown.length;
+          ta.setSelectionRange(pos, pos);
+        });
+      } else {
+        setContent((prev) => prev + markdown);
+      }
+      setSaved(false);
+    } catch (err) {
+      setPdfError(
+        err instanceof Error ? err.message : "No se pudo subir el PDF",
+      );
+    } finally {
+      setIsAttachingPdf(false);
+      e.target.value = "";
+    }
+  }
+
   function handleSave() {
     setSaveError(null);
     setSaved(false);
@@ -1964,16 +2016,42 @@ function TextLessonEditor({
           />
           <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
             {isLoadingFile && <Loader2 className="h-3 w-3 animate-spin" />}
-            Subir PDF, Word o .txt
+            Importar texto desde PDF, Word o .txt
           </span>
           <span>
             {loadedFile
               ? `Cargado: ${loadedFile}`
-              : "o escribe directamente abajo"}
+              : "extrae el texto del documento para editarlo aquí"}
           </span>
         </label>
         {fileError && (
           <p className="mt-1 text-[11px] text-red-700">{fileError}</p>
+        )}
+      </div>
+      <div className="mb-2 rounded-lg border border-dashed border-border bg-surface-secondary p-2 text-xs">
+        <label className="flex cursor-pointer items-center gap-2 text-text-secondary hover:text-primary-700">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={handleAttachPdf}
+            disabled={isAttachingPdf}
+            className="sr-only"
+          />
+          <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
+            {isAttachingPdf ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <FileText className="h-3 w-3" />
+            )}
+            Adjuntar PDF descargable
+          </span>
+          <span>
+            Sube el documento tal cual y se inserta un enlace de descarga para
+            el alumno (10 MB máx).
+          </span>
+        </label>
+        {pdfError && (
+          <p className="mt-1 text-[11px] text-red-700">{pdfError}</p>
         )}
       </div>
       <div className="mb-2 rounded-lg border border-dashed border-border bg-surface-secondary p-2 text-xs">

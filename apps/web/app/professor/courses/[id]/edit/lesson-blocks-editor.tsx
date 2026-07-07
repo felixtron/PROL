@@ -510,12 +510,12 @@ function AddTextBlock({
             />
             <span className="inline-flex items-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium text-primary-700 ring-1 ring-border">
               {isLoadingFile && <Loader2 className="h-3 w-3 animate-spin" />}
-              Subir PDF, Word o .txt
+              Importar texto desde PDF, Word o .txt
             </span>
             <span>
               {loadedFile
                 ? `Cargado: ${loadedFile}`
-                : "o escribe directamente abajo"}
+                : "extrae el texto; para un documento descargable usa el bloque PDF"}
             </span>
           </label>
           {fileError && (

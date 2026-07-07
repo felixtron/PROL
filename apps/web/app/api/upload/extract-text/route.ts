@@ -74,12 +74,17 @@ export async function POST(req: Request) {
     if (kind.ext === ".txt") {
       text = buffer.toString("utf-8");
     } else if (kind.ext === ".pdf") {
-      // pdf-parse uses pdfjs under the hood.
-      const mod = await import("pdf-parse");
-      const pdfParse = (mod as { default?: (b: Buffer) => Promise<{ text: string }> })
-        .default ?? (mod as unknown as (b: Buffer) => Promise<{ text: string }>);
-      const parsed = await pdfParse(buffer);
-      text = parsed.text ?? "";
+      // pdf-parse v2 exposes a PDFParse class — there is no default
+      // function export like v1 had. pageJoiner: "" suppresses the
+      // "-- N of M --" page separators in the concatenated text.
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buffer });
+      try {
+        const parsed = await parser.getText({ pageJoiner: "" });
+        text = parsed.text ?? "";
+      } finally {
+        await parser.destroy();
+      }
     } else if (kind.ext === ".docx") {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
