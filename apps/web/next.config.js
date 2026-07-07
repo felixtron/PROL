@@ -33,6 +33,13 @@ const nextConfig = {
     "@prol/ai",
     "@prol/content-factory",
   ],
+  experimental: {
+    // Next 16 limita a 10 MB el body de requests cuando hay middleware;
+    // las rutas de subida aceptan archivos de hasta 25 MB (assignments y
+    // lecciones DOWNLOAD), así que sin esto el body llega truncado y
+    // formData() revienta con "Failed to parse body as FormData".
+    proxyClientMaxBodySize: "30mb",
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.cloudflarestream.com" },
