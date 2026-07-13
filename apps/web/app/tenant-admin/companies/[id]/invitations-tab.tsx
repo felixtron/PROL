@@ -44,7 +44,11 @@ export function InvitationsTab({
     setSuccess("");
     startTransition(async () => {
       try {
-        await inviteToCompany(companyId, email);
+        const res = await inviteToCompany(companyId, email);
+        if (!res.success) {
+          setError(res.error);
+          return;
+        }
         setSuccess(`Invitación enviada a ${email}`);
         setEmail("");
         router.refresh();

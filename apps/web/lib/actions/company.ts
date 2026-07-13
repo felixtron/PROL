@@ -329,19 +329,27 @@ export async function unsetCompanyLeader(companyId: string) {
 
 // ─── Invitations ──────────────────────────────────────────────────────────────
 
-export async function inviteToCompany(companyId: string, email: string) {
+export async function inviteToCompany(
+  companyId: string,
+  email: string,
+): Promise<
+  { success: true; invitationId: string } | { success: false; error: string }
+> {
   const inviter = await requireUser();
 
+  // Los rechazos de reglas de negocio se DEVUELVEN en vez de lanzarse:
+  // Next enmascara los mensajes de errores lanzados en producción y el
+  // formulario solo podría mostrar un error genérico.
   const trimmedEmail = email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
-    throw new Error("Email inválido");
+    return { success: false, error: "Email inválido" };
   }
 
   const company = await db.company.findUnique({
     where: { id: companyId },
     include: { _count: { select: { members: true } } },
   });
-  if (!company) throw new Error("Empresa no encontrada");
+  if (!company) return { success: false, error: "Empresa no encontrada" };
 
   // Authorization: ADMIN/SUPER_ADMIN of the company's tenant can always invite.
   // The company leader can also always invite, regardless of the
@@ -358,7 +366,7 @@ export async function inviteToCompany(companyId: string, email: string) {
     inviter.tenantId === company.tenantId;
 
   if (!isAdmin && !isLeader && !(isMember && company.allowMemberInvitations)) {
-    throw new Error("No autorizado para invitar a esta empresa");
+    return { success: false, error: "No autorizado para invitar a esta empresa" };
   }
 
   // Block if the email already belongs to a user in this company.
@@ -366,26 +374,33 @@ export async function inviteToCompany(companyId: string, email: string) {
     where: { email: trimmedEmail },
   });
   if (existingUser && existingUser.companyId === companyId) {
-    throw new Error("El usuario ya es miembro de esta empresa");
+    return { success: false, error: "El usuario ya es miembro de esta empresa" };
   }
   if (existingUser && existingUser.tenantId && existingUser.tenantId !== company.tenantId) {
-    throw new Error("El usuario pertenece a otro tenant");
+    return { success: false, error: "El usuario pertenece a otro tenant" };
   }
 
-  // Capacity check: count current members + pending invitations against limit.
-  if (company.seatsLimit !== null) {
-    const pending = await db.companyInvitation.count({
-      where: { companyId, status: "PENDING" },
-    });
-    if (company._count.members + pending >= company.seatsLimit) {
-      throw new Error("La empresa alcanzó su límite (incluyendo invitaciones pendientes)");
-    }
-  }
-
-  // Idempotency: if a PENDING invite for this email exists, refresh its token.
+  // Idempotency: if a PENDING invite for this email exists, refresh its
+  // token. Va antes del check de capacidad — reenviar una invitación
+  // existente no consume un asiento adicional.
   const existingInvite = await db.companyInvitation.findFirst({
     where: { companyId, email: trimmedEmail, status: "PENDING" },
   });
+
+  // Capacity check: miembros actuales + invitaciones pendientes VIGENTES
+  // contra el límite. Las vencidas se quedan en PENDING hasta que alguien
+  // intenta aceptarlas, así que contarlas ocuparía cupo para siempre.
+  if (!existingInvite && company.seatsLimit !== null) {
+    const pending = await db.companyInvitation.count({
+      where: { companyId, status: "PENDING", expiresAt: { gt: new Date() } },
+    });
+    if (company._count.members + pending >= company.seatsLimit) {
+      return {
+        success: false,
+        error: "La empresa alcanzó su límite (incluyendo invitaciones pendientes)",
+      };
+    }
+  }
 
   const token = generateInvitationToken();
   const expiresAt = new Date(Date.now() + INVITATION_TTL_MS);
