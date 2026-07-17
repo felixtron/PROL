@@ -67,16 +67,6 @@ export default async function TenantAdminLayout({
           settingsHref="/tenant-admin/settings"
         />
       }
-      belowBrandSlot={
-        <div className="border-b border-border px-6 pb-3">
-          <p className="truncate text-xs font-medium uppercase tracking-wider text-text-tertiary">
-            Academia
-          </p>
-          <p className="truncate text-sm font-semibold text-text-primary">
-            {tenantName}
-          </p>
-        </div>
-      }
     >
       {children}
     </SidebarShell>
