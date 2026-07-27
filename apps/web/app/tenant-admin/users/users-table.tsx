@@ -8,7 +8,6 @@ import {
   Trash2,
   Power,
   Mail,
-  Loader2,
   X,
 } from "lucide-react";
 import {
@@ -17,6 +16,7 @@ import {
   resendWelcomeEmail,
 } from "@/lib/actions/tenant-users";
 import { EnrollUserButton } from "./enroll-user-button";
+import { UserEnrollmentsDialog } from "./user-enrollments-dialog";
 import type { DialogCourse } from "../manual-enroll-dialog";
 
 type AssignableRole = "STUDENT" | "PROFESSOR" | "ADMIN";
@@ -80,6 +80,11 @@ export function UsersTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(initialFilter.search ?? "");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [enrollmentsUser, setEnrollmentsUser] = useState<{
+    id: string;
+    name: string | null;
+    email: string;
+  } | null>(null);
   const [error, setError] = useState("");
 
   function updateFilter(key: string, value: string) {
@@ -245,7 +250,24 @@ export function UsersTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary">
-                      {u._count.enrollments}
+                      {u._count.enrollments > 0 ? (
+                        <button
+                          type="button"
+                          title="Ver cursos inscritos"
+                          onClick={() =>
+                            setEnrollmentsUser({
+                              id: u.id,
+                              name: u.name,
+                              email: u.email,
+                            })
+                          }
+                          className="rounded text-primary-700 underline decoration-dotted underline-offset-2 hover:text-primary-800"
+                        >
+                          {u._count.enrollments}
+                        </button>
+                      ) : (
+                        u._count.enrollments
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-text-tertiary">
                       {timeAgo(u.lastLoginAt)}
@@ -342,6 +364,14 @@ export function UsersTable({
       <p className="text-xs text-text-tertiary">
         Mostrando {users.length} usuarios.{users.length >= 500 && " (limite 500, refina filtros)"}
       </p>
+
+      {enrollmentsUser && (
+        <UserEnrollmentsDialog
+          open
+          onClose={() => setEnrollmentsUser(null)}
+          user={enrollmentsUser}
+        />
+      )}
     </div>
   );
 }

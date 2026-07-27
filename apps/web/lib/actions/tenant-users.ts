@@ -511,3 +511,118 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// ─── Inscripciones por usuario (ver / suspender / retirar) ────────────────────
+
+export interface AdminEnrollmentRow {
+  id: string;
+  status: string;
+  progress: number;
+  enrolledAt: Date;
+  completedAt: Date | null;
+  course: { id: string; title: string };
+}
+
+type EnrollmentActionResult =
+  | { success: true }
+  | { success: false; error: string };
+
+/** Carga la inscripción y valida que pertenezca al tenant del admin. */
+async function loadEnrollmentForAdmin(enrollmentId: string) {
+  const admin = await requireTenantAdmin();
+  const enrollment = await db.enrollment.findUnique({
+    where: { id: enrollmentId },
+    select: { id: true, status: true, tenantId: true, studentId: true },
+  });
+  if (!enrollment) return { admin, enrollment: null };
+  assertSameTenant(admin, enrollment.tenantId);
+  return { admin, enrollment };
+}
+
+export async function listUserEnrollments(
+  userId: string,
+): Promise<
+  | { success: true; enrollments: AdminEnrollmentRow[] }
+  | { success: false; error: string }
+> {
+  const admin = await requireTenantAdmin();
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { tenantId: true },
+  });
+  if (!target) return { success: false, error: "Usuario no encontrado" };
+  if (target.tenantId) {
+    assertSameTenant(admin, target.tenantId);
+  } else if (admin.role !== "SUPER_ADMIN") {
+    return { success: false, error: "Usuario no encontrado" };
+  }
+
+  const enrollments = await db.enrollment.findMany({
+    where: { studentId: userId },
+    orderBy: { enrolledAt: "desc" },
+    select: {
+      id: true,
+      status: true,
+      progress: true,
+      enrolledAt: true,
+      completedAt: true,
+      course: { select: { id: true, title: true } },
+    },
+  });
+  return { success: true, enrollments };
+}
+
+export async function suspendEnrollment(
+  enrollmentId: string,
+): Promise<EnrollmentActionResult> {
+  const { enrollment } = await loadEnrollmentForAdmin(enrollmentId);
+  if (!enrollment) return { success: false, error: "Inscripción no encontrada" };
+  if (enrollment.status !== "ACTIVE") {
+    return {
+      success: false,
+      error: "Solo se pueden suspender inscripciones activas",
+    };
+  }
+  await db.enrollment.update({
+    where: { id: enrollmentId },
+    data: { status: "SUSPENDED" },
+  });
+  revalidatePath("/tenant-admin/users");
+  revalidatePath("/dashboard/courses");
+  return { success: true };
+}
+
+export async function reactivateEnrollment(
+  enrollmentId: string,
+): Promise<EnrollmentActionResult> {
+  const { enrollment } = await loadEnrollmentForAdmin(enrollmentId);
+  if (!enrollment) return { success: false, error: "Inscripción no encontrada" };
+  if (enrollment.status !== "SUSPENDED") {
+    return {
+      success: false,
+      error: "Solo se pueden reactivar inscripciones suspendidas",
+    };
+  }
+  await db.enrollment.update({
+    where: { id: enrollmentId },
+    data: { status: "ACTIVE" },
+  });
+  revalidatePath("/tenant-admin/users");
+  revalidatePath("/dashboard/courses");
+  return { success: true };
+}
+
+/**
+ * Elimina la inscripción por completo. Cascada: borra avance de lecciones,
+ * intentos de quiz, entregas y certificado de ese curso.
+ */
+export async function withdrawEnrollment(
+  enrollmentId: string,
+): Promise<EnrollmentActionResult> {
+  const { enrollment } = await loadEnrollmentForAdmin(enrollmentId);
+  if (!enrollment) return { success: false, error: "Inscripción no encontrada" };
+  await db.enrollment.delete({ where: { id: enrollmentId } });
+  revalidatePath("/tenant-admin/users");
+  revalidatePath("/dashboard/courses");
+  return { success: true };
+}

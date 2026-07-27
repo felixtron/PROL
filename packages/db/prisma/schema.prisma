@@ -65,6 +65,7 @@ enum EnrollmentStatus {
   COMPLETED
   EXPIRED
   REFUNDED
+  SUSPENDED
 }
 
 enum LessonProgressStatus {
