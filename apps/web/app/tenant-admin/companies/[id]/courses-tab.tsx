@@ -46,17 +46,24 @@ export function CoursesTab({
   companyId,
   assignments,
   assignableCourses,
+  memberCount,
 }: {
   companyId: string;
   assignments: Assignment[];
   assignableCourses: AssignableCourse[];
+  memberCount: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [actingId, setActingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  function handleAssign(courseId: string) {
+  function handleAssign(courseId: string, courseTitle: string) {
+    const warning =
+      memberCount > 0
+        ? `Se inscribirá automáticamente y sin costo a los ${memberCount} miembro(s) de esta empresa en "${courseTitle}". ¿Confirmar?`
+        : `Asignar "${courseTitle}" a esta empresa. Los futuros miembros se inscribirán automáticamente. ¿Confirmar?`;
+    if (!confirm(warning)) return;
     setError("");
     setActingId(courseId);
     startTransition(async () => {
@@ -72,7 +79,12 @@ export function CoursesTab({
   }
 
   function handleRevoke(courseId: string) {
-    if (!confirm("Revocar el acceso al curso para los miembros?")) return;
+    if (
+      !confirm(
+        "Revocar el acceso al curso para los miembros? Se des-inscribirá a quienes no hayan avanzado nada en el curso."
+      )
+    )
+      return;
     setError("");
     setActingId(courseId);
     startTransition(async () => {
@@ -187,7 +199,7 @@ export function CoursesTab({
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleAssign(c.id)}
+                  onClick={() => handleAssign(c.id, c.title)}
                   disabled={pending && actingId === c.id}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50"
                 >

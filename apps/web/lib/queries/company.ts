@@ -14,7 +14,11 @@ export const listCompaniesForTenant = cache(async () => {
     orderBy: { createdAt: "desc" },
     include: {
       _count: {
-        select: { members: true, courseAssignments: true, invitations: true },
+        select: {
+          members: true,
+          courseAssignments: { where: { isActive: true } },
+          invitations: true,
+        },
       },
     },
   });
@@ -78,7 +82,12 @@ export const getCompanyDetail = cache(async (companyId: string) => {
           inviter: { select: { name: true, email: true } },
         },
       },
-      _count: { select: { members: true, courseAssignments: true } },
+      _count: {
+        select: {
+          members: true,
+          courseAssignments: { where: { isActive: true } },
+        },
+      },
     },
   });
 

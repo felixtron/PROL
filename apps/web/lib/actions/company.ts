@@ -633,6 +633,36 @@ export async function revokeCourseFromCompany(
     data: { isActive: false },
   });
 
+  // Des-inscribir a los miembros que quedaron auto-inscritos por esta
+  // asignación y todavía no la tocaron. No borramos inscripciones con
+  // progreso, completadas o con certificado — podrían ser inscripciones
+  // reales (compradas o con trabajo hecho) y no son seguras de revertir.
+  let unenrolledCount = 0;
+  try {
+    const members = await db.user.findMany({
+      where: {
+        companyId,
+        tenantId: assignment.company.tenantId,
+        role: "STUDENT",
+      },
+      select: { id: true },
+    });
+    const result = await db.enrollment.deleteMany({
+      where: {
+        courseId,
+        tenantId: assignment.company.tenantId,
+        studentId: { in: members.map((m) => m.id) },
+        progress: 0,
+        status: "ACTIVE",
+        completedAt: null,
+        certificate: null,
+      },
+    });
+    unenrolledCount = result.count;
+  } catch (err) {
+    console.error("Des-inscribir miembros al revocar curso falló:", err);
+  }
+
   revalidatePath(`/tenant-admin/companies/${companyId}`);
-  return { success: true };
+  return { success: true, unenrolledCount };
 }

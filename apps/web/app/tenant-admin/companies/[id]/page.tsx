@@ -146,6 +146,7 @@ export default async function CompanyDetailPage({
             companyId={company.id}
             assignments={company.courseAssignments}
             assignableCourses={assignableCourses}
+            memberCount={company._count.members}
           />
         )}
         {tab === "invitations" && (
