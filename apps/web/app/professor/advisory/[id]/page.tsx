@@ -21,7 +21,7 @@ export default async function AdvisorySessionPage({
         className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
       >
         <ArrowLeft className="h-4 w-4" />
-        Sesiones de Asesoría
+        Consultoría Online
       </Link>
 
       <AdvisoryDetail session={session} />

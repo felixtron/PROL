@@ -12,8 +12,12 @@ import {
   Link2,
   Building2,
   Users,
+  FileText,
 } from "lucide-react";
-import { createAdvisorySession } from "@/lib/actions/advisory";
+import {
+  createAdvisorySession,
+  updateAdvisorySession,
+} from "@/lib/actions/advisory";
 
 interface CompanyOption {
   id: string;
@@ -33,24 +37,59 @@ const sessionTypes = [
   { value: "HYBRID", label: "Híbrida", icon: Calendar },
 ];
 
+/** Valores iniciales cuando el formulario se usa para editar. */
+export interface AdvisoryInitialValues {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  audience: string;
+  companyId: string | null;
+  participantIds: string[];
+  startTime: Date;
+  endTime: Date;
+  locationName: string | null;
+  locationAddress: string | null;
+  locationMapUrl: string | null;
+  meetingUrl: string | null;
+  status: string;
+  invitedAt: Date | null;
+}
+
+/** `datetime-local` necesita "YYYY-MM-DDTHH:mm" en hora local. */
+function toLocalInput(date: Date): string {
+  const d = new Date(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function AdvisoryForm({
   companies,
   users,
   meetAvailable,
+  initial,
 }: {
   companies: CompanyOption[];
   users: UserOption[];
   /** La academia tiene una cuenta de Google conectada para generar Meets */
   meetAvailable: boolean;
+  /** Presente sólo en edición */
+  initial?: AdvisoryInitialValues;
 }) {
+  const isEdit = Boolean(initial);
+  const isDraft = initial?.status === "DRAFT";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [sessionType, setSessionType] = useState("VIRTUAL");
-  const [audience, setAudience] = useState<"COMPANY" | "USERS">("COMPANY");
-  const [companyId, setCompanyId] = useState("");
-  const [participantIds, setParticipantIds] = useState<string[]>([]);
+  const [sessionType, setSessionType] = useState(initial?.type ?? "VIRTUAL");
+  const [audience, setAudience] = useState<"COMPANY" | "USERS">(
+    initial?.audience === "USERS" ? "USERS" : "COMPANY",
+  );
+  const [companyId, setCompanyId] = useState(initial?.companyId ?? "");
+  const [participantIds, setParticipantIds] = useState<string[]>(
+    initial?.participantIds ?? [],
+  );
   const [recurrence, setRecurrence] = useState("");
-  const [autoMeet, setAutoMeet] = useState(meetAvailable);
+  const [autoMeet, setAutoMeet] = useState(meetAvailable && !isEdit);
   const [error, setError] = useState<string | null>(null);
 
   function toggleParticipant(id: string) {
@@ -59,30 +98,41 @@ export function AdvisoryForm({
     );
   }
 
-  async function handleSubmit(formData: FormData) {
-    setError(null);
-    if (audience === "COMPANY" && !companyId) {
-      setError("Selecciona la empresa a la que va dirigida la asesoría.");
-      return;
-    }
-    if (audience === "USERS" && participantIds.length === 0) {
-      setError("Selecciona al menos un participante.");
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        const result = await createAdvisorySession(formData);
-        if (result.success) {
-          router.push("/professor/advisory");
-          return;
-        }
-        setError(result.error);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Error al agendar la asesoría");
+  function submitWith(draft: boolean) {
+    return async (formData: FormData) => {
+      setError(null);
+      if (audience === "COMPANY" && !companyId) {
+        setError("Selecciona la empresa a la que va dirigida la consultoría.");
+        return;
       }
-    });
+      if (audience === "USERS" && participantIds.length === 0) {
+        setError("Selecciona al menos un participante.");
+        return;
+      }
+      if (draft) formData.set("saveAsDraft", "1");
+
+      startTransition(async () => {
+        try {
+          const result = initial
+            ? await updateAdvisorySession(initial.id, formData)
+            : await createAdvisorySession(formData);
+          if (result.success) {
+            router.push("/professor/advisory");
+            router.refresh();
+            return;
+          }
+          setError(result.error);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Error al guardar el proyecto");
+        }
+      });
+    };
   }
+
+  // `action` fija el submit por defecto (publicar); el botón de borrador usa
+  // formAction para enviar el mismo formulario por el otro camino.
+  const handleSubmit = submitWith(false);
+  const handleDraft = submitWith(true);
 
   return (
     <form action={handleSubmit} className="max-w-2xl space-y-6">
@@ -127,15 +177,16 @@ export function AdvisoryForm({
           htmlFor="title"
           className="mb-1.5 block text-sm font-medium text-text-primary"
         >
-          Título de la asesoría
+          Título del proyecto
         </label>
         <input
           type="text"
           id="title"
           name="title"
           required
+          defaultValue={initial?.title ?? ""}
           className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-          placeholder="Ej: Seguimiento implementación ISO 27001"
+          placeholder="Ej: Implementación ISO 27001 — Fase 1"
         />
       </div>
 
@@ -151,6 +202,7 @@ export function AdvisoryForm({
           id="description"
           name="description"
           rows={3}
+          defaultValue={initial?.description ?? ""}
           className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           placeholder="Temas a revisar, entregables esperados..."
         />
@@ -280,6 +332,7 @@ export function AdvisoryForm({
             id="startTime"
             name="startTime"
             required
+            defaultValue={initial ? toLocalInput(initial.startTime) : undefined}
             className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           />
         </div>
@@ -295,12 +348,14 @@ export function AdvisoryForm({
             id="endTime"
             name="endTime"
             required
+            defaultValue={initial ? toLocalInput(initial.endTime) : undefined}
             className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           />
         </div>
       </div>
 
-      {/* Recurrencia */}
+      {/* Recurrencia — sólo al crear: editar una ocurrencia no regenera la serie */}
+      {!isEdit && (
       <fieldset className="space-y-3 rounded-lg border border-border p-4">
         <legend className="flex items-center gap-1.5 px-2 text-sm font-medium text-text-primary">
           <Repeat className="h-4 w-4" />
@@ -351,6 +406,7 @@ export function AdvisoryForm({
           </div>
         </div>
       </fieldset>
+      )}
 
       {/* Ubicación presencial */}
       {(sessionType === "IN_PERSON" || sessionType === "HYBRID") && (
@@ -369,6 +425,7 @@ export function AdvisoryForm({
               type="text"
               id="locationName"
               name="locationName"
+              defaultValue={initial?.locationName ?? ""}
               className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               placeholder="Ej: Oficinas del cliente"
             />
@@ -384,6 +441,7 @@ export function AdvisoryForm({
               type="text"
               id="locationAddress"
               name="locationAddress"
+              defaultValue={initial?.locationAddress ?? ""}
               className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               placeholder="Calle, número, ciudad"
             />
@@ -399,6 +457,7 @@ export function AdvisoryForm({
               type="url"
               id="locationMapUrl"
               name="locationMapUrl"
+              defaultValue={initial?.locationMapUrl ?? ""}
               className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
               placeholder="https://maps.google.com/..."
             />
@@ -447,6 +506,7 @@ export function AdvisoryForm({
                     type="url"
                     id="meetingUrl"
                     name="meetingUrl"
+                    defaultValue={initial?.meetingUrl ?? ""}
                     className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                     placeholder="https://zoom.us/j/..."
                   />
@@ -466,6 +526,7 @@ export function AdvisoryForm({
                   type="url"
                   id="meetingUrl"
                   name="meetingUrl"
+                  defaultValue={initial?.meetingUrl ?? ""}
                   className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                   placeholder="https://zoom.us/j/..."
                 />
@@ -479,21 +540,48 @@ export function AdvisoryForm({
         </fieldset>
       )}
 
-      <div className="flex items-center gap-3 border-t border-border pt-6">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
-        >
-          {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isPending ? "Agendando..." : "Agendar asesoría"}
-        </button>
-        <Link
-          href="/professor/advisory"
-          className="text-sm font-medium text-text-secondary hover:text-text-primary"
-        >
-          Cancelar
-        </Link>
+      <div className="space-y-3 border-t border-border pt-6">
+        {/* Al publicar se avisa por correo; conviene decirlo antes de apretar */}
+        <p className="text-xs text-text-tertiary">
+          {isEdit && !isDraft
+            ? "Los destinatarios ya fueron notificados. Si cambias la fecha u hora, se les enviará un aviso de reprogramación."
+            : "Al publicar se enviará la invitación por correo a los destinatarios. Un borrador no notifica a nadie."}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 disabled:opacity-50"
+          >
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isPending
+              ? "Guardando..."
+              : isEdit && !isDraft
+                ? "Guardar cambios"
+                : "Publicar y notificar"}
+          </button>
+
+          {/* Guardar como borrador sólo tiene sentido antes de publicar */}
+          {(!isEdit || isDraft) && (
+            <button
+              type="submit"
+              formAction={handleDraft}
+              disabled={isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4" />
+              Guardar como borrador
+            </button>
+          )}
+
+          <Link
+            href="/professor/advisory"
+            className="text-sm font-medium text-text-secondary hover:text-text-primary"
+          >
+            Cancelar
+          </Link>
+        </div>
       </div>
     </form>
   );

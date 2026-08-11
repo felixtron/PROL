@@ -13,7 +13,7 @@ const baseNavItems: SidebarNavItem[] = [
   { label: "Cursos", href: "/professor/courses", icon: "BookOpen" },
   { label: "Alumnos", href: "/professor/students", icon: "Users" },
   { label: "Ingresos", href: "/professor/revenue", icon: "DollarSign" },
-  { label: "Sesiones y Talleres", href: "/professor/workshops", icon: "Calendar" },
+  { label: "Workshop", href: "/professor/workshops", icon: "Calendar" },
 ];
 
 export default async function ProfessorLayout({
@@ -50,7 +50,7 @@ export default async function ProfessorLayout({
 
   const navItems: SidebarNavItem[] = [
     ...baseNavItems,
-    { label: "Asesorías", href: "/professor/advisory", icon: "HeartHandshake" },
+    { label: "Consultoría Online", href: "/professor/advisory", icon: "HeartHandshake" },
     ...(tenant?.evaluationsEnabled
       ? [{ label: "Evaluaciones", href: "/professor/evaluations", icon: "ClipboardCheck" as const }]
       : []),

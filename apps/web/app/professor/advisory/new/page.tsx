@@ -18,13 +18,13 @@ export default async function NewAdvisoryPage() {
           className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Sesiones de Asesoría
+          Consultoría Online
         </Link>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Nueva Asesoría
+          Nuevo Proyecto
         </h1>
         <p className="mt-1 text-text-secondary">
-          Agenda una cita con una empresa o con personas específicas.
+          Agenda un proyecto de acompañamiento con una empresa o con personas específicas.
         </p>
       </div>
 

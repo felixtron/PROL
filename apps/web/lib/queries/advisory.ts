@@ -33,6 +33,7 @@ export const getAdvisorSessions = cache(async () => {
     audience: s.audience,
     company: s.company,
     participantCount: s._count.participants,
+    invitedAt: s.invitedAt,
     locationName: s.locationName,
     meetingUrl: s.meetingUrl,
     startTime: s.startTime,
@@ -92,6 +93,7 @@ export const getAdvisorSessionDetail = cache(async (sessionId: string) => {
     endTime: session.endTime,
     recurrenceFrequency: session.recurrenceFrequency,
     parentSessionId: session.parentSessionId,
+    invitedAt: session.invitedAt,
     series,
   };
 });
@@ -143,7 +145,8 @@ export const getMyAdvisorySessions = cache(async () => {
   const sessions = await db.advisorySession.findMany({
     where: {
       tenantId: user.tenantId,
-      status: { not: "CANCELLED" },
+      // Ni borradores ni canceladas: el borrador sólo existe para su autor.
+      status: { notIn: ["DRAFT", "CANCELLED"] },
       OR: [
         ...(user.companyId
           ? [{ audience: "COMPANY" as const, companyId: user.companyId }]

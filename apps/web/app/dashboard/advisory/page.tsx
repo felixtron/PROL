@@ -40,7 +40,7 @@ export default async function MyAdvisoryPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Mis Asesorías
+          Consultoría Online
         </h1>
         <p className="mt-1 text-text-secondary">
           Sesiones de acompañamiento agendadas para ti o para tu empresa.
@@ -51,7 +51,7 @@ export default async function MyAdvisoryPage() {
         <div className="rounded-xl border border-border bg-surface p-12 text-center shadow-sm">
           <HeartHandshake className="mx-auto h-10 w-10 text-text-tertiary" />
           <p className="mt-3 font-medium text-text-primary">
-            No tienes asesorías agendadas
+            No tienes sesiones agendadas
           </p>
           <p className="mt-1 text-sm text-text-secondary">
             Cuando tu asesor programe una, aparecerá aquí.

@@ -1,3 +1,3 @@
 export { getResend } from "./client";
-export { sendEmail } from "./send";
+export { sendEmail, sendBulkEmail } from "./send";
 export * from "./templates";

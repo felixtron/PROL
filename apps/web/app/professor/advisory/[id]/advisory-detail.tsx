@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -11,6 +12,7 @@ import {
   Users,
   ExternalLink,
   Repeat,
+  Pencil,
 } from "lucide-react";
 import { cancelAdvisorySession } from "@/lib/actions/advisory";
 
@@ -36,6 +38,7 @@ interface Session {
   endTime: Date;
   recurrenceFrequency: string | null;
   parentSessionId: string | null;
+  invitedAt: Date | null;
   series: { id: string; startTime: Date; status: string }[];
 }
 
@@ -46,6 +49,7 @@ const DEFAULT_STATUS = {
 };
 
 const statusConfig: Record<string, typeof DEFAULT_STATUS> = {
+  DRAFT: { label: "Borrador", color: "text-amber-700", bg: "bg-amber-50" },
   SCHEDULED: DEFAULT_STATUS,
   COMPLETED: {
     label: "Finalizada",
@@ -81,7 +85,7 @@ export function AdvisoryDetail({ session }: { session: Session }) {
   const seriesIndex = session.series.findIndex((s) => s.id === session.id);
 
   function handleCancel() {
-    if (!confirm("¿Cancelar esta asesoría? El cliente dejará de verla.")) return;
+    if (!confirm("¿Cancelar este proyecto? El cliente dejará de verlo.")) return;
     setError(null);
     startTransition(async () => {
       const result = await cancelAdvisorySession(session.id);
@@ -138,17 +142,43 @@ export function AdvisoryDetail({ session }: { session: Session }) {
             )}
           </div>
 
-          {session.status === "SCHEDULED" && (
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isPending}
-              className="shrink-0 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              {isPending ? "Cancelando..." : "Cancelar asesoría"}
-            </button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {session.status !== "CANCELLED" && (
+              <Link
+                href={`/professor/advisory/${session.id}/edit`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+              >
+                <Pencil className="h-4 w-4" />
+                Editar
+              </Link>
+            )}
+            {(session.status === "SCHEDULED" || session.status === "DRAFT") && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={isPending}
+                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                {isPending ? "Cancelando..." : "Cancelar"}
+              </button>
+            )}
+          </div>
         </div>
+
+        {session.status === "DRAFT" && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Este proyecto es un <strong>borrador</strong>: el cliente no lo ve y
+            no se ha enviado ninguna invitación. Publícalo desde Editar cuando
+            esté listo.
+          </div>
+        )}
+
+        {session.status !== "DRAFT" && !session.invitedAt && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Está publicado y el cliente lo ve en su panel, pero no salió correo
+            de invitación. Puede que los destinatarios no tengan cuenta todavía.
+          </div>
+        )}
 
         {session.description && (
           <p className="mt-4 whitespace-pre-line text-sm text-text-secondary">

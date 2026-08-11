@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { createMeetLink } from "@/lib/google-calendar";
+import {
+  sendAdvisoryInvitations,
+  sendAdvisoryReschedule,
+} from "@/lib/advisory-notifications";
 
 /**
  * Acciones del módulo de Sesiones de Asesoría.
@@ -38,7 +42,7 @@ function addRecurrence(date: Date, freq: RecurrenceLiteral): Date {
 }
 
 export type AdvisoryActionResult =
-  | { success: true; sessionId: string }
+  | { success: true; sessionId: string; notified: number }
   | { success: false; error: string };
 
 export async function createAdvisorySession(
@@ -73,6 +77,8 @@ export async function createAdvisorySession(
 
   const autoMeet = formData.get("autoMeet") === "on";
   let meetingUrl = (formData.get("meetingUrl") as string) || null;
+  // Un borrador se guarda sin publicar: no lo ve el cliente y no notifica.
+  const saveAsDraft = formData.get("saveAsDraft") === "1";
 
   if (!title || !startTime || !endTime) {
     return { success: false, error: "Faltan campos obligatorios." };
@@ -159,6 +165,7 @@ export async function createAdvisorySession(
     locationMapUrl,
     meetingUrl,
     recurrenceFrequency: recurrence as RecurrenceFrequency | null,
+    status: (saveAsDraft ? "DRAFT" : "SCHEDULED") as "DRAFT" | "SCHEDULED",
   };
 
   const participantData =
@@ -200,9 +207,188 @@ export async function createAdvisorySession(
     { timeout: 20000 },
   );
 
+  // La invitación sale sólo si se publicó. En una serie notifica el padre y
+  // el correo menciona cuántas sesiones son, en vez de mandar una por fecha.
+  let notified = 0;
+  if (!saveAsDraft) {
+    notified = await sendAdvisoryInvitations(parent, user.name ?? "Tu asesor");
+    if (notified > 0) {
+      await db.advisorySession.update({
+        where: { id: parent.id },
+        data: { invitedAt: new Date() },
+      });
+    }
+  }
+
   revalidatePath("/professor/advisory");
   revalidatePath("/dashboard/advisory");
-  return { success: true, sessionId: parent.id };
+  return { success: true, sessionId: parent.id, notified };
+}
+
+/**
+ * Edita una sesión existente.
+ *
+ * Tres transiciones que importan:
+ *   - borrador → publicada: sale la invitación.
+ *   - ya publicada y cambia el horario: sale aviso de reprogramación (sólo a
+ *     quienes ya habían sido invitados).
+ *   - publicada → borrador: no se hace; una vez avisado el cliente, retirarla
+ *     es cancelar, no "despublicar".
+ */
+export async function updateAdvisorySession(
+  sessionId: string,
+  formData: FormData,
+): Promise<AdvisoryActionResult> {
+  const user = await requireUser();
+
+  const existing = await db.advisorySession.findFirst({
+    where: { id: sessionId, advisorId: user.id },
+  });
+  if (!existing) {
+    return { success: false, error: "Sesión no encontrada o no es tuya." };
+  }
+  if (existing.status === "CANCELLED") {
+    return {
+      success: false,
+      error: "No se puede editar una sesión cancelada.",
+    };
+  }
+  if (!user.tenantId) {
+    return { success: false, error: "Tu usuario no pertenece a ninguna academia." };
+  }
+
+  const title = (formData.get("title") as string)?.trim();
+  const description = (formData.get("description") as string) || null;
+  const type = (formData.get("type") as string) || existing.type;
+  const startTime = formData.get("startTime") as string;
+  const endTime = formData.get("endTime") as string;
+  const locationName = (formData.get("locationName") as string) || null;
+  const locationAddress = (formData.get("locationAddress") as string) || null;
+  const locationMapUrl = (formData.get("locationMapUrl") as string) || null;
+  const audience = (formData.get("audience") as string) === "USERS" ? "USERS" : "COMPANY";
+  const companyId = (formData.get("companyId") as string) || null;
+  const participantIds = formData
+    .getAll("participantIds")
+    .map((v) => String(v))
+    .filter(Boolean);
+  const saveAsDraft = formData.get("saveAsDraft") === "1";
+
+  if (!title || !startTime || !endTime) {
+    return { success: false, error: "Faltan campos obligatorios." };
+  }
+  if (title.length < 3 || title.length > 120) {
+    return { success: false, error: "El título debe tener entre 3 y 120 caracteres." };
+  }
+
+  const newStart = new Date(startTime);
+  const newEnd = new Date(endTime);
+  if (Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime())) {
+    return { success: false, error: "Las fechas ingresadas no son válidas." };
+  }
+  if (newEnd.getTime() <= newStart.getTime()) {
+    return { success: false, error: "La hora de fin debe ser posterior a la de inicio." };
+  }
+
+  if (audience === "COMPANY") {
+    if (!companyId) {
+      return { success: false, error: "Selecciona la empresa a la que va dirigida." };
+    }
+    const company = await db.company.findFirst({
+      where: { id: companyId, tenantId: user.tenantId },
+      select: { id: true },
+    });
+    if (!company) {
+      return { success: false, error: "La empresa seleccionada no existe o no es de tu academia." };
+    }
+  } else {
+    if (participantIds.length === 0) {
+      return { success: false, error: "Selecciona al menos un participante." };
+    }
+    const validUsers = await db.user.count({
+      where: { id: { in: participantIds }, tenantId: user.tenantId },
+    });
+    if (validUsers !== participantIds.length) {
+      return {
+        success: false,
+        error: "Alguno de los participantes no existe o no es de tu academia.",
+      };
+    }
+  }
+
+  // Sólo un borrador puede seguir siendo borrador. Si ya se publicó, guardar
+  // no lo devuelve a borrador aunque llegue la bandera.
+  const wasDraft = existing.status === "DRAFT";
+  const nextStatus = wasDraft && saveAsDraft ? "DRAFT" : "SCHEDULED";
+  const isPublishing = wasDraft && !saveAsDraft;
+
+  const scheduleChanged =
+    existing.startTime.getTime() !== newStart.getTime() ||
+    existing.endTime.getTime() !== newEnd.getTime();
+
+  // El enlace de Meet no se regenera: sigue siendo válido aunque cambie la
+  // hora. Lo que NO se actualiza es el evento en Google Calendar, que se
+  // queda con el horario anterior.
+  const meetingUrlRaw = (formData.get("meetingUrl") as string) || null;
+  const meetingUrl = meetingUrlRaw ?? existing.meetingUrl;
+
+  const updated = await db.$transaction(async (tx) => {
+    if (audience === "USERS") {
+      await tx.advisorySessionParticipant.deleteMany({ where: { sessionId } });
+      if (participantIds.length > 0) {
+        await tx.advisorySessionParticipant.createMany({
+          data: participantIds.map((userId) => ({ sessionId, userId })),
+        });
+      }
+    } else {
+      // Cambió a audiencia por empresa: los participantes sueltos sobran.
+      await tx.advisorySessionParticipant.deleteMany({ where: { sessionId } });
+    }
+
+    return tx.advisorySession.update({
+      where: { id: sessionId },
+      data: {
+        title,
+        description,
+        type: type as "IN_PERSON" | "VIRTUAL" | "HYBRID",
+        audience: audience as "COMPANY" | "USERS",
+        companyId: audience === "COMPANY" ? companyId : null,
+        locationName,
+        locationAddress,
+        locationMapUrl,
+        meetingUrl,
+        startTime: newStart,
+        endTime: newEnd,
+        status: nextStatus,
+      },
+    });
+  });
+
+  const advisorName = user.name ?? "Tu asesor";
+  let notified = 0;
+
+  if (isPublishing) {
+    notified = await sendAdvisoryInvitations(updated, advisorName);
+    if (notified > 0) {
+      await db.advisorySession.update({
+        where: { id: sessionId },
+        data: { invitedAt: new Date() },
+      });
+    }
+  } else if (scheduleChanged && existing.invitedAt) {
+    // Sólo avisamos a quien ya había recibido la invitación; si nunca salió,
+    // no tiene sentido notificar un cambio que nadie conocía.
+    notified = await sendAdvisoryReschedule(
+      updated,
+      advisorName,
+      existing.startTime,
+      existing.endTime,
+    );
+  }
+
+  revalidatePath("/professor/advisory");
+  revalidatePath(`/professor/advisory/${sessionId}`);
+  revalidatePath("/dashboard/advisory");
+  return { success: true, sessionId, notified };
 }
 
 export async function cancelAdvisorySession(

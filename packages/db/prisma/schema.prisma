@@ -123,6 +123,9 @@ enum AdvisoryAudience {
 }
 
 enum AdvisorySessionStatus {
+  /// Borrador: sólo la ve su autor. No notifica y no aparece en el panel del
+  /// cliente hasta que se publica.
+  DRAFT
   SCHEDULED
   COMPLETED
   CANCELLED
@@ -963,6 +966,11 @@ model AdvisorySession {
   recurrenceFrequency RecurrenceFrequency? @map("recurrence_frequency")
 
   status AdvisorySessionStatus @default(SCHEDULED)
+
+  /// Momento en que salió la invitación por correo. Sirve para dos cosas: no
+  /// reenviarla en cada edición, y saber si un cambio de horario posterior
+  /// amerita avisar de la reprogramación.
+  invitedAt DateTime? @map("invited_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

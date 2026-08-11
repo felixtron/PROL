@@ -274,3 +274,112 @@ export function companyInvitationEmail({
     html: baseLayout(companyName, body),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Consultoría Online — invitación y reprogramación
+// ---------------------------------------------------------------------------
+
+interface AdvisorySessionEmailParams {
+  tenantName: string;
+  /** Título de la sesión */
+  title: string;
+  description?: string | null;
+  advisorName: string;
+  /** Ya formateada en español, ej. "lunes 18 de agosto de 2026, 10:00" */
+  whenLabel: string;
+  /** Presencial / Virtual / Híbrida */
+  modalityLabel: string;
+  meetingUrl?: string | null;
+  locationLabel?: string | null;
+  /** Número de sesiones si es una serie recurrente (1 = sesión única) */
+  sessionCount?: number;
+  /** Enlace al panel del cliente */
+  panelUrl: string;
+}
+
+/** Bloque compartido con los datos de la cita. */
+function sessionDetails(p: AdvisorySessionEmailParams): string {
+  const rows: string[] = [
+    `<tr><td style="padding:6px 0;color:#6b7280;font-size:14px;width:110px;">Cu&aacute;ndo</td><td style="padding:6px 0;color:#111827;font-size:14px;font-weight:600;">${p.whenLabel}</td></tr>`,
+    `<tr><td style="padding:6px 0;color:#6b7280;font-size:14px;">Modalidad</td><td style="padding:6px 0;color:#111827;font-size:14px;">${p.modalityLabel}</td></tr>`,
+    `<tr><td style="padding:6px 0;color:#6b7280;font-size:14px;">Asesor</td><td style="padding:6px 0;color:#111827;font-size:14px;">${p.advisorName}</td></tr>`,
+  ];
+  if (p.locationLabel) {
+    rows.push(
+      `<tr><td style="padding:6px 0;color:#6b7280;font-size:14px;">Lugar</td><td style="padding:6px 0;color:#111827;font-size:14px;">${p.locationLabel}</td></tr>`,
+    );
+  }
+  if (p.sessionCount && p.sessionCount > 1) {
+    rows.push(
+      `<tr><td style="padding:6px 0;color:#6b7280;font-size:14px;">Serie</td><td style="padding:6px 0;color:#111827;font-size:14px;">${p.sessionCount} sesiones programadas</td></tr>`,
+    );
+  }
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 24px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:8px 0;">${rows.join("")}</table>`;
+}
+
+export function advisorySessionInvitation(p: AdvisorySessionEmailParams) {
+  const intro =
+    p.sessionCount && p.sessionCount > 1
+      ? `Se program&oacute; una serie de sesiones de consultor&iacute;a para ti. La primera es:`
+      : `Se program&oacute; una sesi&oacute;n de consultor&iacute;a para ti.`;
+
+  const body = `
+    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;font-weight:600;">
+      ${p.title}
+    </h2>
+    <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.6;">
+      ${intro}
+    </p>
+    ${sessionDetails(p)}
+    ${
+      p.description
+        ? `<p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">${p.description}</p>`
+        : ""
+    }
+    ${
+      p.meetingUrl
+        ? ctaButton("Entrar a la reunión", p.meetingUrl)
+        : ctaButton("Ver en mi panel", p.panelUrl)
+    }
+    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.5;">
+      ${
+        p.meetingUrl
+          ? `Tambi&eacute;n puedes consultarla en tu panel: <a href="${p.panelUrl}" style="color:#6366f1;">${p.panelUrl}</a>`
+          : `Si tienes dudas sobre la cita, responde a este correo.`
+      }
+    </p>`;
+
+  return {
+    subject: `Nueva sesión de consultoría: ${p.title}`,
+    html: baseLayout(p.tenantName, body),
+  };
+}
+
+export function advisorySessionRescheduled(
+  p: AdvisorySessionEmailParams & { previousWhenLabel: string },
+) {
+  const body = `
+    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;font-weight:600;">
+      Cambio de horario: ${p.title}
+    </h2>
+    <p style="margin:0 0 16px;color:#374151;font-size:16px;line-height:1.6;">
+      La sesi&oacute;n que estaba programada para
+      <span style="text-decoration:line-through;color:#9ca3af;">${p.previousWhenLabel}</span>
+      se movi&oacute;. Estos son los datos actualizados:
+    </p>
+    ${sessionDetails(p)}
+    ${
+      p.meetingUrl
+        ? ctaButton("Entrar a la reunión", p.meetingUrl)
+        : ctaButton("Ver en mi panel", p.panelUrl)
+    }
+    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.5;">
+      El enlace de la reuni&oacute;n no cambia; sigue siendo v&aacute;lido con el
+      nuevo horario.
+    </p>`;
+
+  return {
+    subject: `Cambio de horario: ${p.title}`,
+    html: baseLayout(p.tenantName, body),
+  };
+}
