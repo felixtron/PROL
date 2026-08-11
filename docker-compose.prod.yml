@@ -52,6 +52,11 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_DOMAIN: ${RESEND_DOMAIN:-}
 
+      # Google Meet (opcional - links automáticos en sesiones virtuales)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      WORKSHOP_TIME_ZONE: ${WORKSHOP_TIME_ZONE:-America/Mexico_City}
+
       # Optional: AI (module 6 - opcional)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY:-}

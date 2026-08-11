@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { createMeetLinkForWorkshop } from "@/lib/google-calendar";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -33,10 +34,28 @@ function addRecurrence(date: Date, freq: RecurrenceLiteral): Date {
 
 // ─── Professor actions ────────────────────────────────────────────────────────
 
-export async function createWorkshop(formData: FormData) {
+/**
+ * Resultado de crear un workshop. Devolvemos el error en vez de lanzarlo: en
+ * producción Next enmascara cualquier excepción de un server action con un
+ * mensaje genérico ("An error occurred in the Server Components render"), así
+ * que un `throw` deja al profesor sin saber qué corregir.
+ */
+export type CreateWorkshopResult =
+  | { success: true; workshopId: string }
+  | { success: false; error: string };
+
+export async function createWorkshop(
+  formData: FormData,
+): Promise<CreateWorkshopResult> {
   const user = await requireUser();
   if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
-    throw new Error("No autorizado");
+    return { success: false, error: "No tienes permiso para crear sesiones." };
+  }
+  if (!user.tenantId) {
+    return {
+      success: false,
+      error: "Tu usuario no pertenece a ninguna academia. Contacta al administrador.",
+    };
   }
 
   const courseId = formData.get("courseId") as string;
@@ -47,31 +66,62 @@ export async function createWorkshop(formData: FormData) {
   const locationName = (formData.get("locationName") as string) || null;
   const locationAddress = (formData.get("locationAddress") as string) || null;
   const locationMapUrl = (formData.get("locationMapUrl") as string) || null;
-  const meetingUrl = (formData.get("meetingUrl") as string) || null;
   const startTime = formData.get("startTime") as string;
   const endTime = formData.get("endTime") as string;
   const maxAttendees = Number(formData.get("maxAttendees") || 20);
   const minAttendees = Number(formData.get("minAttendees") || 3);
 
+  // Enlace de reunión: manual, o generado con Google Meet si el profesor
+  // marcó la casilla y su academia tiene una cuenta de Google conectada.
+  const autoMeet = formData.get("autoMeet") === "on";
+  let meetingUrl = (formData.get("meetingUrl") as string) || null;
+
   if (!courseId || !title || !startTime || !endTime) {
-    throw new Error("Faltan campos obligatorios");
+    return { success: false, error: "Faltan campos obligatorios." };
   }
   if (title.length < 3 || title.length > 120) {
-    throw new Error("El título debe tener entre 3 y 120 caracteres");
+    return {
+      success: false,
+      error: "El título debe tener entre 3 y 120 caracteres.",
+    };
   }
   const startDate = new Date(startTime);
   const endDate = new Date(endTime);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    throw new Error("Fechas inválidas");
+    return { success: false, error: "Las fechas ingresadas no son válidas." };
   }
   if (endDate.getTime() <= startDate.getTime()) {
-    throw new Error("La hora de fin debe ser posterior a la de inicio");
+    return {
+      success: false,
+      error: "La hora de fin debe ser posterior a la de inicio.",
+    };
   }
   if (!Number.isFinite(maxAttendees) || maxAttendees < 1 || maxAttendees > 1000) {
-    throw new Error("Cupo máximo inválido");
+    return { success: false, error: "El cupo máximo debe estar entre 1 y 1000." };
   }
   if (!Number.isFinite(minAttendees) || minAttendees < 0 || minAttendees > maxAttendees) {
-    throw new Error("Mínimo de asistentes inválido");
+    return {
+      success: false,
+      error: "El mínimo de asistentes no puede superar al cupo máximo.",
+    };
+  }
+
+  // Verificamos que el curso sea del profesor y de su tenant. Sin esto,
+  // cualquiera podía colgar una sesión de un curso ajeno mandando otro
+  // `courseId` en el POST.
+  const course = await db.course.findFirst({
+    where: {
+      id: courseId,
+      tenantId: user.tenantId,
+      ...(user.role === "PROFESSOR" ? { professorId: user.id } : {}),
+    },
+    select: { id: true },
+  });
+  if (!course) {
+    return {
+      success: false,
+      error: "El curso seleccionado no existe o no es tuyo.",
+    };
   }
 
   // Recurrence is optional. When set, generate `occurrences` workshops total
@@ -89,8 +139,29 @@ export async function createWorkshop(formData: FormData) {
   const baseStart = new Date(startTime);
   const baseEnd = new Date(endTime);
 
+  // El Meet se genera ANTES de tocar la base: si Google falla, no queda una
+  // sesión virtual a medias sin enlace. Una sola llamada cubre toda la serie
+  // (un evento recurrente comparte el mismo link entre sus ocurrencias).
+  let googleEventId: string | null = null;
+  if (autoMeet && type !== "IN_PERSON") {
+    const meet = await createMeetLinkForWorkshop({
+      tenantId: user.tenantId,
+      title,
+      description,
+      startTime: baseStart,
+      endTime: baseEnd,
+      recurrence: recurrence as RecurrenceFrequency | null,
+      occurrences,
+    });
+    if (!meet.ok) {
+      return { success: false, error: meet.error };
+    }
+    meetingUrl = meet.meetingUrl;
+    googleEventId = meet.eventId;
+  }
+
   const sharedData = {
-    tenantId: user.tenantId!,
+    tenantId: user.tenantId,
     professorId: user.id,
     courseId,
     moduleId,
@@ -111,6 +182,7 @@ export async function createWorkshop(formData: FormData) {
       ...sharedData,
       startTime: baseStart,
       endTime: baseEnd,
+      googleEventId,
     },
   });
 

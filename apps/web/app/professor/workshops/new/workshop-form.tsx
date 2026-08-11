@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MapPin, Video, Calendar, Repeat } from "lucide-react";
+import { Loader2, MapPin, Video, Calendar, Repeat, Link2 } from "lucide-react";
 import { createWorkshop } from "@/lib/actions/workshop";
 
 interface Course {
@@ -17,12 +17,20 @@ const workshopTypes = [
   { value: "HYBRID", label: "Híbrido", icon: Calendar },
 ];
 
-export function WorkshopForm({ courses }: { courses: Course[] }) {
+export function WorkshopForm({
+  courses,
+  meetAvailable,
+}: {
+  courses: Course[];
+  /** La academia tiene una cuenta de Google conectada para generar Meets */
+  meetAvailable: boolean;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [workshopType, setWorkshopType] = useState("IN_PERSON");
   const [recurrence, setRecurrence] = useState<string>("");
+  const [autoMeet, setAutoMeet] = useState(meetAvailable);
   const [error, setError] = useState<string | null>(null);
 
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
@@ -34,7 +42,9 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
         const result = await createWorkshop(formData);
         if (result.success) {
           router.push("/professor/workshops");
+          return;
         }
+        setError(result.error);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error al crear el workshop");
       }
@@ -341,21 +351,79 @@ export function WorkshopForm({ courses }: { courses: Course[] }) {
 
       {/* Meeting URL (visible for VIRTUAL and HYBRID) */}
       {(workshopType === "VIRTUAL" || workshopType === "HYBRID") && (
-        <div>
-          <label
-            htmlFor="meetingUrl"
-            className="mb-1.5 block text-sm font-medium text-text-primary"
-          >
-            Enlace de reunión (Zoom, Meet, etc.)
-          </label>
-          <input
-            type="url"
-            id="meetingUrl"
-            name="meetingUrl"
-            className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-            placeholder="https://zoom.us/j/..."
-          />
-        </div>
+        <fieldset className="space-y-4 rounded-lg border border-border p-4">
+          <legend className="flex items-center gap-1.5 px-2 text-sm font-medium text-text-primary">
+            <Link2 className="h-4 w-4" />
+            Enlace de reunión
+          </legend>
+
+          {meetAvailable ? (
+            <>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  name="autoMeet"
+                  checked={autoMeet}
+                  onChange={(e) => setAutoMeet(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-primary-600 focus:ring-2 focus:ring-primary-500/20"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-text-primary">
+                    Generar enlace de Google Meet automáticamente
+                  </span>
+                  <span className="mt-0.5 block text-xs text-text-tertiary">
+                    Se creará la reunión en el calendario de tu academia al
+                    guardar la sesión.
+                    {recurrence
+                      ? " Toda la serie compartirá el mismo enlace."
+                      : ""}
+                  </span>
+                </span>
+              </label>
+
+              {!autoMeet && (
+                <div>
+                  <label
+                    htmlFor="meetingUrl"
+                    className="mb-1.5 block text-sm font-medium text-text-secondary"
+                  >
+                    Enlace propio (Zoom, Teams, etc.)
+                  </label>
+                  <input
+                    type="url"
+                    id="meetingUrl"
+                    name="meetingUrl"
+                    className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                    placeholder="https://zoom.us/j/..."
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div>
+                <label
+                  htmlFor="meetingUrl"
+                  className="mb-1.5 block text-sm font-medium text-text-secondary"
+                >
+                  Enlace de reunión (Zoom, Meet, etc.)
+                </label>
+                <input
+                  type="url"
+                  id="meetingUrl"
+                  name="meetingUrl"
+                  className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none placeholder:text-text-tertiary focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                  placeholder="https://zoom.us/j/..."
+                />
+              </div>
+              <p className="text-xs text-text-tertiary">
+                Para que el enlace de Google Meet se genere solo, un
+                administrador debe conectar la cuenta de Google de la academia
+                en Configuración.
+              </p>
+            </>
+          )}
+        </fieldset>
       )}
 
       {/* Submit */}

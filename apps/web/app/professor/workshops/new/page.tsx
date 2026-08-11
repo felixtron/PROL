@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { getProfessorCourseOptions } from "@/lib/queries/workshop";
+import {
+  getProfessorCourseOptions,
+  getMeetAutoGenerationAvailable,
+} from "@/lib/queries/workshop";
 import { WorkshopForm } from "./workshop-form";
 
 export default async function NewWorkshopPage() {
-  const courses = await getProfessorCourseOptions();
+  const [courses, meetAvailable] = await Promise.all([
+    getProfessorCourseOptions(),
+    getMeetAutoGenerationAvailable(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -25,7 +31,7 @@ export default async function NewWorkshopPage() {
         </p>
       </div>
 
-      <WorkshopForm courses={courses} />
+      <WorkshopForm courses={courses} meetAvailable={meetAvailable} />
     </div>
   );
 }

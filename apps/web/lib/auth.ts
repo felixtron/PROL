@@ -50,6 +50,32 @@ function buildTrustedOrigins(): string[] {
   return Array.from(origins);
 }
 
+// Google se usa exclusivamente como *integración* (generar links de Meet en
+// el calendario del tenant), no como método de login. Por eso:
+//   - Se registra sólo si las credenciales están en el entorno; sin ellas la
+//     app arranca igual y la sección de Meet aparece deshabilitada (mismo
+//     patrón que Turnstile).
+//   - `accessType: "offline"` + `prompt: "select_account consent"` son
+//     obligatorios: sin ellos Google NO devuelve refresh_token y la conexión
+//     se cae en cuanto expira el access token (~1h).
+//   - `disableSignUp: true` bloquea la creación de usuarios vía Google. El
+//     alta sigue siendo email/password (o invitación), así el hook que asigna
+//     el tenant por subdominio nunca se saltea.
+function buildSocialProviders() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return {};
+  return {
+    google: {
+      clientId,
+      clientSecret,
+      accessType: "offline" as const,
+      prompt: "select_account consent" as const,
+      disableSignUp: true,
+    },
+  };
+}
+
 export const auth = betterAuth({
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
   trustedOrigins: buildTrustedOrigins(),
@@ -78,6 +104,17 @@ export const auth = betterAuth({
           return { data: { ...data, tenantId: tenant.id } };
         },
       },
+    },
+  },
+  socialProviders: buildSocialProviders(),
+  account: {
+    accountLinking: {
+      enabled: true,
+      // La cuenta de Google que hostea los Meet casi nunca usa el mismo
+      // correo con el que el admin entra a PROL (ej. login con correo
+      // corporativo, Meet con una cuenta @gmail de la academia). Sin esto
+      // Better Auth rechaza el link por email distinto.
+      allowDifferentEmails: true,
     },
   },
   emailAndPassword: {

@@ -289,6 +289,17 @@ model Tenant {
   // Certificate folio prefix (e.g. "PROL", "ACME", etc.)
   certificatePrefix String @default("PROL") @map("certificate_prefix")
 
+  // Google Meet integration. The tenant designates ONE connected Google
+  // account (an admin who linked Google via Better Auth) as the "host"
+  // account: every virtual workshop created in this tenant gets its Meet
+  // link generated from that account's calendar. We only store a pointer to
+  // the user — the OAuth tokens live in the `accounts` table, managed and
+  // refreshed by Better Auth. `googleCalendarEmail` is a display-only copy
+  // so the settings UI can show which account is connected without an extra
+  // round-trip to Google.
+  googleCalendarUserId String? @map("google_calendar_user_id")
+  googleCalendarEmail  String? @map("google_calendar_email")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -824,6 +835,12 @@ model Workshop {
   recurrenceFrequency RecurrenceFrequency? @map("recurrence_frequency")
 
   status WorkshopStatus @default(SCHEDULED)
+
+  // Calendar event that generated `meetingUrl` when the Meet link was created
+  // automatically. Stored so a future cleanup can update or delete the event;
+  // for a recurring series only the parent carries it (one event with an
+  // RRULE covers every occurrence, and they all share the same Meet link).
+  googleEventId String? @map("google_event_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

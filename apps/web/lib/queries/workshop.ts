@@ -1,6 +1,10 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import {
+  getTenantMeetAccount,
+  isGoogleMeetConfigured,
+} from "@/lib/google-calendar";
 
 // ─── Professor queries ────────────────────────────────────────────────────────
 
@@ -157,6 +161,18 @@ export const getProfessorCourseOptions = cache(async () => {
   });
 
   return courses;
+});
+
+/**
+ * true si la academia del profesor puede generar links de Meet automáticos:
+ * el servidor tiene credenciales de Google Y el tenant ya designó una cuenta
+ * anfitriona. Se usa para mostrar (o no) la opción en el formulario.
+ */
+export const getMeetAutoGenerationAvailable = cache(async () => {
+  const user = await requireUser();
+  if (!user.tenantId || !isGoogleMeetConfigured()) return false;
+  const host = await getTenantMeetAccount(user.tenantId);
+  return host !== null;
 });
 
 // ─── Student queries ──────────────────────────────────────────────────────────
