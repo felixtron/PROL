@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
-import { createMeetLinkForWorkshop } from "@/lib/google-calendar";
+import { createMeetLink } from "@/lib/google-calendar";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ export async function createWorkshop(
   // (un evento recurrente comparte el mismo link entre sus ocurrencias).
   let googleEventId: string | null = null;
   if (autoMeet && type !== "IN_PERSON") {
-    const meet = await createMeetLinkForWorkshop({
+    const meet = await createMeetLink({
       tenantId: user.tenantId,
       title,
       description,

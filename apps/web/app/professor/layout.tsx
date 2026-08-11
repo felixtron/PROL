@@ -50,6 +50,7 @@ export default async function ProfessorLayout({
 
   const navItems: SidebarNavItem[] = [
     ...baseNavItems,
+    { label: "Asesorías", href: "/professor/advisory", icon: "HeartHandshake" },
     ...(tenant?.evaluationsEnabled
       ? [{ label: "Evaluaciones", href: "/professor/evaluations", icon: "ClipboardCheck" as const }]
       : []),

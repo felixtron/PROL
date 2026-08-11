@@ -115,6 +115,19 @@ enum BookingStatus {
   NO_SHOW
 }
 
+/// A quién va dirigida una sesión de asesoría: a toda una empresa (la ven
+/// todos sus miembros) o a una lista concreta de usuarios registrados.
+enum AdvisoryAudience {
+  COMPANY
+  USERS
+}
+
+enum AdvisorySessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
 enum RecurrenceFrequency {
   DAILY
   WEEKLY
@@ -309,6 +322,7 @@ model Tenant {
   enrollments         Enrollment[]
   payments            CoursePayment[]
   workshops           Workshop[]
+  advisorySessions    AdvisorySession[]
   certificates        Certificate[]
   auditLogs           AuditLog[]
   notifications       Notification[]
@@ -360,6 +374,8 @@ model User {
   enrollments                 Enrollment[]
   payments                    CoursePayment[]
   workshops                   Workshop[]                @relation("WorkshopProfessor")
+  advisorySessionsGiven       AdvisorySession[]         @relation("AdvisorySessionAdvisor")
+  advisorySessionsInvited     AdvisorySessionParticipant[] @relation("AdvisorySessionParticipants")
   workshopBookings            WorkshopBooking[]
   workshopAttendances         WorkshopAttendance[]
   notifications               Notification[]
@@ -903,6 +919,83 @@ model WorkshopAttendance {
   @@map("workshop_attendances")
 }
 
+/// Sesión de asesoría: una cita del asesor con un cliente.
+///
+/// Es un módulo aparte de `Workshop` a propósito. Un workshop es una clase
+/// con cupo, lista de espera y check-in, colgada de un curso; una asesoría es
+/// una cita de consultoría que existe por sí sola. Intentar servir los dos
+/// casos con una tabla fue lo que enredó el modelo antes: acá NO hay curso ni
+/// módulo, y el acceso lo decide la audiencia (empresa o participantes).
+model AdvisorySession {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  advisorId String @map("advisor_id")
+  advisor   User   @relation("AdvisorySessionAdvisor", fields: [advisorId], references: [id], onDelete: Restrict)
+
+  title       String
+  description String?
+  // Se reutiliza `WorkshopType` (presencial/virtual/híbrida) en vez de
+  // duplicar un enum idéntico: es la misma modalidad.
+  type        WorkshopType @default(VIRTUAL)
+
+  // Audiencia. Con COMPANY se usa `companyId` y la ven todos sus miembros;
+  // con USERS se usa la tabla de participantes.
+  audience  AdvisoryAudience @default(COMPANY)
+  companyId String?          @map("company_id")
+  company   Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  locationName    String? @map("location_name")
+  locationAddress String? @map("location_address")
+  locationMapUrl  String? @map("location_map_url")
+  meetingUrl      String? @map("meeting_url")
+  googleEventId   String? @map("google_event_id")
+
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+
+  // Serie recurrente: misma mecánica que Workshop — la primera ocurrencia es
+  // el padre y las demás apuntan a ella.
+  parentSessionId     String?              @map("parent_session_id")
+  parentSession       AdvisorySession?     @relation("AdvisorySessionRecurrence", fields: [parentSessionId], references: [id], onDelete: Cascade)
+  childSessions       AdvisorySession[]    @relation("AdvisorySessionRecurrence")
+  recurrenceFrequency RecurrenceFrequency? @map("recurrence_frequency")
+
+  status AdvisorySessionStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  participants AdvisorySessionParticipant[]
+
+  @@index([tenantId])
+  @@index([advisorId])
+  @@index([companyId])
+  @@index([startTime])
+  @@index([status])
+  @@index([parentSessionId])
+  @@map("advisory_sessions")
+}
+
+/// Usuario convocado a una sesión de asesoría dirigida a personas concretas
+/// (audiencia USERS).
+model AdvisorySessionParticipant {
+  id        String          @id @default(cuid())
+  sessionId String          @map("session_id")
+  session   AdvisorySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("AdvisorySessionParticipants", fields: [userId], references: [id], onDelete: Cascade)
+
+  addedAt DateTime @default(now()) @map("added_at")
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+  @@map("advisory_session_participants")
+}
+
 /// Certificate issued upon course completion (passing the final exam with >= 80%).
 model Certificate {
   id           String     @id @default(cuid())
@@ -992,6 +1085,7 @@ model Company {
   members                 User[]
   invitations             CompanyInvitation[]
   courseAssignments       CompanyCourseAssignment[]
+  advisorySessions        AdvisorySession[]
   evaluationAssignments   EvaluationAssignment[]
   surveysAssigned         Survey[]                  @relation("SurveysForCompany")
   surveyResponsesReceived SurveyResponse[]          @relation("SurveyRespondentCompany")

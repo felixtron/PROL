@@ -125,11 +125,14 @@ export type CreateMeetResult =
  * Crea un evento en el calendario de la cuenta anfitriona del tenant con una
  * conferencia de Meet adjunta y devuelve el link.
  *
+ * Sirve a cualquier módulo que agende algo (talleres y asesorías): sólo
+ * necesita título, rango de fechas y recurrencia opcional.
+ *
  * El evento es sólo el vehículo para obtener el Meet: no se invita a nadie
- * (`attendees` vacío), así no se filtran correos de alumnos entre sí ni hay
- * nada que sincronizar cuando cambian las reservas.
+ * (`attendees` vacío), así no se filtran correos entre asistentes ni hay nada
+ * que sincronizar cuando cambian las reservas.
  */
-export async function createMeetLinkForWorkshop(params: {
+export async function createMeetLink(params: {
   tenantId: string;
   title: string;
   description: string | null;
