@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 import type { AssignmentContent } from "@/lib/assignment-content";
 
 // ─── Professor: configure the assignment ──────────────────────────────────────
@@ -22,13 +23,11 @@ export async function updateAssignment(
   const lesson = await db.lesson.findUnique({
     where: { id: lessonId },
     include: {
-      module: { include: { course: { select: { id: true, professorId: true } } } },
+      module: { include: { course: { select: { id: true } } } },
     },
   });
   if (!lesson) throw new Error("Lección no encontrada");
-  if (lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
   if (lesson.type !== "ASSIGNMENT") {
     throw new Error("Esta acción solo aplica a lecciones tipo tarea");
   }
@@ -144,16 +143,14 @@ export async function gradeAssignment(
       lesson: {
         include: {
           module: {
-            include: { course: { select: { id: true, professorId: true } } },
+            include: { course: { select: { id: true } } },
           },
         },
       },
     },
   });
   if (!submission) throw new Error("Entrega no encontrada");
-  if (submission.lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(submission.lesson.module.course.id, user.id);
   if (data.grade < 0 || data.grade > 100) {
     throw new Error("La calificación debe estar entre 0 y 100");
   }

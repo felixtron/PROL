@@ -1,13 +1,14 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { courseAccessWhere } from "@/lib/course-access";
 
 export const getProfessorStudents = cache(async () => {
   const user = await requireUser();
 
   const [enrollments, pastWorkshops] = await Promise.all([
     db.enrollment.findMany({
-      where: { course: { professorId: user.id } },
+      where: { course: courseAccessWhere(user.id) },
       include: {
         student: {
           select: {
@@ -27,7 +28,9 @@ export const getProfessorStudents = cache(async () => {
     // per student, scoped to the courses in which the student is enrolled.
     db.workshop.findMany({
       where: {
-        professorId: user.id,
+        // Talleres de los cursos a los que el profesor tiene acceso, no solo
+        // los que imparte: si no, un curso compartido mostraria 0 de 0.
+        course: courseAccessWhere(user.id),
         startTime: { lt: new Date() },
         status: { not: "CANCELLED" },
       },

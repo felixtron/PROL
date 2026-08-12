@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getCourseForEdit } from "@/lib/queries/course";
 import { getTenantAIStatus } from "@/lib/queries/ai";
+import { getCourseCollaborators } from "@/lib/queries/collaborators";
 import { CourseEditor } from "./course-editor";
+import { CollaboratorsSection } from "./collaborators-section";
 
 const statusStyles: Record<string, string> = {
   PUBLISHED: "bg-emerald-50 text-emerald-700",
@@ -24,9 +26,10 @@ export default async function CourseEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [course, { aiEnabled }] = await Promise.all([
+  const [course, { aiEnabled }, team] = await Promise.all([
     getCourseForEdit(id),
     getTenantAIStatus(),
+    getCourseCollaborators(id),
   ]);
 
   return (
@@ -57,6 +60,15 @@ export default async function CourseEditPage({
           </div>
         </div>
       </div>
+
+      {/* Colaboradores */}
+      <CollaboratorsSection
+        courseId={course.id}
+        owner={team.owner}
+        collaborators={team.collaborators}
+        assignable={team.assignable}
+        canManage={team.canManage}
+      />
 
       {/* Course Editor */}
       <CourseEditor course={{ ...course, aiEnabled }} />

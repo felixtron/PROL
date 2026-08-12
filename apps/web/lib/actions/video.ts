@@ -2,6 +2,7 @@
 
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 import {
   createDirectUploadUrl,
   getVideoDetails,
@@ -17,7 +18,7 @@ async function getOwnedLesson(lessonId: string, userId: string) {
       module: {
         include: {
           course: {
-            select: { professorId: true, id: true },
+            select: { id: true },
           },
         },
       },
@@ -25,9 +26,7 @@ async function getOwnedLesson(lessonId: string, userId: string) {
   });
 
   if (!lesson) throw new Error("Lección no encontrada");
-  if (lesson.module.course.professorId !== userId) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(lesson.module.course.id, userId);
 
   return lesson;
 }

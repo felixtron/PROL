@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess, canEditCourse } from "@/lib/course-access";
 
 // ---------------------------------------------------------------------------
 // Final exam gate
@@ -157,13 +158,7 @@ export const getQuizForLesson = cache(async (lessonId: string) => {
   const lesson = await db.lesson.findFirst({
     where: { id: lessonId },
     include: {
-      module: {
-        include: {
-          course: {
-            select: { professorId: true },
-          },
-        },
-      },
+      module: { select: { courseId: true } },
       quizzes: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -172,9 +167,7 @@ export const getQuizForLesson = cache(async (lessonId: string) => {
   });
 
   if (!lesson) throw new Error("Lección no encontrada");
-  if (lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(lesson.module.courseId, user.id);
 
   const quiz = lesson.quizzes[0] ?? null;
 
@@ -214,7 +207,7 @@ export const getQuizForStudent = cache(
         select: {
           module: {
             select: {
-              course: { select: { professorId: true, tenantId: true } },
+              course: { select: { id: true, tenantId: true } },
             },
           },
         },
@@ -224,7 +217,8 @@ export const getQuizForStudent = cache(
       const canPreview =
         user.role === "SUPER_ADMIN" ||
         (user.role === "ADMIN" && user.tenantId === course.tenantId) ||
-        (user.role === "PROFESSOR" && course.professorId === user.id);
+        (user.role === "PROFESSOR" &&
+          (await canEditCourse(course.id, user.id)));
       if (!canPreview) throw new Error("No autorizado");
     } else {
       // Verify enrollment belongs to user
@@ -317,7 +311,7 @@ export const getQuizAttempts = cache(
             module: {
               include: {
                 course: {
-                  select: { professorId: true },
+                  select: { id: true },
                 },
               },
             },
@@ -340,7 +334,10 @@ export const getQuizAttempts = cache(
 
     if (!enrollment) throw new Error("Inscripción no encontrada");
 
-    const isProfessor = quiz.lesson.module.course.professorId === user.id;
+    const isProfessor = await canEditCourse(
+      quiz.lesson.module.course.id,
+      user.id,
+    );
     const isStudent = enrollment.studentId === user.id;
 
     if (!isProfessor && !isStudent) {

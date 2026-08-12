@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { courseAccessWhere } from "@/lib/course-access";
 
 // Shape de lección para el editor; reutilizado en lecciones directas del
 // módulo y en lecciones de submódulos.
@@ -33,7 +34,7 @@ export const getCourseForEdit = cache(async (courseId: string) => {
   const course = await db.course.findFirst({
     where: {
       id: courseId,
-      professorId: user.id,
+      ...courseAccessWhere(user.id),
     },
     include: {
       modules: {

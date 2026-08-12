@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 
 // ---------------------------------------------------------------------------
 // Professor Queries
@@ -9,21 +10,14 @@ import { requireUser } from "@/lib/auth";
 export const getInteractiveStopsForLesson = cache(async (lessonId: string) => {
   const user = await requireUser();
 
-  // Verify professor owns this lesson's course
+  // El profesor dueño del curso o cualquiera de sus colaboradores.
   const lesson = await db.lesson.findFirst({
     where: { id: lessonId },
-    include: {
-      module: {
-        include: {
-          course: { select: { professorId: true } },
-        },
-      },
-    },
+    select: { module: { select: { courseId: true } } },
   });
 
-  if (!lesson || lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  if (!lesson) throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.courseId, user.id);
 
   const stops = await db.interactiveStop.findMany({
     where: { lessonId },

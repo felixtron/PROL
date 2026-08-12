@@ -2,6 +2,7 @@ import { cache } from "react";
 import { db } from "@prol/db";
 import { getCurrentTenant } from "@/lib/tenant";
 import { getCurrentUser } from "@/lib/auth";
+import { canEditCourse } from "@/lib/course-access";
 
 export type CatalogCourse = {
   id: string;
@@ -262,7 +263,8 @@ export const getCourseBySlug = cache(
         !!viewer &&
         (viewer.role === "SUPER_ADMIN" ||
           (viewer.role === "ADMIN" && viewer.tenantId === tenant.id) ||
-          (viewer.role === "PROFESSOR" && course.professorId === viewer.id));
+          (viewer.role === "PROFESSOR" &&
+            (await canEditCourse(course.id, viewer.id))));
       if (!canPreview) return null;
     }
 

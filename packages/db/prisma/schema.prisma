@@ -373,27 +373,29 @@ model User {
   // Relations
   sessions                    Session[]
   accounts                    Account[]
-  taughtCourses               Course[]                  @relation("CourseProfessor")
+  taughtCourses               Course[]                     @relation("CourseProfessor")
   enrollments                 Enrollment[]
   payments                    CoursePayment[]
-  workshops                   Workshop[]                @relation("WorkshopProfessor")
-  advisorySessionsGiven       AdvisorySession[]         @relation("AdvisorySessionAdvisor")
+  workshops                   Workshop[]                   @relation("WorkshopProfessor")
+  advisorySessionsGiven       AdvisorySession[]            @relation("AdvisorySessionAdvisor")
   advisorySessionsInvited     AdvisorySessionParticipant[] @relation("AdvisorySessionParticipants")
   workshopBookings            WorkshopBooking[]
   workshopAttendances         WorkshopAttendance[]
   notifications               Notification[]
   auditLogs                   AuditLog[]
   aiGenerationJobs            AIGenerationJob[]
-  invitationsSent             CompanyInvitation[]       @relation("InvitationsSent")
-  assignmentsMade             CompanyCourseAssignment[] @relation("AssignmentsMade")
+  invitationsSent             CompanyInvitation[]          @relation("InvitationsSent")
+  assignmentsMade             CompanyCourseAssignment[]    @relation("AssignmentsMade")
   courseDrafts                CourseDraft[]
-  companyLed                  Company?                  @relation("CompanyLeader")
-  evaluationsCreated          Evaluation[]              @relation("EvaluationAuthor")
-  evaluationAssignmentsMade   EvaluationAssignment[]    @relation("EvaluationAssignedBy")
-  evaluationParticipations    EvaluationParticipant[]   @relation("EvaluationParticipantUser")
-  evaluationParticipantsAdded EvaluationParticipant[]   @relation("EvaluationParticipantAddedBy")
+  companyLed                  Company?                     @relation("CompanyLeader")
+  evaluationsCreated          Evaluation[]                 @relation("EvaluationAuthor")
+  evaluationAssignmentsMade   EvaluationAssignment[]       @relation("EvaluationAssignedBy")
+  evaluationParticipations    EvaluationParticipant[]      @relation("EvaluationParticipantUser")
+  evaluationParticipantsAdded EvaluationParticipant[]      @relation("EvaluationParticipantAddedBy")
   evaluationSubmissions       EvaluationSubmission[]
-  surveysCreated              Survey[]                  @relation("SurveysCreated")
+  surveysCreated              Survey[]                     @relation("SurveysCreated")
+  courseCollaborations        CourseCollaborator[]         @relation("CourseCollaboratorUser")
+  courseCollaboratorsAdded    CourseCollaborator[]         @relation("CourseCollaboratorAddedBy")
 
   @@index([tenantId])
   @@index([companyId])
@@ -499,6 +501,7 @@ model Course {
   payments           CoursePayment[]
   workshops          Workshop[]
   companyAssignments CompanyCourseAssignment[]
+  collaborators      CourseCollaborator[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -506,6 +509,32 @@ model Course {
   @@index([status])
   @@index([tenantId, status])
   @@map("courses")
+}
+
+/// Profesor invitado a co-crear un curso que no le pertenece.
+///
+/// El dueño sigue siendo `Course.professorId` — esta tabla solo suma
+/// colaboradores. Un colaborador puede editar el curso, publicarlo y ver a
+/// sus alumnos, pero NO puede borrarlo ni transferirlo (eso queda para el
+/// dueño y el admin del tenant).
+model CourseCollaborator {
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("CourseCollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Quién lo invitó (el dueño del curso o un admin del tenant).
+  addedById String @map("added_by_id")
+  addedBy   User   @relation("CourseCollaboratorAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
+  @@map("course_collaborators")
 }
 
 /// A section/module within a course, used to group lessons.
@@ -519,8 +548,8 @@ model Module {
   // que toda la navegación `lesson → module → course` siga funcionando sin
   // cambios. `parentModuleId = null` ⇒ módulo de nivel superior (el caso de
   // todos los módulos existentes tras la migración aditiva).
-  parentModuleId String? @map("parent_module_id")
-  parentModule   Module? @relation("SubModules", fields: [parentModuleId], references: [id], onDelete: Cascade)
+  parentModuleId String?  @map("parent_module_id")
+  parentModule   Module?  @relation("SubModules", fields: [parentModuleId], references: [id], onDelete: Cascade)
   submodules     Module[] @relation("SubModules")
 
   title       String

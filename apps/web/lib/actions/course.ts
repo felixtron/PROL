@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import {
+  assertCourseOwnerAccess,
+  courseAccessWhere,
+} from "@/lib/course-access";
 import { createCourseSchema, updateCourseSchema } from "@prol/shared";
 
 function slugify(text: string): string {
@@ -49,7 +53,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const user = await requireUser();
 
   const existing = await db.course.findFirst({
-    where: { id: courseId, professorId: user.id },
+    where: { id: courseId, ...courseAccessWhere(user.id) },
   });
   if (!existing) throw new Error("Curso no encontrado");
 
@@ -85,15 +89,12 @@ export async function updateCourse(courseId: string, formData: FormData) {
 }
 
 export async function archiveCourse(courseId: string) {
-  const user = await requireUser();
-
-  const existing = await db.course.findFirst({
-    where: { id: courseId, professorId: user.id },
-  });
-  if (!existing) throw new Error("Curso no encontrado");
+  // Archivar saca el curso de circulación: queda fuera de lo que puede
+  // hacer un colaborador. Solo el dueño (o un admin del tenant).
+  const { course: existing } = await assertCourseOwnerAccess(courseId);
 
   await db.course.update({
-    where: { id: courseId },
+    where: { id: existing.id },
     data: { status: "ARCHIVED" },
   });
 
@@ -105,7 +106,7 @@ export async function updateCourseThumbnail(courseId: string, thumbnailUrl: stri
   const user = await requireUser();
 
   const existing = await db.course.findFirst({
-    where: { id: courseId, professorId: user.id },
+    where: { id: courseId, ...courseAccessWhere(user.id) },
   });
   if (!existing) throw new Error("Curso no encontrado");
 

@@ -2,6 +2,7 @@
 
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { canEditCourse } from "@/lib/course-access";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 
 /**
@@ -47,7 +48,7 @@ export async function revokeCertificate(
     where: { id: certificateId },
     include: {
       enrollment: {
-        include: { course: { select: { professorId: true } } },
+        include: { course: { select: { id: true } } },
       },
     },
   });
@@ -60,9 +61,10 @@ export async function revokeCertificate(
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   const isTenantAdmin =
     user.role === "ADMIN" && cert.tenantId === user.tenantId;
+  // Dueño o colaborador del curso, siempre dentro de su propio tenant.
   const isProfessor =
-    cert.enrollment.course.professorId === user.id &&
-    cert.tenantId === user.tenantId;
+    cert.tenantId === user.tenantId &&
+    (await canEditCourse(cert.enrollment.course.id, user.id));
 
   if (!isSuperAdmin && !isTenantAdmin && !isProfessor) {
     throw new Error("No autorizado");

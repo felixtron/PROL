@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,15 +72,14 @@ export async function createInteractiveStop(
     include: {
       module: {
         include: {
-          course: { select: { id: true, professorId: true } },
+          course: { select: { id: true } },
         },
       },
     },
   });
 
-  if (!lesson || lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  if (!lesson) throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
 
   // Validate lesson is VIDEO type
   if (lesson.type !== "VIDEO") {
@@ -119,7 +119,7 @@ export async function updateInteractiveStop(
         include: {
           module: {
             include: {
-              course: { select: { id: true, professorId: true } },
+              course: { select: { id: true } },
             },
           },
         },
@@ -127,9 +127,8 @@ export async function updateInteractiveStop(
     },
   });
 
-  if (!stop || stop.lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  if (!stop) throw new Error("No autorizado");
+  await assertCourseEditAccess(stop.lesson.module.course.id, user.id);
 
   await db.interactiveStop.update({
     where: { id: stopId },
@@ -156,7 +155,7 @@ export async function deleteInteractiveStop(stopId: string) {
         include: {
           module: {
             include: {
-              course: { select: { id: true, professorId: true } },
+              course: { select: { id: true } },
             },
           },
         },
@@ -164,9 +163,8 @@ export async function deleteInteractiveStop(stopId: string) {
     },
   });
 
-  if (!stop || stop.lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  if (!stop) throw new Error("No autorizado");
+  await assertCourseEditAccess(stop.lesson.module.course.id, user.id);
 
   await db.interactiveStop.delete({ where: { id: stopId } });
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 import { createNotification } from "@/lib/notifications";
 import { getFinalExamGateStatus } from "@/lib/queries/quiz";
@@ -76,7 +77,7 @@ async function createQuizUnsafe(lessonId: string, data: CreateQuizData) {
       module: {
         include: {
           course: {
-            select: { id: true, professorId: true },
+            select: { id: true },
           },
         },
       },
@@ -84,9 +85,7 @@ async function createQuizUnsafe(lessonId: string, data: CreateQuizData) {
   });
 
   if (!lesson) throw new Error("Lección de tipo QUIZ no encontrada");
-  if (lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
 
   // Validate data
   if (!data.title || data.title.length < 3) {
@@ -185,7 +184,7 @@ async function updateQuizUnsafe(quizId: string, data: Partial<CreateQuizData>) {
           module: {
             include: {
               course: {
-                select: { id: true, professorId: true },
+                select: { id: true },
               },
             },
           },
@@ -195,9 +194,7 @@ async function updateQuizUnsafe(quizId: string, data: Partial<CreateQuizData>) {
   });
 
   if (!quiz) throw new Error("Quiz no encontrado");
-  if (quiz.lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(quiz.lesson.module.course.id, user.id);
 
   // Validate data if provided
   if (data.title !== undefined && data.title.length < 3) {
@@ -291,7 +288,7 @@ async function deleteQuizUnsafe(quizId: string) {
           module: {
             include: {
               course: {
-                select: { id: true, professorId: true },
+                select: { id: true },
               },
             },
           },
@@ -301,9 +298,7 @@ async function deleteQuizUnsafe(quizId: string) {
   });
 
   if (!quiz) throw new Error("Quiz no encontrado");
-  if (quiz.lesson.module.course.professorId !== user.id) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(quiz.lesson.module.course.id, user.id);
 
   await db.quiz.delete({ where: { id: quizId } });
 

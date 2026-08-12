@@ -3,12 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import {
+  assertCourseEditAccess,
+  courseAccessWhere,
+} from "@/lib/course-access";
 
 export async function createModule(courseId: string, formData: FormData) {
   const user = await requireUser();
 
   const course = await db.course.findFirst({
-    where: { id: courseId, professorId: user.id },
+    where: { id: courseId, ...courseAccessWhere(user.id) },
     // Solo módulos de nivel superior para calcular la siguiente posición
     // (los submódulos tienen su propio espacio de posiciones por padre).
     include: {
@@ -43,10 +47,10 @@ export async function updateModule(moduleId: string, formData: FormData) {
 
   const module = await db.module.findFirst({
     where: { id: moduleId },
-    include: { course: { select: { professorId: true, id: true } } },
+    include: { course: { select: { id: true } } },
   });
-  if (!module || module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!module) throw new Error("No autorizado");
+  await assertCourseEditAccess(module.course.id, user.id);
 
   await db.module.update({
     where: { id: moduleId },
@@ -63,11 +67,11 @@ export async function deleteModule(moduleId: string) {
   const module = await db.module.findFirst({
     where: { id: moduleId },
     include: {
-      course: { select: { professorId: true, id: true } },
+      course: { select: { id: true } },
     },
   });
-  if (!module || module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!module) throw new Error("No autorizado");
+  await assertCourseEditAccess(module.course.id, user.id);
 
   // Borrado del módulo + cascade de sus lecciones Y de sus submódulos (con
   // las lecciones de éstos). Decrementamos course.totalLessons por el
@@ -114,12 +118,12 @@ export async function createSubmodule(
   const parent = await db.module.findFirst({
     where: { id: parentModuleId },
     include: {
-      course: { select: { professorId: true, id: true } },
+      course: { select: { id: true } },
       submodules: { select: { position: true } },
     },
   });
-  if (!parent || parent.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!parent) throw new Error("No autorizado");
+  await assertCourseEditAccess(parent.course.id, user.id);
   // Defensa: no permitir anidar un submódulo dentro de otro submódulo
   // (solo 1 nivel). Un módulo top-level tiene parentModuleId null.
   if (parent.parentModuleId !== null)
@@ -158,10 +162,10 @@ export async function moveModule(
 
   const module = await db.module.findFirst({
     where: { id: moduleId },
-    include: { course: { select: { professorId: true, id: true } } },
+    include: { course: { select: { id: true } } },
   });
-  if (!module || module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!module) throw new Error("No autorizado");
+  await assertCourseEditAccess(module.course.id, user.id);
 
   // El swap es entre HERMANOS: módulos top-level entre sí (parentModuleId
   // null) y submódulos entre los de su mismo padre.
@@ -202,12 +206,12 @@ export async function createLesson(moduleId: string, formData: FormData) {
   const module = await db.module.findFirst({
     where: { id: moduleId },
     include: {
-      course: { select: { professorId: true, id: true } },
+      course: { select: { id: true } },
       lessons: { select: { position: true } },
     },
   });
-  if (!module || module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!module) throw new Error("No autorizado");
+  await assertCourseEditAccess(module.course.id, user.id);
 
   const title = formData.get("title") as string;
   const type = (formData.get("type") as string) || "VIDEO";
@@ -254,12 +258,12 @@ export async function updateLesson(
     where: { id: lessonId },
     include: {
       module: {
-        include: { course: { select: { professorId: true, id: true } } },
+        include: { course: { select: { id: true } } },
       },
     },
   });
-  if (!lesson || lesson.module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!lesson) throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
 
   await db.lesson.update({
     where: { id: lessonId },
@@ -289,12 +293,12 @@ export async function moveLesson(
     where: { id: lessonId },
     include: {
       module: {
-        include: { course: { select: { professorId: true, id: true } } },
+        include: { course: { select: { id: true } } },
       },
     },
   });
-  if (!lesson || lesson.module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!lesson) throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
 
   const neighbor = await db.lesson.findFirst({
     where: {
@@ -347,12 +351,12 @@ export async function moveLessonToContainer(
     where: { id: lessonId },
     include: {
       module: {
-        include: { course: { select: { professorId: true, id: true } } },
+        include: { course: { select: { id: true } } },
       },
     },
   });
-  if (!lesson || lesson.module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!lesson) throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
 
   if (targetModuleId === lesson.moduleId) {
     return { success: true, moved: false };
@@ -390,12 +394,12 @@ export async function deleteLesson(lessonId: string) {
     where: { id: lessonId },
     include: {
       module: {
-        include: { course: { select: { professorId: true, id: true } } },
+        include: { course: { select: { id: true } } },
       },
     },
   });
-  if (!lesson || lesson.module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  if (!lesson) throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.course.id, user.id);
 
   await db.$transaction([
     db.lesson.delete({ where: { id: lessonId } }),
@@ -413,7 +417,7 @@ export async function publishCourse(courseId: string) {
   const user = await requireUser();
 
   const course = await db.course.findFirst({
-    where: { id: courseId, professorId: user.id },
+    where: { id: courseId, ...courseAccessWhere(user.id) },
     select: { id: true, title: true },
   });
   if (!course) throw new Error("Curso no encontrado");

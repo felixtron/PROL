@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
 import crypto from "node:crypto";
 import { requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 import {
   multiLessonContentSchema,
   lessonBlockSchema,
@@ -20,15 +21,13 @@ async function getOwnedMultiLesson(lessonId: string, userId: string) {
     include: {
       module: {
         include: {
-          course: { select: { id: true, professorId: true } },
+          course: { select: { id: true } },
         },
       },
     },
   });
   if (!lesson) throw new Error("Lección no encontrada");
-  if (lesson.module.course.professorId !== userId) {
-    throw new Error("No autorizado");
-  }
+  await assertCourseEditAccess(lesson.module.course.id, userId);
   return lesson;
 }
 

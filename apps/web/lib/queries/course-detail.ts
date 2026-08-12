@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { canEditCourse } from "@/lib/course-access";
 
 const lessonSelect = {
   id: true,
@@ -79,7 +80,7 @@ export const getStudentCourseDetail = cache(async (courseId: string) => {
   const canPreview =
     user.role === "SUPER_ADMIN" ||
     (user.role === "ADMIN" && user.tenantId === course.tenantId) ||
-    (user.role === "PROFESSOR" && course.professorId === user.id);
+    (user.role === "PROFESSOR" && (await canEditCourse(course.id, user.id)));
   if (!canPreview) throw new Error("No estás inscrito en este curso");
 
   return {

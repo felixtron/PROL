@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
 import { requireAIEnabled, requireUser } from "@/lib/auth";
+import { assertCourseEditAccess } from "@/lib/course-access";
 
 export async function startCourseOutlineGeneration(formData: FormData) {
   const user = await requireAIEnabled();
@@ -43,15 +44,13 @@ export async function startVideoTranscription(lessonId: string) {
       module: {
         select: {
           courseId: true,
-          course: { select: { professorId: true } },
         },
       },
     },
   });
 
   if (!lesson) throw new Error("Lección no encontrada");
-  if (lesson.module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.courseId, user.id);
   if (!lesson.videoUrl) throw new Error("No hay video para transcribir");
 
   const job = await db.aIGenerationJob.create({
@@ -86,15 +85,13 @@ export async function startLessonContentGeneration(lessonId: string) {
       module: {
         select: {
           courseId: true,
-          course: { select: { professorId: true } },
         },
       },
     },
   });
 
   if (!lesson) throw new Error("Lección no encontrada");
-  if (lesson.module.course.professorId !== user.id)
-    throw new Error("No autorizado");
+  await assertCourseEditAccess(lesson.module.courseId, user.id);
   if (lesson.type === "VIDEO")
     throw new Error("Usa transcripción para lecciones de video");
 
