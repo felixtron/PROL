@@ -129,7 +129,9 @@ export const listAssignableUsersForTenant = cache(async (companyId: string) => {
       companyId: true,
       company: { select: { id: true, name: true } },
     },
-    take: 200,
+    // El buscador de la pestaña de miembros filtra en el cliente, así que el
+    // tope define hasta dónde alcanza esa búsqueda.
+    take: 500,
   });
 });
 
