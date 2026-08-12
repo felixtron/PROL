@@ -2,22 +2,14 @@ import Link from "next/link";
 import {
   Plus,
   Users,
+  UsersRound,
   BookOpen,
-  DollarSign,
   Eye,
   Pencil,
   Archive,
 } from "lucide-react";
 import { getProfessorCourses } from "@/lib/queries/professor";
 import { archiveCourse } from "@/lib/actions/course";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
 
 const statusStyles: Record<string, string> = {
   PUBLISHED: "bg-emerald-50 text-emerald-700",
@@ -95,6 +87,15 @@ export default async function ProfessorCoursesPage() {
                       <h3 className="truncate font-heading text-base font-semibold text-text-primary">
                         {course.title}
                       </h3>
+                      {!course.isOwner && (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700"
+                          title={`Colaboras en este curso — creado por ${course.ownerName}`}
+                        >
+                          <UsersRound className="h-3 w-3" />
+                          Compartido
+                        </span>
+                      )}
                       <span
                         className={`inline-flex shrink-0 items-center rounded-pill px-2.5 py-0.5 text-xs font-medium ${statusStyles[course.status] ?? statusStyles.DRAFT}`}
                       >
@@ -120,10 +121,6 @@ export default async function ProfessorCoursesPage() {
                       <BookOpen className="h-4 w-4" />
                       <span>{course.totalLessons} lecciones</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-sm text-text-tertiary">
-                      <DollarSign className="h-4 w-4" />
-                      <span>{formatCurrency(course.revenue)}</span>
-                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -144,20 +141,24 @@ export default async function ProfessorCoursesPage() {
                       <Eye className="h-3.5 w-3.5" />
                       Vista Previa
                     </Link>
-                    <form
-                      action={async () => {
-                        "use server";
-                        await archiveCourse(course.id);
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                    {/* Archivar es del dueño: un colaborador no ve el botón
+                        porque la acción lo rechazaría. */}
+                    {course.isOwner && (
+                      <form
+                        action={async () => {
+                          "use server";
+                          await archiveCourse(course.id);
+                        }}
                       >
-                        <Archive className="h-3.5 w-3.5" />
-                        Archivar
-                      </button>
-                    </form>
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                          Archivar
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </div>
               </div>

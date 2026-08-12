@@ -6,7 +6,6 @@ import {
   TrendingUp,
   CheckCircle2,
   UserPlus,
-  CreditCard,
 } from "lucide-react";
 import {
   getProfessorDashboardStats,
@@ -14,33 +13,21 @@ import {
   getProfessorRecentActivity,
 } from "@/lib/queries/professor";
 import {
-  getRevenueByMonth,
   getEnrollmentsByMonth,
   getCourseDistribution,
 } from "@/lib/queries/analytics";
-import { LineChart } from "@/components/charts/line-chart";
 import { BarChart } from "@/components/charts/bar-chart";
 import { DonutChart } from "@/components/charts/donut-chart";
 
 const activityIcons = {
   enrollment: UserPlus,
-  payment: CreditCard,
   completion: CheckCircle2,
 } as const;
 
 const activityColors = {
   enrollment: "text-primary-500",
-  payment: "text-accent-500",
   completion: "text-emerald-500",
 } as const;
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
 
 function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -50,14 +37,14 @@ function timeAgo(date: Date): string {
 }
 
 export default async function ProfessorDashboardPage() {
-  const [stats, courses, activity, revenueData, enrollmentData, courseDistribution] = await Promise.all([
-    getProfessorDashboardStats(),
-    getProfessorCourses("all"),
-    getProfessorRecentActivity(5),
-    getRevenueByMonth(6),
-    getEnrollmentsByMonth(6),
-    getCourseDistribution(),
-  ]);
+  const [stats, courses, activity, enrollmentData, courseDistribution] =
+    await Promise.all([
+      getProfessorDashboardStats(),
+      getProfessorCourses("all"),
+      getProfessorRecentActivity(5),
+      getEnrollmentsByMonth(6),
+      getCourseDistribution(),
+    ]);
 
   const topCourses = courses.slice(0, 3);
 
@@ -77,18 +64,8 @@ export default async function ProfessorDashboardPage() {
         </Link>
       </div>
 
-      {/* Revenue Highlight + Stats Row */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
-        {/* Revenue Highlight Card */}
-        <div className="rounded-lg bg-primary-900 p-6 shadow-sm lg:col-span-1">
-          <p className="text-sm font-medium text-primary-200">
-            Ingresos del Mes
-          </p>
-          <p className="mt-2 font-heading text-3xl font-bold text-white">
-            {formatCurrency(stats.monthlyRevenue)}
-          </p>
-        </div>
-
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Alumnos Activos */}
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <div className="flex items-center gap-3">
@@ -146,23 +123,6 @@ export default async function ProfessorDashboardPage() {
 
       {/* Analytics Charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Revenue Trend */}
-        <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-          <h2 className="mb-4 font-heading text-lg font-semibold text-text-primary">
-            Tendencia de Ingresos
-          </h2>
-          <LineChart
-            data={revenueData.map((d) => ({
-              label: d.month,
-              value: d.revenue,
-            }))}
-            height={250}
-            color="#6366f1"
-            showDots={true}
-            fillArea={true}
-          />
-        </div>
-
         {/* Enrollment Trend */}
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="mb-4 font-heading text-lg font-semibold text-text-primary">
@@ -225,9 +185,6 @@ export default async function ProfessorDashboardPage() {
                     Alumnos
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Ingresos
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Estado
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-text-tertiary">
@@ -243,9 +200,6 @@ export default async function ProfessorDashboardPage() {
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-text-secondary">
                       {course.students}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-text-secondary">
-                      {formatCurrency(course.revenue)}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <span

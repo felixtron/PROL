@@ -9,7 +9,6 @@ import {
   ListChecks,
   Calendar,
   Users,
-  DollarSign,
   Award,
   Settings,
 } from "lucide-react";
@@ -386,23 +385,6 @@ const sections = [
           "Haz clic en un alumno para ver su progreso detallado.",
         ],
         notes: "Solo ves alumnos de tus cursos dentro del mismo tenant.",
-      },
-    ],
-  },
-  {
-    title: "Ingresos",
-    icon: DollarSign,
-    items: [
-      {
-        name: "Consultar ingresos por cursos",
-        description:
-          "Revisa los ingresos generados por tus cursos, desglosados por curso y periodo. Se muestra el monto total recibido después de la comisión de la plataforma.",
-        steps: [
-          "Ve a la sección Ingresos en el menú lateral.",
-          "Revisa el resumen de ingresos por curso.",
-          "Filtra por periodo si es necesario.",
-        ],
-        notes: "Los ingresos mostrados corresponden a tu participación después del revenue share de la plataforma.",
       },
     ],
   },

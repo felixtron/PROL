@@ -2,7 +2,6 @@ export * from "./student";
 export * from "./professor";
 export * from "./course-detail";
 export * from "./course";
-export * from "./revenue";
 export * from "./students";
 export * from "./catalog";
 export * from "./notifications";

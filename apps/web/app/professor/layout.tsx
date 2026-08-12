@@ -12,7 +12,6 @@ const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/professor", icon: "LayoutDashboard" },
   { label: "Cursos", href: "/professor/courses", icon: "BookOpen" },
   { label: "Alumnos", href: "/professor/students", icon: "Users" },
-  { label: "Ingresos", href: "/professor/revenue", icon: "DollarSign" },
   { label: "Workshop", href: "/professor/workshops", icon: "Calendar" },
 ];
 

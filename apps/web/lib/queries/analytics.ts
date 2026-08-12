@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser, requireAdmin } from "@/lib/auth";
+import { courseAccessWhere } from "@/lib/course-access";
 
 // Spanish month abbreviations
 const MONTH_NAMES: string[] = [
@@ -21,63 +22,6 @@ const MONTH_NAMES: string[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 // PROFESSOR ANALYTICS
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Get monthly revenue for the professor for the last N months
- */
-export const getRevenueByMonth = cache(async (monthsBack = 6) => {
-  const user = await requireUser();
-  const now = new Date();
-
-  const monthlyData = [];
-
-  for (let i = monthsBack - 1; i >= 0; i--) {
-    const monthStart = new Date(
-      now.getFullYear(),
-      now.getMonth() - i,
-      1
-    );
-    const monthEnd = new Date(
-      now.getFullYear(),
-      now.getMonth() - i + 1,
-      0,
-      23,
-      59,
-      59
-    );
-
-    const [revenue, enrollments] = await Promise.all([
-      db.coursePayment.aggregate({
-        where: {
-          course: { professorId: user.id },
-          status: "COMPLETED",
-          paidAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-        _sum: { creatorReceives: true },
-      }),
-      db.enrollment.count({
-        where: {
-          course: { professorId: user.id },
-          enrolledAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-      }),
-    ]);
-
-    monthlyData.push({
-      month: MONTH_NAMES[monthStart.getMonth()] ?? "",
-      revenue: (revenue._sum.creatorReceives ?? 0) / 100,
-      enrollments,
-    });
-  }
-
-  return monthlyData;
-});
 
 /**
  * Get monthly enrollment counts for the professor
@@ -105,7 +49,7 @@ export const getEnrollmentsByMonth = cache(async (monthsBack = 6) => {
 
     const count = await db.enrollment.count({
       where: {
-        course: { professorId: user.id },
+        course: courseAccessWhere(user.id),
         enrolledAt: {
           gte: monthStart,
           lte: monthEnd,
@@ -130,7 +74,7 @@ export const getCourseDistribution = cache(async () => {
 
   const courses = await db.course.findMany({
     where: {
-      professorId: user.id,
+      ...courseAccessWhere(user.id),
       status: "PUBLISHED",
     },
     include: {
