@@ -110,6 +110,8 @@ type CourseData = {
   quizzes?: { id: string; title: string; isFinalExam: boolean }[];
   _count: { enrollments: number };
   aiEnabled?: boolean;
+  /** Dueño del curso o admin del tenant: solo ellos tocan precio y título. */
+  canManage?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -1357,6 +1359,8 @@ function NewLessonForm({
 // ---------------------------------------------------------------------------
 
 function CourseSettingsCard({ course }: { course: CourseData }) {
+  // Por defecto restrictivo: si el flag no llega, se asume colaborador.
+  const canManage = course.canManage ?? false;
   const [isPending, startTransition] = useTransition();
   const [isPublishing, startPublishTransition] = useTransition();
   const [success, setSuccess] = useState(false);
@@ -1425,14 +1429,28 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
           >
             Título
           </label>
-          <input
-            id="edit-title"
-            name="title"
-            defaultValue={course.title}
-            required
-            minLength={3}
-            className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
+          {canManage ? (
+            <input
+              id="edit-title"
+              name="title"
+              defaultValue={course.title}
+              required
+              minLength={3}
+              className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          ) : (
+            // Sin input: el campo no viaja en el form, así que updateCourse
+            // deja el título intacto sin depender de su propia validación.
+            <>
+              <p className="rounded-lg border border-border bg-surface-secondary px-3.5 py-2.5 text-sm text-text-secondary">
+                {course.title}
+              </p>
+              <p className="mt-1 text-xs text-text-tertiary">
+                Solo el dueño puede cambiar el título: al renombrar el curso
+                cambia su enlace público.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Description */}
@@ -1476,30 +1494,44 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
             <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-text-tertiary">
               $
             </span>
-            <input
-              id="edit-price"
-              name="priceInCents"
-              type="hidden"
-              value={course.priceInCents}
-            />
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              defaultValue={(course.priceInCents / 100).toFixed(2)}
-              onChange={(e) => {
-                const hidden = document.getElementById(
-                  "edit-price"
-                ) as HTMLInputElement | null;
-                if (hidden) {
-                  hidden.value = String(
-                    Math.round(parseFloat(e.target.value || "0") * 100)
-                  );
-                }
-              }}
-              className="w-full rounded-lg border border-border bg-surface py-2.5 pl-8 pr-3.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
+            {canManage ? (
+              <>
+                <input
+                  id="edit-price"
+                  name="priceInCents"
+                  type="hidden"
+                  value={course.priceInCents}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={(course.priceInCents / 100).toFixed(2)}
+                  onChange={(e) => {
+                    const hidden = document.getElementById(
+                      "edit-price"
+                    ) as HTMLInputElement | null;
+                    if (hidden) {
+                      hidden.value = String(
+                        Math.round(parseFloat(e.target.value || "0") * 100)
+                      );
+                    }
+                  }}
+                  className="w-full rounded-lg border border-border bg-surface py-2.5 pl-8 pr-3.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                />
+              </>
+            ) : (
+              <p className="rounded-lg border border-border bg-surface-secondary py-2.5 pl-8 pr-3.5 text-sm text-text-secondary">
+                {(course.priceInCents / 100).toFixed(2)}
+              </p>
+            )}
           </div>
+          {!canManage && (
+            <p className="mt-1 text-xs text-text-tertiary">
+              Solo el dueño puede cambiar el precio: los links de pago ya
+              creados en Stripe seguirían cobrando el monto anterior.
+            </p>
+          )}
         </div>
 
         {/* Certificate description */}

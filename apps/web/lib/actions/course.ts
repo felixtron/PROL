@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import {
   assertCourseOwnerAccess,
   courseAccessWhere,
+  isCourseManager,
 } from "@/lib/course-access";
 import { createCourseSchema, updateCourseSchema } from "@prol/shared";
 
@@ -64,6 +65,25 @@ export async function updateCourse(courseId: string, formData: FormData) {
   };
 
   const validated = updateCourseSchema.parse(raw);
+
+  // Precio y título son decisiones del dueño, no del colaborador: el precio
+  // porque puede quedar desalineado con los links de pago ya creados en
+  // Stripe, y el título porque regenera el slug y rompe cualquier enlace
+  // externo a /courses/<slug>. Se compara contra el valor actual —y no se
+  // rechaza el campo— porque el formulario los manda siempre, se hayan
+  // tocado o no.
+  if (!isCourseManager(existing, user)) {
+    if (
+      validated.priceInCents !== undefined &&
+      validated.priceInCents !== existing.priceInCents
+    ) {
+      throw new Error("Solo el dueño del curso puede cambiar el precio");
+    }
+    if (validated.title !== undefined && validated.title !== existing.title) {
+      throw new Error("Solo el dueño del curso puede cambiar el título");
+    }
+  }
+
   const category = formData.get("category") as string | null;
   const certificateDescriptionRaw = formData.get("certificateDescription");
   const certificateDescription =

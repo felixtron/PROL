@@ -46,8 +46,26 @@ export async function assertCourseEditAccess(
 }
 
 /**
- * Gate de las acciones reservadas al dueño: archivar el curso y gestionar
- * colaboradores. Los admins del tenant también pasan.
+ * ¿Puede este usuario tomar decisiones de dueño sobre el curso?
+ *
+ * Se resuelve en memoria a partir de un curso ya cargado, para no repetir
+ * consulta cuando quien llama acaba de leerlo.
+ */
+export function isCourseManager(
+  course: { professorId: string; tenantId: string },
+  user: { id: string; role: string; tenantId: string | null },
+): boolean {
+  return (
+    course.professorId === user.id ||
+    user.role === "SUPER_ADMIN" ||
+    (user.role === "ADMIN" && user.tenantId === course.tenantId)
+  );
+}
+
+/**
+ * Gate de las acciones reservadas al dueño: archivar el curso, gestionar
+ * colaboradores y cambiar precio o título. Los admins del tenant también
+ * pasan.
  */
 export async function assertCourseOwnerAccess(courseId: string) {
   const user = await requireUser();
@@ -58,11 +76,7 @@ export async function assertCourseOwnerAccess(courseId: string) {
   });
   if (!course) throw new Error("Curso no encontrado");
 
-  const isOwner = course.professorId === user.id;
-  const isTenantAdmin =
-    user.role === "SUPER_ADMIN" ||
-    (user.role === "ADMIN" && user.tenantId === course.tenantId);
-  if (!isOwner && !isTenantAdmin) throw new Error("No autorizado");
+  if (!isCourseManager(course, user)) throw new Error("No autorizado");
 
   return { user, course };
 }

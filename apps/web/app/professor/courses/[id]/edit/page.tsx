@@ -71,7 +71,9 @@ export default async function CourseEditPage({
       />
 
       {/* Course Editor */}
-      <CourseEditor course={{ ...course, aiEnabled }} />
+      <CourseEditor
+        course={{ ...course, aiEnabled, canManage: team.canManage }}
+      />
     </div>
   );
 }
