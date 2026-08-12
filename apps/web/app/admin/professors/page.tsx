@@ -1,5 +1,11 @@
 import { GraduationCap } from "lucide-react";
-import { getAdminProfessors } from "@/lib/queries/admin";
+import {
+  ADMIN_LIST_LIMIT,
+  getAdminProfessorStats,
+  getAdminProfessors,
+  getAdminTenantOptions,
+} from "@/lib/queries/admin";
+import { AdminFilters } from "../admin-filters";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-MX", {
@@ -18,8 +24,23 @@ function formatDate(date: Date | null): string {
   });
 }
 
-export default async function AdminProfessorsPage() {
-  const professors = await getAdminProfessors();
+export default async function AdminProfessorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; tenant?: string }>;
+}) {
+  const sp = await searchParams;
+  const filter = {
+    search: sp.q?.trim() || undefined,
+    tenantId: sp.tenant || undefined,
+  };
+  const hasFilters = Boolean(filter.search || filter.tenantId);
+
+  const [professors, stats, tenants] = await Promise.all([
+    getAdminProfessors(filter),
+    getAdminProfessorStats(),
+    getAdminTenantOptions(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -33,27 +54,35 @@ export default async function AdminProfessorsPage() {
         </p>
       </div>
 
-      {/* Summary */}
+      {/* Summary — totales globales, no dependen del filtro */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="rounded-lg bg-surface p-4 shadow-sm">
           <p className="text-sm text-text-secondary">Total Profesores</p>
           <p className="mt-1 font-heading text-2xl font-bold text-text-primary">
-            {professors.length}
+            {stats.professors}
           </p>
         </div>
         <div className="rounded-lg bg-surface p-4 shadow-sm">
           <p className="text-sm text-text-secondary">Total Cursos</p>
           <p className="mt-1 font-heading text-2xl font-bold text-text-primary">
-            {professors.reduce((sum, p) => sum + p.courses, 0)}
+            {stats.courses}
           </p>
         </div>
         <div className="rounded-lg bg-surface p-4 shadow-sm">
           <p className="text-sm text-text-secondary">Total Alumnos</p>
           <p className="mt-1 font-heading text-2xl font-bold text-text-primary">
-            {professors.reduce((sum, p) => sum + p.students, 0)}
+            {stats.students}
           </p>
         </div>
       </div>
+
+      {/* Filtros */}
+      <AdminFilters
+        basePath="/admin/professors"
+        placeholder="Buscar por nombre, email o tenant..."
+        tenants={tenants}
+        value={filter}
+      />
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-surface shadow-sm">
@@ -61,7 +90,9 @@ export default async function AdminProfessorsPage() {
           <div className="p-12 text-center">
             <GraduationCap className="mx-auto h-10 w-10 text-text-tertiary" />
             <p className="mt-3 text-sm text-text-secondary">
-              No hay profesores registrados.
+              {hasFilters
+                ? "Ningún profesor coincide con los filtros seleccionados."
+                : "No hay profesores registrados."}
             </p>
           </div>
         ) : (
@@ -126,6 +157,14 @@ export default async function AdminProfessorsPage() {
           </div>
         )}
       </div>
+
+      {professors.length > 0 && (
+        <p className="text-xs text-text-tertiary">
+          Mostrando {professors.length} de {stats.professors} profesores.
+          {professors.length >= ADMIN_LIST_LIMIT &&
+            ` (límite ${ADMIN_LIST_LIMIT}, refina la búsqueda)`}
+        </p>
+      )}
     </div>
   );
 }
