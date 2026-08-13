@@ -280,10 +280,26 @@ export async function GET(
     void getCurrentUser; // (no-op import to keep the helper available)
 
     // ── Tenant-specific template selection ─────────────────────────────
-    // Each tenant can opt into a custom certificate layout. New layouts
-    // are added here by slug. Default for every other tenant is the
-    // generic indigo certificate below.
-    if (certificate.tenant.slug === "ibiza-consultores") {
+    // Each tenant can opt into a custom certificate layout. Default for
+    // every other tenant is the generic indigo certificate below.
+    //
+    // El match NO puede ser un slug exacto: bastaba con que el tenant se
+    // diera de alta (o se renombrara) con un slug distinto a
+    // "ibiza-consultores" para que TODOS sus diplomas cayeran en silencio
+    // al formato genérico, que es justo lo que pasó. Se compara contra
+    // slug y nombre normalizados para que cualquier variante
+    // (ibiza, ibiza-bmb, ibiza-consultores-2, "IBIZA Consultores"…)
+    // reciba el mismo formato.
+    const norm = (v: string | null | undefined) =>
+      (v ?? "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    const isIbizaTenant =
+      norm(certificate.tenant.slug).includes("ibiza") ||
+      norm(certificate.tenant.name).includes("ibiza");
+
+    if (isIbizaTenant) {
       const meta = (certificate.metadata ?? {}) as Record<string, unknown>;
       const description = typeof meta.description === "string"
         ? meta.description
