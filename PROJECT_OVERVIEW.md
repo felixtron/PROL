@@ -208,7 +208,7 @@ PROL/
 - Aislamiento de datos por tenant ID
 - Revenue sharing configurable (default 30% PROL / 70% creador)
 - Trial y billing (TRIAL/ACTIVE/PAUSED/CHURNED)
-- Emails con branding del tenant
+- Emails con el nombre de la academia (la paleta es comun a todos)
 
 ---
 
@@ -277,13 +277,20 @@ PROL/
 ## Emails (Resend)
 
 - Email de bienvenida
+- Alta de cuenta con credenciales temporales
 - Instrucciones de reset de password
 - Confirmacion de inscripcion
 - Recibos de pago
 - Notificacion de certificado obtenido
+- Invitacion a empresa
+- Invitacion y reprogramacion de consultoria online
 - Recordatorios de workshops
 
-Todos los templates estan en espanol con branding de PROL.
+Todos los templates estan en espanol y comparten el mismo layout en
+`packages/email/src/templates.ts`. La paleta es neutra (azul marino, blanco y
+grises) y vive en la constante `C` de ese archivo: cambiarla ahi la cambia en
+todos los correos. Lo unico que varia por academia es el nombre que aparece en
+la cabecera y el pie.
 
 ---
 

@@ -473,43 +473,20 @@ async function sendInvitationEmail(params: {
   tempPassword: string;
   tenantName: string;
 }) {
-  const { sendEmail } = await import("@prol/email");
+  const { sendEmail, accountCreatedEmail } = await import("@prol/email");
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
-  const html = `
-    <div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:32px;">
-      <h1 style="color:#6366f1;margin:0 0 16px;">Bienvenido a ${escapeHtml(params.tenantName)}</h1>
-      <p style="color:#374151;line-height:1.6;">
-        Hola <strong>${escapeHtml(params.name)}</strong>,<br/><br/>
-        Se te ha creado una cuenta en la plataforma. Éstas son tus credenciales de acceso:
-      </p>
-      <div style="background:#f9fafb;border-radius:8px;padding:16px;margin:16px 0;">
-        <p style="margin:0;color:#374151;"><strong>Email:</strong> ${escapeHtml(params.email)}</p>
-        <p style="margin:8px 0 0;color:#374151;"><strong>Contraseña temporal:</strong> <code style="background:#e5e7eb;padding:2px 6px;border-radius:4px;">${escapeHtml(params.tempPassword)}</code></p>
-      </div>
-      <p style="color:#374151;line-height:1.6;">
-        Por seguridad, tendrás que cambiar tu contraseña al iniciar sesión por primera vez.
-      </p>
-      <div style="text-align:center;margin:32px 0;">
-        <a href="${appUrl}/sign-in" style="background:#6366f1;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;">
-          Iniciar sesión
-        </a>
-      </div>
-    </div>
-  `;
+  const tpl = accountCreatedEmail({
+    name: params.name,
+    email: params.email,
+    tempPassword: params.tempPassword,
+    tenantName: params.tenantName,
+    loginUrl: `${appUrl}/sign-in`,
+  });
   await sendEmail({
     to: params.email,
-    subject: `Bienvenido a ${params.tenantName}`,
-    html,
+    subject: tpl.subject,
+    html: tpl.html,
   });
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 // ─── Inscripciones por usuario (ver / suspender / retirar) ────────────────────
