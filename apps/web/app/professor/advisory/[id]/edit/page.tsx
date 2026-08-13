@@ -7,6 +7,7 @@ import {
 } from "@/lib/queries/advisory";
 import { getMeetAutoGenerationAvailable } from "@/lib/queries/workshop";
 import { AdvisoryForm } from "../../new/advisory-form";
+import { requireAdvisoryEnabled } from "@/lib/advisory-access";
 
 export default async function EditAdvisoryPage({
   params,
@@ -14,6 +15,8 @@ export default async function EditAdvisoryPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requireAdvisoryEnabled("/professor");
+
   const [session, { companies, users }, meetAvailable] = await Promise.all([
     getAdvisorSessionDetail(id),
     getAdvisoryAudienceOptions(),

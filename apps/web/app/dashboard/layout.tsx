@@ -7,7 +7,7 @@ import {
   Award,
   Settings,
   Building2,
-  HeartHandshake,
+  Laptop,
   HelpCircle,
 } from "lucide-react";
 import { db } from "@prol/db";
@@ -19,12 +19,14 @@ import { TenantBrand } from "@/components/tenant-brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import { MobileNav } from "./mobile-nav";
 
-const navItems = [
+const navItemsBefore = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/dashboard/courses", label: "Mis Cursos", icon: BookOpen },
   { href: "/dashboard/company", label: "Mi Empresa", icon: Building2 },
   { href: "/dashboard/workshops", label: "Workshop", icon: Calendar },
-  { href: "/dashboard/advisory", label: "Consultoría Online", icon: HeartHandshake },
+];
+
+const navItemsAfter = [
   { href: "/dashboard/certificates", label: "Certificados", icon: Award },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
   { href: "/dashboard/docs", label: "Ayuda", icon: HelpCircle },
@@ -67,9 +69,30 @@ export default async function DashboardLayout({
   const tenant = user.tenantId
     ? await db.tenant.findUnique({
         where: { id: user.tenantId },
-        select: { name: true, logo: true, primaryColor: true, accentColor: true },
+        select: {
+          name: true,
+          logo: true,
+          primaryColor: true,
+          accentColor: true,
+          advisoryEnabled: true,
+        },
       })
     : null;
+
+  // Consultoría Online sólo aparece si el tenant la tiene habilitada.
+  const navItems = [
+    ...navItemsBefore,
+    ...(tenant?.advisoryEnabled
+      ? [
+          {
+            href: "/dashboard/advisory",
+            label: "Consultoría Online",
+            icon: Laptop,
+          },
+        ]
+      : []),
+    ...navItemsAfter,
+  ];
 
   return (
     <div className="flex h-dvh overflow-hidden bg-surface-secondary">

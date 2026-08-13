@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import {
+  ADVISORY_DISABLED_ERROR,
+  isAdvisoryEnabled,
+} from "@/lib/advisory-access";
 import { createMeetLink } from "@/lib/google-calendar";
 import {
   sendAdvisoryInvitations,
@@ -58,6 +62,10 @@ export async function createAdvisorySession(
       error: "Tu usuario no pertenece a ninguna academia. Contacta al administrador.",
     };
   }
+  if (!(await isAdvisoryEnabled(user.tenantId))) {
+    return { success: false, error: ADVISORY_DISABLED_ERROR };
+  }
+
 
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string) || null;
@@ -240,6 +248,9 @@ export async function updateAdvisorySession(
   formData: FormData,
 ): Promise<AdvisoryActionResult> {
   const user = await requireUser();
+  if (!(await isAdvisoryEnabled(user.tenantId))) {
+    return { success: false, error: ADVISORY_DISABLED_ERROR };
+  }
 
   const existing = await db.advisorySession.findFirst({
     where: { id: sessionId, advisorId: user.id },
@@ -395,6 +406,9 @@ export async function cancelAdvisorySession(
   sessionId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const user = await requireUser();
+  if (!(await isAdvisoryEnabled(user.tenantId))) {
+    return { success: false, error: ADVISORY_DISABLED_ERROR };
+  }
 
   const existing = await db.advisorySession.findFirst({
     where: { id: sessionId, advisorId: user.id },

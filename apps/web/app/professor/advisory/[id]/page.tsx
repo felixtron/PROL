@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdvisorSessionDetail } from "@/lib/queries/advisory";
 import { AdvisoryDetail } from "./advisory-detail";
+import { requireAdvisoryEnabled } from "@/lib/advisory-access";
 
 export default async function AdvisorySessionPage({
   params,
@@ -10,6 +11,8 @@ export default async function AdvisorySessionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requireAdvisoryEnabled("/professor");
+
   const session = await getAdvisorSessionDetail(id);
 
   if (!session) notFound();

@@ -42,6 +42,7 @@ export default async function ProfessorLayout({
       logo: true,
       evaluationsEnabled: true,
       surveysEnabled: true,
+      advisoryEnabled: true,
       primaryColor: true,
       accentColor: true,
     },
@@ -49,7 +50,9 @@ export default async function ProfessorLayout({
 
   const navItems: SidebarNavItem[] = [
     ...baseNavItems,
-    { label: "Consultoría Online", href: "/professor/advisory", icon: "HeartHandshake" },
+    ...(tenant?.advisoryEnabled
+      ? [{ label: "Consultoría Online", href: "/professor/advisory", icon: "Laptop" as const }]
+      : []),
     ...(tenant?.evaluationsEnabled
       ? [{ label: "Evaluaciones", href: "/professor/evaluations", icon: "ClipboardCheck" as const }]
       : []),

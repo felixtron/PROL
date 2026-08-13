@@ -9,7 +9,8 @@ interface TenantFeaturesToggleProps {
     | "aiEnabled"
     | "workshopsEnabled"
     | "evaluationsEnabled"
-    | "surveysEnabled";
+    | "surveysEnabled"
+    | "advisoryEnabled";
   enabled: boolean;
   label: string;
 }

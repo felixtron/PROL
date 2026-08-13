@@ -8,9 +8,10 @@ import {
   Building2,
   Clock,
   Repeat,
-  HeartHandshake,
+  Laptop,
 } from "lucide-react";
 import { getAdvisorSessions } from "@/lib/queries/advisory";
+import { requireAdvisoryEnabled } from "@/lib/advisory-access";
 
 const DEFAULT_STATUS = {
   label: "Programada",
@@ -62,6 +63,8 @@ function formatTime(date: Date): string {
 }
 
 export default async function AdvisoryPage() {
+  await requireAdvisoryEnabled("/professor");
+
   const sessions = await getAdvisorSessions();
 
   const now = new Date();
@@ -101,7 +104,7 @@ export default async function AdvisoryPage() {
 
       {sessions.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface p-12 text-center shadow-sm">
-          <HeartHandshake className="mx-auto h-10 w-10 text-text-tertiary" />
+          <Laptop className="mx-auto h-10 w-10 text-text-tertiary" />
           <p className="mt-3 font-medium text-text-primary">
             Todavía no tienes proyectos agendados
           </p>

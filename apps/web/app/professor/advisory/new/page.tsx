@@ -3,8 +3,11 @@ import { ArrowLeft } from "lucide-react";
 import { getAdvisoryAudienceOptions } from "@/lib/queries/advisory";
 import { getMeetAutoGenerationAvailable } from "@/lib/queries/workshop";
 import { AdvisoryForm } from "./advisory-form";
+import { requireAdvisoryEnabled } from "@/lib/advisory-access";
 
 export default async function NewAdvisoryPage() {
+  await requireAdvisoryEnabled("/professor");
+
   const [{ companies, users }, meetAvailable] = await Promise.all([
     getAdvisoryAudienceOptions(),
     getMeetAutoGenerationAvailable(),

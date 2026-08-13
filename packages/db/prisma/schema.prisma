@@ -295,6 +295,10 @@ model Tenant {
   companiesEnabled   Boolean @default(true) @map("companies_enabled")
   evaluationsEnabled Boolean @default(false) @map("evaluations_enabled")
   surveysEnabled     Boolean @default(false) @map("surveys_enabled")
+  // Consultoría Online (módulo de sesiones de asesoría). Default `true`
+  // porque el módulo ya estaba disponible para todos los tenants antes de
+  // existir el flag: así activarlo no cambia lo que ven hoy.
+  advisoryEnabled    Boolean @default(true) @map("advisory_enabled")
 
   // AI billing — plan and credit balance (prices defined later, structure ready)
   aiPlan             String    @default("none") @map("ai_plan")

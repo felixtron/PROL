@@ -194,13 +194,24 @@ export default async function AdminTenantDetailPage({
           </div>
           <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
             <span className="text-sm font-medium text-text-primary">
-              Sesiones y Talleres
+              Workshops
             </span>
             <TenantFeaturesToggle
               tenantId={tenant.id}
               feature="workshopsEnabled"
               enabled={tenant.workshopsEnabled}
-              label="Sesiones y Talleres"
+              label="Workshops"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
+            <span className="text-sm font-medium text-text-primary">
+              Consultoría Online
+            </span>
+            <TenantFeaturesToggle
+              tenantId={tenant.id}
+              feature="advisoryEnabled"
+              enabled={tenant.advisoryEnabled}
+              label="Consultoría Online"
             />
           </div>
           <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
