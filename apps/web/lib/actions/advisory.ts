@@ -62,7 +62,7 @@ export async function createAdvisorySession(
       error: "Tu usuario no pertenece a ninguna academia. Contacta al administrador.",
     };
   }
-  if (!(await isAdvisoryEnabled(user.tenantId))) {
+  if (!(await isAdvisoryEnabled(user))) {
     return { success: false, error: ADVISORY_DISABLED_ERROR };
   }
 
@@ -248,7 +248,7 @@ export async function updateAdvisorySession(
   formData: FormData,
 ): Promise<AdvisoryActionResult> {
   const user = await requireUser();
-  if (!(await isAdvisoryEnabled(user.tenantId))) {
+  if (!(await isAdvisoryEnabled(user))) {
     return { success: false, error: ADVISORY_DISABLED_ERROR };
   }
 
@@ -406,7 +406,7 @@ export async function cancelAdvisorySession(
   sessionId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const user = await requireUser();
-  if (!(await isAdvisoryEnabled(user.tenantId))) {
+  if (!(await isAdvisoryEnabled(user))) {
     return { success: false, error: ADVISORY_DISABLED_ERROR };
   }
 

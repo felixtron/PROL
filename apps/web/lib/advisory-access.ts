@@ -10,15 +10,18 @@ import { requireUser } from "@/lib/auth";
 /**
  * ¿El tenant tiene habilitada la Consultoría Online?
  *
- * Sin `tenantId` (p. ej. un SUPER_ADMIN de plataforma) no hay tenant al que
- * aplicar el flag, así que no se bloquea.
+ * La excepción es el SUPER_ADMIN de plataforma, que opera por encima de los
+ * tenants. Se comprueba por ROL y no por `tenantId` vacío: hay usuarios sin
+ * academia asignada que no son superadmins (altas a medio terminar), y con
+ * el chequeo anterior les quedaba el módulo habilitado.
  */
 export async function isAdvisoryEnabled(
-  tenantId: string | null | undefined,
+  user: { tenantId: string | null | undefined; role: string },
 ): Promise<boolean> {
-  if (!tenantId) return true;
+  if (user.role === "SUPER_ADMIN") return true;
+  if (!user.tenantId) return false;
   const tenant = await db.tenant.findUnique({
-    where: { id: tenantId },
+    where: { id: user.tenantId },
     select: { advisoryEnabled: true },
   });
   return tenant?.advisoryEnabled ?? false;
@@ -33,7 +36,7 @@ export const ADVISORY_DISABLED_ERROR =
  */
 export async function requireAdvisoryEnabled(redirectTo: string): Promise<void> {
   const user = await requireUser();
-  if (!(await isAdvisoryEnabled(user.tenantId))) {
+  if (!(await isAdvisoryEnabled(user))) {
     redirect(redirectTo);
   }
 }

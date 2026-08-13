@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { createMeetLink } from "@/lib/google-calendar";
+import { courseAccessWhere } from "@/lib/course-access";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -106,14 +107,14 @@ export async function createWorkshop(
     };
   }
 
-  // Verificamos que el curso sea del profesor y de su tenant. Sin esto,
-  // cualquiera podía colgar una sesión de un curso ajeno mandando otro
-  // `courseId` en el POST.
+  // Verificamos que el curso sea suyo (propio o como colaborador) y de su
+  // tenant. Sin esto, cualquiera podía colgar una sesión de un curso ajeno
+  // mandando otro `courseId` en el POST.
   const course = await db.course.findFirst({
     where: {
       id: courseId,
       tenantId: user.tenantId,
-      ...(user.role === "PROFESSOR" ? { professorId: user.id } : {}),
+      ...(user.role === "PROFESSOR" ? courseAccessWhere(user.id) : {}),
     },
     select: { id: true },
   });

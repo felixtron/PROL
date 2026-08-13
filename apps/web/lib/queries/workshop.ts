@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { courseAccessWhere } from "@/lib/course-access";
 import {
   getTenantMeetAccount,
   isGoogleMeetConfigured,
@@ -146,8 +147,10 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
 export const getProfessorCourseOptions = cache(async () => {
   const user = await requireUser();
 
+  // Incluye los cursos donde el profesor colabora, no sólo los propios: si
+  // puede editar el curso, debería poder agendarle sesiones.
   const courses = await db.course.findMany({
-    where: { professorId: user.id, status: { not: "ARCHIVED" } },
+    where: { ...courseAccessWhere(user.id), status: { not: "ARCHIVED" } },
     select: {
       id: true,
       title: true,
