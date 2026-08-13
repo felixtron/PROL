@@ -4,25 +4,64 @@ import { requireEvaluationAuthor, requireUser } from "@/lib/auth";
 
 /** List all evaluation templates for the current user's tenant. Includes a
  * lightweight `assignments` array so the listing UI can offer a direct
- * shortcut to results per company without re-fetching. */
-export const listEvaluationsForTenant = cache(async () => {
-  const user = await requireEvaluationAuthor();
-  if (!user.tenantId) return [];
-  return db.evaluation.findMany({
-    where: { tenantId: user.tenantId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      createdBy: { select: { id: true, name: true, email: true } },
-      _count: { select: { sections: true, assignments: true } },
-      assignments: {
-        orderBy: { assignedAt: "desc" },
-        select: {
-          id: true,
-          company: { select: { id: true, name: true } },
+ * shortcut to results per company without re-fetching.
+ *
+ * Con `companyId` la lista se reduce a las evaluaciones asignadas a esa
+ * empresa, y `assignments` trae solo la asignación de esa empresa — así el
+ * atajo de resultados lleva directo a sus respuestas. */
+export const listEvaluationsForTenant = cache(
+  async (filter: { companyId?: string } = {}) => {
+    const user = await requireEvaluationAuthor();
+    if (!user.tenantId) return [];
+    return db.evaluation.findMany({
+      where: {
+        tenantId: user.tenantId,
+        ...(filter.companyId
+          ? { assignments: { some: { companyId: filter.companyId } } }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        createdBy: { select: { id: true, name: true, email: true } },
+        _count: { select: { sections: true, assignments: true } },
+        assignments: {
+          where: filter.companyId ? { companyId: filter.companyId } : undefined,
+          orderBy: { assignedAt: "desc" },
+          select: {
+            id: true,
+            company: { select: { id: true, name: true } },
+          },
         },
       },
+    });
+  },
+);
+
+/**
+ * Empresas del tenant que tienen al menos una evaluación asignada, para el
+ * filtro del listado. Se excluyen las que no tienen ninguna porque elegirlas
+ * solo daría una lista vacía.
+ */
+export const listEvaluationCompaniesForFilter = cache(async () => {
+  const user = await requireEvaluationAuthor();
+  if (!user.tenantId) return [];
+  const companies = await db.company.findMany({
+    where: {
+      tenantId: user.tenantId,
+      evaluationAssignments: { some: {} },
     },
+    select: {
+      id: true,
+      name: true,
+      _count: { select: { evaluationAssignments: true } },
+    },
+    orderBy: { name: "asc" },
   });
+  return companies.map((c) => ({
+    id: c.id,
+    name: c.name,
+    evaluations: c._count.evaluationAssignments,
+  }));
 });
 
 /**

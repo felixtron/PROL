@@ -3,7 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { Plus, ClipboardCheck, Building2 } from "lucide-react";
 import { db, type EvaluationKind } from "@prol/db";
 import { requireEvaluationAuthor } from "@/lib/auth";
-import { listEvaluationsForTenant } from "@/lib/queries/evaluation";
+import {
+  listEvaluationCompaniesForFilter,
+  listEvaluationsForTenant,
+} from "@/lib/queries/evaluation";
+import { CompanyFilter } from "./company-filter";
 import { ResultsShortcut } from "./results-shortcut";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +35,13 @@ const KIND_LABEL: Record<EvaluationKind, string> = {
   ROLES: "Cargos y roles",
 };
 
-export default async function EvaluationsListPage() {
+export default async function EvaluationsListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ company?: string }>;
+}) {
+  const sp = await searchParams;
+  const companyId = sp.company || undefined;
   const user = await requireEvaluationAuthor();
 
   // Gate by tenant feature flag.
@@ -44,7 +54,11 @@ export default async function EvaluationsListPage() {
     if (!tenant.evaluationsEnabled) redirect("/professor");
   }
 
-  const evaluations = await listEvaluationsForTenant();
+  const [evaluations, companies] = await Promise.all([
+    listEvaluationsForTenant({ companyId }),
+    listEvaluationCompaniesForFilter(),
+  ]);
+  const selectedCompany = companies.find((c) => c.id === companyId);
 
   return (
     <div className="space-y-6">
@@ -66,16 +80,52 @@ export default async function EvaluationsListPage() {
         </Link>
       </div>
 
+      {companies.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CompanyFilter companies={companies} selectedId={companyId} />
+          {selectedCompany && (
+            <p className="text-sm text-text-tertiary">
+              {evaluations.length} evaluación
+              {evaluations.length !== 1 ? "es" : ""} asignada
+              {evaluations.length !== 1 ? "s" : ""} a{" "}
+              <span className="font-medium text-text-secondary">
+                {selectedCompany.name}
+              </span>
+            </p>
+          )}
+        </div>
+      )}
+
       {evaluations.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-surface p-12 text-center">
           <ClipboardCheck className="mx-auto h-10 w-10 text-text-tertiary" />
-          <p className="mt-3 text-sm font-medium text-text-secondary">
-            No hay evaluaciones creadas aún
-          </p>
-          <p className="mt-1 text-sm text-text-tertiary">
-            Crea una plantilla con secciones y preguntas para luego asignarla
-            a tus empresas.
-          </p>
+          {companyId ? (
+            <>
+              <p className="mt-3 text-sm font-medium text-text-secondary">
+                Sin evaluaciones para esta empresa
+              </p>
+              <p className="mt-1 text-sm text-text-tertiary">
+                Ninguna evaluación está asignada a
+                {selectedCompany ? ` ${selectedCompany.name}` : " la empresa seleccionada"}.{" "}
+                <Link
+                  href="/professor/evaluations"
+                  className="font-medium text-primary-700 hover:underline"
+                >
+                  Ver todas
+                </Link>
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-3 text-sm font-medium text-text-secondary">
+                No hay evaluaciones creadas aún
+              </p>
+              <p className="mt-1 text-sm text-text-tertiary">
+                Crea una plantilla con secciones y preguntas para luego asignarla
+                a tus empresas.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-surface shadow-sm">
