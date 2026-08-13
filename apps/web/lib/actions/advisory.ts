@@ -46,6 +46,87 @@ function addRecurrence(date: Date, freq: RecurrenceLiteral): Date {
   return next;
 }
 
+type AudienceResolution =
+  | { ok: true; companyId: string | null; invitedUserIds: string[] }
+  | { ok: false; error: string };
+
+/**
+ * Valida la audiencia contra la academia y resuelve a quién se convoca.
+ *
+ * `invitedUserIds` vacío en una sesión de empresa significa "toda la
+ * plantilla"; con contenido, sólo esas personas. Esa misma lista es la que
+ * usan el correo y el panel del cliente, así que no hace falta una columna
+ * aparte para distinguir los dos casos.
+ *
+ * Todo se comprueba contra el tenant (y contra la empresa cuando aplica) para
+ * que un POST manipulado no pueda convocar a gente de otra academia.
+ */
+async function resolveAudience(params: {
+  tenantId: string;
+  audience: "COMPANY" | "USERS";
+  companyId: string | null;
+  companyScope: "ALL" | "SELECTED";
+  participantIds: string[];
+}): Promise<AudienceResolution> {
+  const { tenantId, audience, companyId, companyScope, participantIds } = params;
+
+  if (audience === "USERS") {
+    if (participantIds.length === 0) {
+      return { ok: false, error: "Selecciona al menos un participante." };
+    }
+    const valid = await db.user.count({
+      where: { id: { in: participantIds }, tenantId },
+    });
+    if (valid !== participantIds.length) {
+      return {
+        ok: false,
+        error: "Alguno de los participantes no existe o no es de tu academia.",
+      };
+    }
+    return { ok: true, companyId: null, invitedUserIds: participantIds };
+  }
+
+  if (!companyId) {
+    return {
+      ok: false,
+      error: "Selecciona la empresa a la que va dirigida la consultoría.",
+    };
+  }
+  const company = await db.company.findFirst({
+    where: { id: companyId, tenantId },
+    select: { id: true },
+  });
+  if (!company) {
+    return {
+      ok: false,
+      error: "La empresa seleccionada no existe o no es de tu academia.",
+    };
+  }
+
+  if (companyScope === "ALL") {
+    return { ok: true, companyId, invitedUserIds: [] };
+  }
+
+  if (participantIds.length === 0) {
+    return {
+      ok: false,
+      error: "Selecciona a los miembros que asistirán, o invita a toda la empresa.",
+    };
+  }
+  // Los convocados tienen que ser de esa empresa: si no, la sesión diría que
+  // es de una y el correo saldría hacia otra gente.
+  const valid = await db.user.count({
+    where: { id: { in: participantIds }, tenantId, companyId },
+  });
+  if (valid !== participantIds.length) {
+    return {
+      ok: false,
+      error: "Alguno de los miembros seleccionados ya no pertenece a esa empresa.",
+    };
+  }
+  return { ok: true, companyId, invitedUserIds: participantIds };
+}
+
 export type AdvisoryActionResult =
   | { success: true; sessionId: string; notified: number }
   | { success: false; error: string };
@@ -78,11 +159,15 @@ export async function createAdvisorySession(
   const locationMapUrl = (formData.get("locationMapUrl") as string) || null;
 
   const audience = (formData.get("audience") as string) === "USERS" ? "USERS" : "COMPANY";
-  const companyId = (formData.get("companyId") as string) || null;
-  const participantIds = formData
-    .getAll("participantIds")
-    .map((v) => String(v))
-    .filter(Boolean);
+  const companyIdRaw = (formData.get("companyId") as string) || null;
+  // Con audiencia de empresa: toda la plantilla, o sólo los miembros marcados.
+  const companyScope =
+    (formData.get("companyScope") as string) === "SELECTED" ? "SELECTED" : "ALL";
+  // El Set evita que un envío con ids repetidos reviente contra el índice
+  // único de la tabla de participantes.
+  const participantIds = [
+    ...new Set(formData.getAll("participantIds").map((v) => String(v)).filter(Boolean)),
+  ];
 
   const autoMeet = formData.get("autoMeet") === "on";
   let meetingUrl = (formData.get("meetingUrl") as string) || null;
@@ -105,33 +190,14 @@ export async function createAdvisorySession(
     return { success: false, error: "La hora de fin debe ser posterior a la de inicio." };
   }
 
-  // Audiencia: se valida contra el tenant para que un POST manipulado no
-  // pueda convocar a la empresa o a los usuarios de otra academia.
-  if (audience === "COMPANY") {
-    if (!companyId) {
-      return { success: false, error: "Selecciona la empresa a la que va dirigida la asesoría." };
-    }
-    const company = await db.company.findFirst({
-      where: { id: companyId, tenantId: user.tenantId },
-      select: { id: true },
-    });
-    if (!company) {
-      return { success: false, error: "La empresa seleccionada no existe o no es de tu academia." };
-    }
-  } else {
-    if (participantIds.length === 0) {
-      return { success: false, error: "Selecciona al menos un participante." };
-    }
-    const validUsers = await db.user.count({
-      where: { id: { in: participantIds }, tenantId: user.tenantId },
-    });
-    if (validUsers !== participantIds.length) {
-      return {
-        success: false,
-        error: "Alguno de los participantes no existe o no es de tu academia.",
-      };
-    }
-  }
+  const invitees = await resolveAudience({
+    tenantId: user.tenantId,
+    audience,
+    companyId: companyIdRaw,
+    companyScope,
+    participantIds,
+  });
+  if (!invitees.ok) return { success: false, error: invitees.error };
 
   const recurrenceRaw = (formData.get("recurrence") as string | null)?.trim();
   const recurrence: RecurrenceLiteral | null =
@@ -168,7 +234,7 @@ export async function createAdvisorySession(
     description,
     type: type as "IN_PERSON" | "VIRTUAL" | "HYBRID",
     audience: audience as "COMPANY" | "USERS",
-    companyId: audience === "COMPANY" ? companyId : null,
+    companyId: invitees.companyId,
     locationName,
     locationAddress,
     locationMapUrl,
@@ -177,8 +243,7 @@ export async function createAdvisorySession(
     status: (saveAsDraft ? "DRAFT" : "SCHEDULED") as "DRAFT" | "SCHEDULED",
   };
 
-  const participantData =
-    audience === "USERS" ? participantIds.map((userId) => ({ userId })) : [];
+  const participantData = invitees.invitedUserIds.map((userId) => ({ userId }));
 
   const parent = await db.$transaction(
     async (tx) => {
@@ -279,11 +344,12 @@ export async function updateAdvisorySession(
   const locationAddress = (formData.get("locationAddress") as string) || null;
   const locationMapUrl = (formData.get("locationMapUrl") as string) || null;
   const audience = (formData.get("audience") as string) === "USERS" ? "USERS" : "COMPANY";
-  const companyId = (formData.get("companyId") as string) || null;
-  const participantIds = formData
-    .getAll("participantIds")
-    .map((v) => String(v))
-    .filter(Boolean);
+  const companyIdRaw = (formData.get("companyId") as string) || null;
+  const companyScope =
+    (formData.get("companyScope") as string) === "SELECTED" ? "SELECTED" : "ALL";
+  const participantIds = [
+    ...new Set(formData.getAll("participantIds").map((v) => String(v)).filter(Boolean)),
+  ];
   const saveAsDraft = formData.get("saveAsDraft") === "1";
 
   if (!title || !startTime || !endTime) {
@@ -302,31 +368,14 @@ export async function updateAdvisorySession(
     return { success: false, error: "La hora de fin debe ser posterior a la de inicio." };
   }
 
-  if (audience === "COMPANY") {
-    if (!companyId) {
-      return { success: false, error: "Selecciona la empresa a la que va dirigida." };
-    }
-    const company = await db.company.findFirst({
-      where: { id: companyId, tenantId: user.tenantId },
-      select: { id: true },
-    });
-    if (!company) {
-      return { success: false, error: "La empresa seleccionada no existe o no es de tu academia." };
-    }
-  } else {
-    if (participantIds.length === 0) {
-      return { success: false, error: "Selecciona al menos un participante." };
-    }
-    const validUsers = await db.user.count({
-      where: { id: { in: participantIds }, tenantId: user.tenantId },
-    });
-    if (validUsers !== participantIds.length) {
-      return {
-        success: false,
-        error: "Alguno de los participantes no existe o no es de tu academia.",
-      };
-    }
-  }
+  const invitees = await resolveAudience({
+    tenantId: user.tenantId,
+    audience,
+    companyId: companyIdRaw,
+    companyScope,
+    participantIds,
+  });
+  if (!invitees.ok) return { success: false, error: invitees.error };
 
   // Sólo un borrador puede seguir siendo borrador. Si ya se publicó, guardar
   // no lo devuelve a borrador aunque llegue la bandera.
@@ -345,16 +394,13 @@ export async function updateAdvisorySession(
   const meetingUrl = meetingUrlRaw ?? existing.meetingUrl;
 
   const updated = await db.$transaction(async (tx) => {
-    if (audience === "USERS") {
-      await tx.advisorySessionParticipant.deleteMany({ where: { sessionId } });
-      if (participantIds.length > 0) {
-        await tx.advisorySessionParticipant.createMany({
-          data: participantIds.map((userId) => ({ sessionId, userId })),
-        });
-      }
-    } else {
-      // Cambió a audiencia por empresa: los participantes sueltos sobran.
-      await tx.advisorySessionParticipant.deleteMany({ where: { sessionId } });
+    // Se reescribe la lista completa: cubre por igual quitar convocados,
+    // pasar a "toda la empresa" (lista vacía) y cambiar de audiencia.
+    await tx.advisorySessionParticipant.deleteMany({ where: { sessionId } });
+    if (invitees.invitedUserIds.length > 0) {
+      await tx.advisorySessionParticipant.createMany({
+        data: invitees.invitedUserIds.map((userId) => ({ sessionId, userId })),
+      });
     }
 
     return tx.advisorySession.update({
@@ -364,7 +410,7 @@ export async function updateAdvisorySession(
         description,
         type: type as "IN_PERSON" | "VIRTUAL" | "HYBRID",
         audience: audience as "COMPANY" | "USERS",
-        companyId: audience === "COMPANY" ? companyId : null,
+        companyId: invitees.companyId,
         locationName,
         locationAddress,
         locationMapUrl,

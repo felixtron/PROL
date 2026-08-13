@@ -157,6 +157,14 @@ export function AdvisoryDetail({ session }: { session: Session }) {
                 <>
                   <Building2 className="h-4 w-4" />
                   {session.company?.name ?? "Empresa eliminada"}
+                  {/* Sin convocados la sesión es de toda la plantilla; con
+                      ellos, sólo de esas personas. Se dice aquí porque desde
+                      fuera las dos se ven igual. */}
+                  <span className="font-normal text-text-tertiary">
+                    {session.participants.length > 0
+                      ? `· ${session.participants.length} ${session.participants.length === 1 ? "miembro convocado" : "miembros convocados"}`
+                      : "· toda la empresa"}
+                  </span>
                 </>
               ) : (
                 <>
@@ -300,7 +308,7 @@ export function AdvisoryDetail({ session }: { session: Session }) {
         )}
       </div>
 
-      {session.audience === "USERS" && session.participants.length > 0 && (
+      {session.participants.length > 0 && (
         <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
           <h2 className="font-heading text-lg font-semibold text-text-primary">
             Participantes

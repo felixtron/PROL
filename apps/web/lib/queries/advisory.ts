@@ -109,12 +109,22 @@ export const getAdvisoryAudienceOptions = cache(async () => {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    // Dos usos en una consulta: convocar personas sueltas (alumnos) y elegir
+    // miembros de una empresa. Lo segundo no puede filtrar por rol — al
+    // invitar a "toda la empresa" el correo sale a todos sus miembros, así
+    // que la lista para elegir a algunos tiene que ofrecer exactamente los
+    // mismos; si no, habría gente invitable de un modo y no del otro.
     db.user.findMany({
-      where: { tenantId: user.tenantId, role: "STUDENT" },
+      where: {
+        tenantId: user.tenantId,
+        OR: [{ role: "STUDENT" }, { companyId: { not: null } }],
+      },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
+        companyId: true,
         company: { select: { name: true } },
       },
       orderBy: { name: "asc" },
@@ -123,10 +133,14 @@ export const getAdvisoryAudienceOptions = cache(async () => {
 
   return {
     companies,
+    // `companyId` viaja al cliente para poder listar los miembros de la
+    // empresa elegida sin otra consulta al cambiar la selección.
     users: users.map((u) => ({
       id: u.id,
       name: u.name,
       email: u.email,
+      role: u.role,
+      companyId: u.companyId,
       companyName: u.company?.name ?? null,
     })),
   };
@@ -148,10 +162,20 @@ export const getMyAdvisorySessions = cache(async () => {
       // Ni borradores ni canceladas: el borrador sólo existe para su autor.
       status: { notIn: ["DRAFT", "CANCELLED"] },
       OR: [
+        // Empresa completa: sólo cuando no se convocó a miembros concretos.
+        // Si el asesor acotó la lista, la sesión deja de ser de toda la
+        // plantilla y aparece únicamente en el panel de los convocados —
+        // igual que el correo, que tampoco les llega a los demás.
         ...(user.companyId
-          ? [{ audience: "COMPANY" as const, companyId: user.companyId }]
+          ? [
+              {
+                audience: "COMPANY" as const,
+                companyId: user.companyId,
+                participants: { none: {} },
+              },
+            ]
           : []),
-        { audience: "USERS" as const, participants: { some: { userId: user.id } } },
+        { participants: { some: { userId: user.id } } },
       ],
     },
     include: {

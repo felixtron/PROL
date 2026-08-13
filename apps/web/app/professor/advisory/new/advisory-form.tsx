@@ -29,6 +29,8 @@ interface UserOption {
   id: string;
   name: string | null;
   email: string;
+  role: string;
+  companyId: string | null;
   companyName: string | null;
 }
 
@@ -83,9 +85,24 @@ export function AdvisoryForm({
   const [participantIds, setParticipantIds] = useState<string[]>(
     initial?.participantIds ?? [],
   );
+  // Una sesión de empresa va a toda la plantilla o sólo a quienes se marquen.
+  // No hay columna que lo diga: al editar, tener convocados ES el modo
+  // "sólo algunos" (la misma regla que aplican el correo y el panel).
+  const [companyScope, setCompanyScope] = useState<"ALL" | "SELECTED">(
+    initial?.audience === "COMPANY" && (initial?.participantIds.length ?? 0) > 0
+      ? "SELECTED"
+      : "ALL",
+  );
   const [recurrence, setRecurrence] = useState("");
   const [autoMeet, setAutoMeet] = useState(meetAvailable && !isEdit);
   const [error, setError] = useState<string | null>(null);
+
+  const companyMembers = companyId
+    ? users.filter((u) => u.companyId === companyId)
+    : [];
+  // Convocar personas sueltas sigue siendo cosa de alumnos; la consulta trae
+  // además miembros de empresa de otros roles, que sólo aplican al modo empresa.
+  const studentOptions = users.filter((u) => u.role === "STUDENT");
 
   function toggleParticipant(id: string) {
     setParticipantIds((prev) =>
@@ -93,11 +110,39 @@ export function AdvisoryForm({
     );
   }
 
+  /**
+   * Cambiar de audiencia limpia la selección: los marcados de un modo no son
+   * válidos en el otro, y arrastrarlos dejaba el contador señalando gente que
+   * ya no aparece en la lista.
+   */
+  function changeAudience(next: "COMPANY" | "USERS") {
+    if (next === audience) return;
+    setAudience(next);
+    setParticipantIds([]);
+  }
+
+  /** Al cambiar de empresa se descartan los marcados de la anterior. */
+  function changeCompany(nextCompanyId: string) {
+    setCompanyId(nextCompanyId);
+    const memberIds = new Set(
+      users.filter((u) => u.companyId === nextCompanyId).map((u) => u.id),
+    );
+    setParticipantIds((prev) => prev.filter((id) => memberIds.has(id)));
+  }
+
   function submitWith(draft: boolean) {
     return async (formData: FormData) => {
       setError(null);
       if (audience === "COMPANY" && !companyId) {
         setError("Selecciona la empresa a la que va dirigida la consultoría.");
+        return;
+      }
+      if (
+        audience === "COMPANY" &&
+        companyScope === "SELECTED" &&
+        participantIds.length === 0
+      ) {
+        setError("Selecciona a los miembros que asistirán, o invita a toda la empresa.");
         return;
       }
       if (audience === "USERS" && participantIds.length === 0) {
@@ -212,7 +257,7 @@ export function AdvisoryForm({
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => setAudience("COMPANY")}
+            onClick={() => changeAudience("COMPANY")}
             className={`flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
               audience === "COMPANY"
                 ? "border-primary-500 bg-primary-50 text-primary-700"
@@ -224,7 +269,7 @@ export function AdvisoryForm({
           </button>
           <button
             type="button"
-            onClick={() => setAudience("USERS")}
+            onClick={() => changeAudience("USERS")}
             className={`flex items-center justify-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
               audience === "USERS"
                 ? "border-primary-500 bg-primary-50 text-primary-700"
@@ -243,74 +288,98 @@ export function AdvisoryForm({
               Tu academia todavía no tiene empresas dadas de alta.
             </p>
           ) : (
-            <div>
-              <label
-                htmlFor="companyId"
-                className="mb-1.5 block text-sm font-medium text-text-secondary"
-              >
-                Empresa
-              </label>
-              <select
-                id="companyId"
-                name="companyId"
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-              >
-                <option value="">Seleccionar empresa</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-text-tertiary">
-                La verán todos los miembros de la empresa.
-              </p>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="companyId"
+                  className="mb-1.5 block text-sm font-medium text-text-secondary"
+                >
+                  Empresa
+                </label>
+                <select
+                  id="companyId"
+                  name="companyId"
+                  value={companyId}
+                  onChange={(e) => changeCompany(e.target.value)}
+                  className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                >
+                  <option value="">Seleccionar empresa</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {companyId && (
+                <div>
+                  <p className="mb-2 text-sm font-medium text-text-secondary">
+                    ¿Quiénes asisten?
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <ScopeOption
+                      selected={companyScope === "ALL"}
+                      onClick={() => setCompanyScope("ALL")}
+                      title="Toda la empresa"
+                      detail={
+                        companyMembers.length === 1
+                          ? "1 miembro"
+                          : `${companyMembers.length} miembros`
+                      }
+                    />
+                    <ScopeOption
+                      selected={companyScope === "SELECTED"}
+                      onClick={() => setCompanyScope("SELECTED")}
+                      title="Sólo algunos"
+                      detail="Eliges a quién invitar"
+                    />
+                  </div>
+
+                  {companyScope === "ALL" ? (
+                    <p className="mt-2 text-xs text-text-tertiary">
+                      La invitación le llegará a todos los miembros de la empresa,
+                      incluidos los que se den de alta más adelante.
+                    </p>
+                  ) : companyMembers.length === 0 ? (
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      Esta empresa todavía no tiene miembros registrados.
+                    </p>
+                  ) : (
+                    <div className="mt-3">
+                      <ParticipantList
+                        users={companyMembers}
+                        selected={participantIds}
+                        onToggle={toggleParticipant}
+                      />
+                      <p className="mt-2 text-xs text-text-tertiary">
+                        Sólo los marcados reciben el correo y ven el proyecto en su
+                        panel. El correo les sugiere reenviarlo a sus compañeros.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
-        ) : users.length === 0 ? (
+        ) : studentOptions.length === 0 ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Tu academia todavía no tiene usuarios registrados.
           </p>
         ) : (
-          <div>
-            <p className="mb-2 text-sm font-medium text-text-secondary">
-              Participantes ({participantIds.length} seleccionados)
-            </p>
-            <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2">
-              {users.map((u) => {
-                const isSelected = participantIds.includes(u.id);
-                return (
-                  <label
-                    key={u.id}
-                    className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                      isSelected ? "bg-primary-50" : "hover:bg-surface-secondary"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      name="participantIds"
-                      value={u.id}
-                      checked={isSelected}
-                      onChange={() => toggleParticipant(u.id)}
-                      className="h-4 w-4 rounded border-border text-primary-600 focus:ring-2 focus:ring-primary-500/20"
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-text-primary">
-                        {u.name ?? u.email}
-                      </span>
-                      <span className="block truncate text-xs text-text-tertiary">
-                        {u.email}
-                        {u.companyName ? ` · ${u.companyName}` : ""}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
+          <ParticipantList
+            users={studentOptions}
+            selected={participantIds}
+            onToggle={toggleParticipant}
+          />
         )}
+        {/* El alcance viaja aparte: sin él, "toda la empresa" y "algunos, pero
+            ninguno marcado" llegarían idénticos al servidor. */}
+        <input
+          type="hidden"
+          name="companyScope"
+          value={audience === "COMPANY" ? companyScope : "ALL"}
+        />
       </fieldset>
 
       {/* Fecha y hora */}
@@ -579,5 +648,93 @@ export function AdvisoryForm({
         </div>
       </div>
     </form>
+  );
+}
+
+/** Botón de "toda la empresa" / "sólo algunos". */
+function ScopeOption({
+  selected,
+  onClick,
+  title,
+  detail,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`rounded-lg border-2 px-3 py-2.5 text-left transition-colors ${
+        selected
+          ? "border-primary-500 bg-primary-50"
+          : "border-border bg-surface hover:border-primary-200"
+      }`}
+    >
+      <span
+        className={`block text-sm font-medium ${
+          selected ? "text-primary-700" : "text-text-primary"
+        }`}
+      >
+        {title}
+      </span>
+      <span className="block text-xs text-text-tertiary">{detail}</span>
+    </button>
+  );
+}
+
+/**
+ * Lista de casillas de personas. La comparten los dos modos de audiencia:
+ * elegir miembros de una empresa y convocar personas sueltas.
+ */
+function ParticipantList({
+  users,
+  selected,
+  onToggle,
+}: {
+  users: UserOption[];
+  selected: string[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-text-secondary">
+        Participantes ({selected.length} seleccionados)
+      </p>
+      <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2">
+        {users.map((u) => {
+          const isSelected = selected.includes(u.id);
+          return (
+            <label
+              key={u.id}
+              className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                isSelected ? "bg-primary-50" : "hover:bg-surface-secondary"
+              }`}
+            >
+              <input
+                type="checkbox"
+                name="participantIds"
+                value={u.id}
+                checked={isSelected}
+                onChange={() => onToggle(u.id)}
+                className="h-4 w-4 rounded border-border text-primary-600 focus:ring-2 focus:ring-primary-500/20"
+              />
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-text-primary">
+                  {u.name ?? u.email}
+                </span>
+                <span className="block truncate text-xs text-text-tertiary">
+                  {u.email}
+                  {u.companyName ? ` · ${u.companyName}` : ""}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
   );
 }

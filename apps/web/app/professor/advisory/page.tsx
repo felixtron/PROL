@@ -176,6 +176,14 @@ function SessionSection({
                       <>
                         <Building2 className="h-4 w-4" />
                         {s.company?.name ?? "Empresa eliminada"}
+                        {s.participantCount > 0 && (
+                          <span className="font-normal text-text-tertiary">
+                            · {s.participantCount}{" "}
+                            {s.participantCount === 1
+                              ? "miembro convocado"
+                              : "miembros convocados"}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <>

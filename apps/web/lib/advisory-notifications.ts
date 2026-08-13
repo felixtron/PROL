@@ -52,25 +52,30 @@ type SessionForEmail = {
 };
 
 /**
- * Destinatarios de una sesión: los miembros de la empresa, o las personas
- * convocadas. Se descartan los que no tengan correo utilizable.
+ * Destinatarios de una sesión.
+ *
+ * La lista de participantes manda siempre que exista, sin importar la
+ * audiencia: una sesión de empresa puede ir a toda la plantilla (sin
+ * participantes) o sólo a los miembros que el asesor convocó (con ellos).
+ * Así, acotar la lista acota el correo, sin necesidad de un campo aparte.
  */
 async function resolveRecipients(
   session: SessionForEmail,
 ): Promise<{ email: string; name: string | null }[]> {
-  if (session.audience === "COMPANY") {
-    if (!session.companyId) return [];
+  const participants = await db.advisorySessionParticipant.findMany({
+    where: { sessionId: session.id },
+    select: { user: { select: { email: true, name: true } } },
+  });
+  if (participants.length > 0) return participants.map((p) => p.user);
+
+  if (session.audience === "COMPANY" && session.companyId) {
     return db.user.findMany({
       where: { companyId: session.companyId, tenantId: session.tenantId },
       select: { email: true, name: true },
     });
   }
 
-  const participants = await db.advisorySessionParticipant.findMany({
-    where: { sessionId: session.id },
-    select: { user: { select: { email: true, name: true } } },
-  });
-  return participants.map((p) => p.user);
+  return [];
 }
 
 async function buildParams(session: SessionForEmail, advisorName: string) {
