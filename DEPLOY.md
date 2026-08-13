@@ -15,10 +15,10 @@ Este documento es referencia para:
 Internet (HTTPS)
     |
     v
-Cloudflare/DNS (prol.prosuite.pro → 66.29.152.229)
+Cloudflare/DNS (prol.prosuite.pro → 195.26.255.71)
     |
     v
-Traefik v3 (puerto 443, SSL Let's Encrypt automatico, red swarm dokploy-network)
+Traefik v3 (puerto 443, SSL Let's Encrypt automatico, red `traefik`)
     |
     v
 prol-web-1 (Next.js 16 standalone, puerto 3000, red prol_prol-internal)
@@ -26,6 +26,17 @@ prol-web-1 (Next.js 16 standalone, puerto 3000, red prol_prol-internal)
     v
 prol-db-1 (PostgreSQL 16 + pgvector, puerto 5432 solo interno)
 ```
+
+> **Host actual: `panel-prosuite-2` (195.26.255.71).** El setup inicial de mas
+> abajo se hizo en `panel-prosuite` (66.29.152.229), que ya no sirve el sitio;
+> se conserva como referencia del procedimiento, pero los re-deploys van al
+> host nuevo.
+>
+> **`docker-compose.prod.yml` esta modificado sin commitear en el VPS**: usa la
+> red `traefik` en vez de `dokploy-network` y agrega las variables de
+> Turnstile. Un `git pull` lo respeta mientras el repo no toque ese archivo; si
+> alguna vez se modifica upstream, el pull fallara y habra que reconciliar a
+> mano antes de desplegar.
 
 ---
 
@@ -106,8 +117,8 @@ chmod 600 .env
 ### 3. DNS
 
 ```
-A     prol.prosuite.pro       →  66.29.152.229
-A     *.prol.prosuite.pro      →  66.29.152.229   (wildcard para tenants)
+A     prol.prosuite.pro       →  195.26.255.71
+A     *.prol.prosuite.pro      →  195.26.255.71   (wildcard para tenants)
 ```
 
 ### 4. Build + levantar containers
@@ -175,14 +186,18 @@ docker compose -f docker-compose.prod.yml logs -f web
 # En local
 git push
 
-# En VPS
-ssh panel-prosuite
+# En VPS (ojo: panel-prosuite-2, no panel-prosuite)
+ssh panel-prosuite-2
 cd /opt/prol
-git pull
+git pull --ff-only
+set -a; . .env; set +a          # el compose lee ${DB_PASSWORD} y demas
 docker compose -f docker-compose.prod.yml build web
 docker compose -f docker-compose.prod.yml up -d web
 docker compose -f docker-compose.prod.yml logs -f web   # Verificar
 ```
+
+Sin cambios de schema no hay que tocar la DB: basta reconstruir `web`. El
+`up -d web` recrea el contenedor, con unos segundos de corte.
 
 ## Re-deploy con cambio de schema
 
@@ -193,6 +208,7 @@ Ver seccion "Aplicar cambios de schema en produccion" en [CREDENTIALS.md](./CRED
 ## Rollback
 
 ```bash
+ssh panel-prosuite-2
 cd /opt/prol
 git log --oneline | head -10          # Ver commits recientes
 git reset --hard <commit_hash>
