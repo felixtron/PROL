@@ -23,10 +23,10 @@ export function AILessonActions({
   aiStatus,
   aiEnabled,
 }: AILessonActionsProps) {
-  if (!aiEnabled) return null;
-
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
+
+  if (!aiEnabled) return null;
 
   function handleTranscribe() {
     setError("");
