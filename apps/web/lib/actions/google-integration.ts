@@ -4,7 +4,10 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
 import { auth, requireTenantAdmin } from "@/lib/auth";
-import { isGoogleMeetConfigured } from "@/lib/google-calendar";
+import {
+  isGoogleMeetConfigured,
+  fetchGoogleAccountEmail,
+} from "@/lib/google-calendar";
 
 /**
  * Conexión de la cuenta de Google del tenant (la que hostea los Meet).
@@ -58,10 +61,26 @@ export async function getGoogleMeetStatus(): Promise<GoogleMeetStatus> {
 
   const hostUserId = tenant?.googleCalendarUserId ?? null;
 
+  // Relleno de una sola vez: las conexiones hechas antes de arreglar la
+  // lectura del correo quedaron con el campo vacío. En vez de pedirle al
+  // admin que reconecte, lo completamos la próxima vez que abra esta
+  // pantalla. Es una escritura dentro de una lectura, a propósito y acotada:
+  // sólo ocurre si falta el dato y sólo en la página de configuración.
+  let email = tenant?.googleCalendarEmail ?? null;
+  if (hostUserId && !email) {
+    email = await fetchGoogleAccountEmail(hostUserId);
+    if (email) {
+      await db.tenant.update({
+        where: { id: admin.tenantId },
+        data: { googleCalendarEmail: email },
+      });
+    }
+  }
+
   return {
     configured,
     connected: Boolean(hostUserId),
-    email: tenant?.googleCalendarEmail ?? null,
+    email,
     currentUserLinked: Boolean(ownAccount),
     hostIsAnotherUser: Boolean(hostUserId && hostUserId !== admin.id),
   };
@@ -96,16 +115,7 @@ export async function designateGoogleMeetAccount(): Promise<
   // El correo de Google puede diferir del de PROL, así que lo pedimos al
   // proveedor en vez de asumir `admin.email`. Si falla, guardamos igual la
   // conexión: el correo es sólo informativo para la UI.
-  let email: string | null = null;
-  try {
-    const info = await auth.api.accountInfo({
-      query: { accountId: account.id },
-      headers: await headers(),
-    });
-    email = info?.user?.email ?? null;
-  } catch (e) {
-    console.error("[google-integration] no se pudo leer el correo de Google", e);
-  }
+  const email = await fetchGoogleAccountEmail(admin.id);
 
   await db.tenant.update({
     where: { id: admin.tenantId },

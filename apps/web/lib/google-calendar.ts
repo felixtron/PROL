@@ -1,5 +1,6 @@
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { auth } from "@/lib/auth";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 /**
  * Integración con Google Calendar para generar links de Google Meet.
@@ -16,17 +17,43 @@ const CALENDAR_EVENTS_ENDPOINT =
 
 export { GOOGLE_CALENDAR_SCOPE } from "@/lib/google-scopes";
 
-/**
- * Zona con la que se etiquetan los eventos en Google. Los `dateTime` se
- * mandan en UTC absoluto (ISO con Z), así que esto sólo afecta cómo se
- * muestran y cómo se expande la recurrencia — no desplaza el horario.
- */
-const EVENT_TIME_ZONE = process.env.WORKSHOP_TIME_ZONE || "America/Mexico_City";
-
 /** true si el entorno tiene credenciales de Google. Sin ellas la integración
  *  se muestra deshabilitada en vez de romper. */
 export function isGoogleMeetConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+/**
+ * Correo de la cuenta de Google conectada por el tenant.
+ *
+ * Usa el endpoint `userinfo` con el access token del anfitrión en vez de
+ * `auth.api.accountInfo`, por dos razones: aquél exige la sesión del dueño de
+ * la cuenta (así que falla cuando lo consulta OTRO admin de la academia), y
+ * su parámetro `accountId` es el identificador de Google, no la clave de la
+ * fila — confundirlos fue justo lo que dejó el correo vacío la primera vez.
+ *
+ * El scope `userinfo.email` viene incluido en el consentimiento de Google.
+ */
+export async function fetchGoogleAccountEmail(
+  hostUserId: string,
+): Promise<string | null> {
+  const accessToken = await getHostAccessToken(hostUserId);
+  if (!accessToken) return null;
+
+  try {
+    const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      console.error("[google-calendar] userinfo respondió", res.status);
+      return null;
+    }
+    const info = (await res.json()) as { email?: string };
+    return info.email ?? null;
+  } catch (e) {
+    console.error("[google-calendar] no se pudo leer el correo de Google", e);
+    return null;
+  }
 }
 
 export type TenantMeetAccount = {
@@ -174,11 +201,13 @@ export async function createMeetLink(params: {
     description: params.description ?? undefined,
     start: {
       dateTime: params.startTime.toISOString(),
-      timeZone: EVENT_TIME_ZONE,
+      // Los `dateTime` van en UTC absoluto (ISO con Z); la zona sólo define
+      // cómo los muestra Google y cómo expande la recurrencia.
+      timeZone: APP_TIME_ZONE,
     },
     end: {
       dateTime: params.endTime.toISOString(),
-      timeZone: EVENT_TIME_ZONE,
+      timeZone: APP_TIME_ZONE,
     },
     recurrence: buildRecurrenceRule(params.recurrence, params.occurrences),
     conferenceData: {
