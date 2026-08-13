@@ -8,6 +8,7 @@ import {
   isAdvisoryEnabled,
 } from "@/lib/advisory-access";
 import { createMeetLink } from "@/lib/google-calendar";
+import { parseZonedInput } from "@/lib/timezone";
 import {
   sendAdvisoryInvitations,
   sendAdvisoryReschedule,
@@ -95,8 +96,8 @@ export async function createAdvisorySession(
     return { success: false, error: "El título debe tener entre 3 y 120 caracteres." };
   }
 
-  const baseStart = new Date(startTime);
-  const baseEnd = new Date(endTime);
+  const baseStart = parseZonedInput(startTime);
+  const baseEnd = parseZonedInput(endTime);
   if (Number.isNaN(baseStart.getTime()) || Number.isNaN(baseEnd.getTime())) {
     return { success: false, error: "Las fechas ingresadas no son válidas." };
   }
@@ -219,7 +220,8 @@ export async function createAdvisorySession(
   // el correo menciona cuántas sesiones son, en vez de mandar una por fecha.
   let notified = 0;
   if (!saveAsDraft) {
-    notified = await sendAdvisoryInvitations(parent, user.name ?? "Tu asesor");
+    const invitation = await sendAdvisoryInvitations(parent, user.name ?? "Tu asesor");
+    notified = invitation.sent;
     if (notified > 0) {
       await db.advisorySession.update({
         where: { id: parent.id },
@@ -291,8 +293,8 @@ export async function updateAdvisorySession(
     return { success: false, error: "El título debe tener entre 3 y 120 caracteres." };
   }
 
-  const newStart = new Date(startTime);
-  const newEnd = new Date(endTime);
+  const newStart = parseZonedInput(startTime);
+  const newEnd = parseZonedInput(endTime);
   if (Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime())) {
     return { success: false, error: "Las fechas ingresadas no son válidas." };
   }
@@ -378,7 +380,8 @@ export async function updateAdvisorySession(
   let notified = 0;
 
   if (isPublishing) {
-    notified = await sendAdvisoryInvitations(updated, advisorName);
+    const invitation = await sendAdvisoryInvitations(updated, advisorName);
+    notified = invitation.sent;
     if (notified > 0) {
       await db.advisorySession.update({
         where: { id: sessionId },
@@ -427,4 +430,86 @@ export async function cancelAdvisorySession(
   revalidatePath(`/professor/advisory/${sessionId}`);
   revalidatePath("/dashboard/advisory");
   return { success: true };
+}
+
+/**
+ * Reenvía la invitación de una sesión ya publicada.
+ *
+ * Existe porque `invitedAt` se decidía una sola vez, al publicar: si en ese
+ * momento la empresa no tenía usuarios dados de alta —o Resend estaba mal
+ * configurado— la sesión quedaba publicada, visible en el panel del cliente y
+ * sin correo, sin ninguna forma de reintentar. Publicar de nuevo tampoco era
+ * opción: una sesión publicada no puede volver a borrador.
+ */
+export async function resendAdvisoryInvitations(
+  sessionId: string,
+): Promise<{ success: true; notified: number } | { success: false; error: string }> {
+  const user = await requireUser();
+  if (!(await isAdvisoryEnabled(user))) {
+    return { success: false, error: ADVISORY_DISABLED_ERROR };
+  }
+
+  const session = await db.advisorySession.findFirst({
+    where: { id: sessionId, advisorId: user.id },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      type: true,
+      status: true,
+      audience: true,
+      companyId: true,
+      startTime: true,
+      endTime: true,
+      meetingUrl: true,
+      locationName: true,
+      locationAddress: true,
+      tenantId: true,
+      parentSessionId: true,
+    },
+  });
+  if (!session) {
+    return { success: false, error: "Sesión no encontrada." };
+  }
+  if (session.status === "DRAFT") {
+    return {
+      success: false,
+      error: "Es un borrador: publícalo desde Editar y la invitación sale sola.",
+    };
+  }
+  if (session.status === "CANCELLED") {
+    return { success: false, error: "La sesión está cancelada." };
+  }
+
+  const { recipients, sent } = await sendAdvisoryInvitations(
+    session,
+    user.name ?? "Tu asesor",
+  );
+
+  if (recipients === 0) {
+    return {
+      success: false,
+      error:
+        session.audience === "COMPANY"
+          ? "La empresa no tiene usuarios dados de alta todavía. Regístralos y vuelve a intentar."
+          : "Los participantes convocados ya no existen.",
+    };
+  }
+  if (sent === 0) {
+    return {
+      success: false,
+      error:
+        "No se pudo entregar el correo a los destinatarios. Revisa la configuración de Resend.",
+    };
+  }
+
+  await db.advisorySession.update({
+    where: { id: sessionId },
+    data: { invitedAt: new Date() },
+  });
+
+  revalidatePath("/professor/advisory");
+  revalidatePath(`/professor/advisory/${sessionId}`);
+  revalidatePath("/dashboard/advisory");
+  return { success: true, notified: sent };
 }

@@ -26,6 +26,7 @@ import {
   checkInStudent,
   markNoShow,
 } from "@/lib/actions/workshop";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const RECURRENCE_LABEL: Record<string, string> = {
   DAILY: "diaria",
@@ -136,6 +137,7 @@ const bookingStatusConfig: Record<
 
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -147,6 +149,7 @@ function formatDateTime(date: Date): string {
 
 function formatTime(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));
@@ -386,6 +389,7 @@ export function WorkshopDetail({ workshop }: { workshop: Workshop }) {
                     #{idx + 1}
                     <span className="text-text-tertiary">
                       {new Intl.DateTimeFormat("es-MX", {
+                        timeZone: APP_TIME_ZONE,
                         day: "2-digit",
                         month: "short",
                       }).format(new Date(s.startTime))}

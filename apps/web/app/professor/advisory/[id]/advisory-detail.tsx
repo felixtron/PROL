@@ -14,7 +14,11 @@ import {
   Repeat,
   Pencil,
 } from "lucide-react";
-import { cancelAdvisorySession } from "@/lib/actions/advisory";
+import {
+  cancelAdvisorySession,
+  resendAdvisoryInvitations,
+} from "@/lib/actions/advisory";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 interface Session {
   id: string;
@@ -67,6 +71,7 @@ const typeLabel: Record<string, string> = {
 
 function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -79,10 +84,32 @@ function formatDateTime(date: Date): string {
 export function AdvisoryDetail({ session }: { session: Session }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Transición aparte de la de cancelar: reenviar no debe deshabilitar el
+  // botón rojo ni al revés.
+  const [isResending, startResend] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const status = statusConfig[session.status] ?? DEFAULT_STATUS;
   const seriesIndex = session.series.findIndex((s) => s.id === session.id);
+
+  function handleResend() {
+    setError(null);
+    setNotice(null);
+    startResend(async () => {
+      const result = await resendAdvisoryInvitations(session.id);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setNotice(
+        result.notified === 1
+          ? "Invitación enviada a 1 destinatario."
+          : `Invitación enviada a ${result.notified} destinatarios.`,
+      );
+      router.refresh();
+    });
+  }
 
   function handleCancel() {
     if (!confirm("¿Cancelar este proyecto? El cliente dejará de verlo.")) return;
@@ -102,6 +129,12 @@ export function AdvisoryDetail({ session }: { session: Session }) {
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {notice}
         </div>
       )}
 
@@ -173,10 +206,21 @@ export function AdvisoryDetail({ session }: { session: Session }) {
           </div>
         )}
 
-        {session.status !== "DRAFT" && !session.invitedAt && (
+        {session.status !== "DRAFT" && session.status !== "CANCELLED" && !session.invitedAt && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Está publicado y el cliente lo ve en su panel, pero no salió correo
-            de invitación. Puede que los destinatarios no tengan cuenta todavía.
+            <p>
+              Está publicado y el cliente lo ve en su panel, pero no salió
+              correo de invitación. Puede que los destinatarios no tengan cuenta
+              todavía.
+            </p>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isResending}
+              className="mt-3 rounded-lg border border-amber-300 bg-surface px-3 py-1.5 text-sm font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50"
+            >
+              {isResending ? "Enviando..." : "Reenviar invitación"}
+            </button>
           </div>
         )}
 

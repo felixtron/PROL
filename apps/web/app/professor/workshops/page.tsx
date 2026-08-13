@@ -9,6 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getProfessorWorkshops } from "@/lib/queries/workshop";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const statusConfig: Record<
   string,
@@ -51,6 +52,7 @@ const typeLabel: Record<string, string> = {
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -60,6 +62,7 @@ function formatDate(date: Date): string {
 
 function formatTime(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));

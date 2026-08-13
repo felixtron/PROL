@@ -5,6 +5,7 @@ import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { createMeetLink } from "@/lib/google-calendar";
 import { courseAccessWhere } from "@/lib/course-access";
+import { parseZonedInput } from "@/lib/timezone";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -86,8 +87,8 @@ export async function createWorkshop(
       error: "El título debe tener entre 3 y 120 caracteres.",
     };
   }
-  const startDate = new Date(startTime);
-  const endDate = new Date(endTime);
+  const startDate = parseZonedInput(startTime);
+  const endDate = parseZonedInput(endTime);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
     return { success: false, error: "Las fechas ingresadas no son válidas." };
   }
@@ -137,8 +138,8 @@ export async function createWorkshop(
     ? Math.min(MAX_OCCURRENCES, Math.max(1, Math.floor(occurrencesRaw) || 1))
     : 1;
 
-  const baseStart = new Date(startTime);
-  const baseEnd = new Date(endTime);
+  const baseStart = parseZonedInput(startTime);
+  const baseEnd = parseZonedInput(endTime);
 
   // El Meet se genera ANTES de tocar la base: si Google falla, no queda una
   // sesión virtual a medias sin enlace. Una sola llamada cubre toda la serie
@@ -230,8 +231,8 @@ export async function updateWorkshop(workshopId: string, formData: FormData) {
 
   // Coherent time range — required because both fields default to undefined
   // when the form omits them, so we only validate what was sent.
-  const effectiveStart = startTime ? new Date(startTime) : existing.startTime;
-  const effectiveEnd = endTime ? new Date(endTime) : existing.endTime;
+  const effectiveStart = startTime ? parseZonedInput(startTime) : existing.startTime;
+  const effectiveEnd = endTime ? parseZonedInput(endTime) : existing.endTime;
   if (Number.isNaN(effectiveStart.getTime()) || Number.isNaN(effectiveEnd.getTime())) {
     throw new Error("Fechas inválidas");
   }
@@ -255,8 +256,8 @@ export async function updateWorkshop(workshopId: string, formData: FormData) {
       locationAddress,
       locationMapUrl,
       meetingUrl,
-      ...(startTime ? { startTime: new Date(startTime) } : {}),
-      ...(endTime ? { endTime: new Date(endTime) } : {}),
+      ...(startTime ? { startTime: effectiveStart } : {}),
+      ...(endTime ? { endTime: effectiveEnd } : {}),
       maxAttendees,
       ...(status ? { status: status as "SCHEDULED" | "CONFIRMED" | "CANCELLED" } : {}),
     },

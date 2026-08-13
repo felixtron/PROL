@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { getAdvisorSessions } from "@/lib/queries/advisory";
 import { requireAdvisoryEnabled } from "@/lib/advisory-access";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const DEFAULT_STATUS = {
   label: "Programada",
@@ -48,6 +49,7 @@ const typeLabel: Record<string, string> = {
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -57,6 +59,7 @@ function formatDate(date: Date): string {
 
 function formatTime(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getMyAdvisorySessions } from "@/lib/queries/advisory";
 import { requireAdvisoryEnabled } from "@/lib/advisory-access";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const typeLabel: Record<string, string> = {
   IN_PERSON: "Presencial",
@@ -17,6 +18,7 @@ const typeLabel: Record<string, string> = {
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -25,6 +27,7 @@ function formatDate(date: Date): string {
 
 function formatTime(date: Date): string {
   return new Intl.DateTimeFormat("es-MX", {
+    timeZone: APP_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));

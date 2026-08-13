@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toZonedInputValue } from "@/lib/timezone";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -56,12 +57,6 @@ export interface AdvisoryInitialValues {
   invitedAt: Date | null;
 }
 
-/** `datetime-local` necesita "YYYY-MM-DDTHH:mm" en hora local. */
-function toLocalInput(date: Date): string {
-  const d = new Date(date);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export function AdvisoryForm({
   companies,
@@ -332,7 +327,7 @@ export function AdvisoryForm({
             id="startTime"
             name="startTime"
             required
-            defaultValue={initial ? toLocalInput(initial.startTime) : undefined}
+            defaultValue={initial ? toZonedInputValue(initial.startTime) : undefined}
             className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           />
         </div>
@@ -348,7 +343,7 @@ export function AdvisoryForm({
             id="endTime"
             name="endTime"
             required
-            defaultValue={initial ? toLocalInput(initial.endTime) : undefined}
+            defaultValue={initial ? toZonedInputValue(initial.endTime) : undefined}
             className="block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           />
         </div>

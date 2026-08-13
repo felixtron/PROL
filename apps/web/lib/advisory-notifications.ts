@@ -1,4 +1,5 @@
 import { db } from "@prol/db";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 /**
  * Envío de correos del módulo de Consultoría Online.
@@ -10,8 +11,6 @@ import { db } from "@prol/db";
  * sesión igual queda guardada y el error se registra. Preferimos una sesión
  * creada sin correo a perder la sesión por un problema de terceros.
  */
-
-const TIME_ZONE = process.env.WORKSHOP_TIME_ZONE || "America/Mexico_City";
 
 const MODALITY_LABEL: Record<string, string> = {
   IN_PERSON: "Presencial",
@@ -26,12 +25,12 @@ export function formatWhen(start: Date, end: Date): string {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: TIME_ZONE,
+    timeZone: APP_TIME_ZONE,
   }).format(start);
   const time = new Intl.DateTimeFormat("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: TIME_ZONE,
+    timeZone: APP_TIME_ZONE,
   });
   return `${day}, ${time.format(start)} – ${time.format(end)}`;
 }
@@ -109,14 +108,30 @@ async function buildParams(session: SessionForEmail, advisorName: string) {
   };
 }
 
-/** Invitación inicial. Devuelve cuántos correos se enviaron. */
+export type AdvisoryInvitationResult = {
+  /** Personas que resolvió la sesión. 0 = no hay a quién invitar todavía. */
+  recipients: number;
+  /** Correos que aceptó el proveedor. */
+  sent: number;
+};
+
+/**
+ * Invitación inicial.
+ *
+ * Devuelve los dos números por separado a propósito: "no había destinatarios"
+ * y "había pero el correo falló" se veían igual desde afuera (ambos 0) y son
+ * problemas distintos — uno se arregla dando de alta usuarios en la empresa y
+ * el otro revisando Resend.
+ */
 export async function sendAdvisoryInvitations(
   session: SessionForEmail,
   advisorName: string,
-): Promise<number> {
+): Promise<AdvisoryInvitationResult> {
+  let recipientCount = 0;
   try {
     const recipients = await resolveRecipients(session);
-    if (recipients.length === 0) return 0;
+    recipientCount = recipients.length;
+    if (recipientCount === 0) return { recipients: 0, sent: 0 };
 
     const { sendBulkEmail, advisorySessionInvitation } = await import("@prol/email");
     const params = await buildParams(session, advisorName);
@@ -124,10 +139,13 @@ export async function sendAdvisoryInvitations(
 
     // Envío por lotes: una empresa puede tener decenas de miembros y una
     // petición por persona choca contra el límite de tasa de Resend.
-    return sendBulkEmail(recipients.map((r) => ({ to: r.email, subject, html })));
+    const sent = await sendBulkEmail(
+      recipients.map((r) => ({ to: r.email, subject, html })),
+    );
+    return { recipients: recipientCount, sent };
   } catch (e) {
     console.error("[advisory] no se pudieron enviar las invitaciones", e);
-    return 0;
+    return { recipients: recipientCount, sent: 0 };
   }
 }
 
