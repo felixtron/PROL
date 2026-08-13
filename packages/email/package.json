@@ -17,6 +17,7 @@
     "resend": "^4.1.2"
   },
   "devDependencies": {
+    "@prol/eslint-config": "workspace:*",
     "@prol/typescript-config": "workspace:*",
     "@types/node": "^25.5.0",
     "typescript": "5.9.2"

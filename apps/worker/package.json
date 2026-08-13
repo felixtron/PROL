@@ -17,6 +17,7 @@
     "@trigger.dev/sdk": "^3.3.0"
   },
   "devDependencies": {
+    "@prol/eslint-config": "workspace:*",
     "@prol/typescript-config": "workspace:*",
     "tsx": "^4.19.0",
     "typescript": "5.9.2"

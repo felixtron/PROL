@@ -139,6 +139,9 @@ importers:
         specifier: ^3.3.0
         version: 3.3.17(zod@3.23.8)
     devDependencies:
+      '@prol/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
       '@prol/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
@@ -158,6 +161,9 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@prol/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@prol/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -177,6 +183,9 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@prol/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@prol/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -193,6 +202,9 @@ importers:
       '@noble/hashes':
         specifier: ^2.0.1
         version: 2.0.1
+      '@prol/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@prol/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -215,6 +227,9 @@ importers:
         specifier: ^4.1.2
         version: 4.8.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
+      '@prol/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@prol/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -267,6 +282,9 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
     devDependencies:
+      '@prol/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@prol/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config

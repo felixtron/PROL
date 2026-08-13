@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@noble/hashes": "^2.0.1",
+    "@prol/eslint-config": "workspace:*",
     "@prol/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "prisma": "^5.22.0",
