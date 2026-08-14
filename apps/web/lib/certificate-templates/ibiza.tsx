@@ -212,6 +212,21 @@ const styles = StyleSheet.create({
     letterSpacing: 12,
     transform: "rotate(-15deg)",
   },
+  // Más pequeño que el de revocado porque el texto es más largo: a 80pt
+  // "VISTA PREVIA" se sale del ancho de la hoja.
+  watermarkStamp: {
+    position: "absolute",
+    top: 300,
+    left: 0,
+    right: 0,
+    fontSize: 46,
+    fontWeight: "bold",
+    color: "#64748b",
+    opacity: 0.25,
+    textAlign: "center",
+    letterSpacing: 8,
+    transform: "rotate(-15deg)",
+  },
 });
 
 export interface IbizaCertificateProps {
@@ -231,6 +246,8 @@ export interface IbizaCertificateProps {
   qrDataUrl: string;
   verifyEmail?: string;
   isRevoked: boolean;
+  /** Sello diagonal para hojas que no acreditan nada (p. ej. la vista previa). */
+  watermark?: string | null;
 }
 
 /**
@@ -376,6 +393,9 @@ export function IbizaCertificate(p: IbizaCertificateProps) {
         <View style={styles.bottomBar} />
 
         {p.isRevoked && <Text style={styles.revokedStamp}>REVOCADO</Text>}
+        {!p.isRevoked && p.watermark && (
+          <Text style={styles.watermarkStamp}>{p.watermark}</Text>
+        )}
       </Page>
     </Document>
   );

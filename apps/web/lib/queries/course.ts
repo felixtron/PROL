@@ -60,6 +60,9 @@ export const getCourseForEdit = cache(async (courseId: string) => {
       _count: {
         select: { enrollments: true },
       },
+      // Para la tarjeta de diploma: sirve de placeholder del campo
+      // "Firmado por", que por defecto es la empresa que emite.
+      tenant: { select: { name: true } },
     },
   });
 

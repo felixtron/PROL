@@ -32,6 +32,8 @@ import {
   List,
   ListOrdered,
   FolderInput,
+  Award,
+  ExternalLink,
 } from "lucide-react";
 import {
   createModule,
@@ -47,6 +49,7 @@ import {
   updateLesson,
 } from "@/lib/actions/module";
 import { updateCourse } from "@/lib/actions/course";
+import { CERTIFICATE_TEMPLATES } from "@/lib/certificate-templates/catalog";
 import { VideoUpload } from "./video-upload";
 import { AILessonActions } from "./ai-lesson-actions";
 import { ThumbnailUpload } from "./thumbnail-upload";
@@ -105,7 +108,12 @@ type CourseData = {
   currency: string;
   status: string;
   category: string | null;
+  certificateTemplate: string | null;
+  certificateCode: string | null;
+  certificateCourseName: string | null;
   certificateDescription: string | null;
+  certificateSignerName: string | null;
+  tenant?: { name: string } | null;
   modules: ModuleData[];
   quizzes?: { id: string; title: string; isFinalExam: boolean }[];
   _count: { enrollments: number };
@@ -204,6 +212,7 @@ export function CourseEditor({ course }: { course: CourseData }) {
       {/* Right Column — Settings */}
       <div className="space-y-6">
         <CourseSettingsCard course={course} />
+        <CertificateCard course={course} />
         <CourseStatsCard course={course} />
       </div>
     </div>
@@ -1534,29 +1543,6 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
           )}
         </div>
 
-        {/* Certificate description */}
-        <div>
-          <label
-            htmlFor="edit-certificate-description"
-            className="mb-1.5 block text-sm font-medium text-text-primary"
-          >
-            Texto del diploma
-          </label>
-          <textarea
-            id="edit-certificate-description"
-            name="certificateDescription"
-            rows={3}
-            defaultValue={course.certificateDescription ?? ""}
-            placeholder='Ej: "Impartido en 40 horas por Elizabeth Oliveros conforme a los estándares ISO 9001:2015."'
-            className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
-          <p className="mt-1 text-xs text-text-tertiary">
-            Aparece debajo del título del curso en el diploma. Se guarda al
-            emitirse cada certificado, así que cambios futuros no
-            afectan los diplomas ya entregados.
-          </p>
-        </div>
-
         {/* Category */}
         <div>
           <label
@@ -1620,6 +1606,245 @@ function CourseSettingsCard({ course }: { course: CourseData }) {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Certificate Card
+// ---------------------------------------------------------------------------
+
+const INPUT_CLASS =
+  "w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500";
+
+/**
+ * Configuración del diploma del curso.
+ *
+ * Los campos son estado controlado —y no un formulario no controlado como
+ * el resto de la tarjeta de ajustes— porque la vista previa tiene que
+ * abrirse con lo que hay escrito en ese momento, esté guardado o no. Si
+ * dependiera de lo persistido, el profesor tendría que guardar para poder
+ * mirar, que es justo el ciclo que la vista previa evita.
+ */
+function CertificateCard({ course }: { course: CourseData }) {
+  const [isPending, startTransition] = useTransition();
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  const [template, setTemplate] = useState(course.certificateTemplate ?? "");
+  const [code, setCode] = useState(course.certificateCode ?? "");
+  const [name, setName] = useState(course.certificateCourseName ?? "");
+  const [description, setDescription] = useState(
+    course.certificateDescription ?? ""
+  );
+  const [signer, setSigner] = useState(course.certificateSignerName ?? "");
+
+  const selectedTemplate = CERTIFICATE_TEMPLATES.find((t) => t.id === template);
+
+  const previewUrl = `/api/certificates/preview?${new URLSearchParams({
+    courseId: course.id,
+    template,
+    code,
+    name,
+    description,
+    signer,
+  }).toString()}`;
+
+  function handleUpdate() {
+    setError("");
+    setSuccess(false);
+    // Formulario parcial a propósito: updateCourse deja intacto todo campo
+    // que no viaje, así que esta tarjeta no puede pisar precio ni título.
+    const formData = new FormData();
+    formData.set("certificateTemplate", template);
+    formData.set("certificateCode", code);
+    formData.set("certificateCourseName", name);
+    formData.set("certificateDescription", description);
+    formData.set("certificateSignerName", signer);
+
+    startTransition(async () => {
+      try {
+        await updateCourse(course.id, formData);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Error al guardar el diploma"
+        );
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+      <div className="flex items-center gap-2">
+        <Award className="h-5 w-5 text-primary-500" />
+        <h2 className="font-heading text-lg font-semibold text-text-primary">
+          Diploma
+        </h2>
+      </div>
+      <p className="mt-1 text-xs text-text-tertiary">
+        Así se imprime el diploma de este curso. Cada valor se congela al
+        emitirse un certificado, así que lo que cambies aquí no reescribe los
+        diplomas ya entregados.
+      </p>
+
+      {error && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+          <CheckCircle className="h-4 w-4 text-emerald-600" />
+          <p className="text-sm text-emerald-700">Diploma actualizado</p>
+        </div>
+      )}
+
+      <div className="mt-4 space-y-4">
+        {/* Plantilla */}
+        <div>
+          <label
+            htmlFor="cert-template"
+            className="mb-1.5 block text-sm font-medium text-text-primary"
+          >
+            Plantilla
+          </label>
+          <select
+            id="cert-template"
+            value={template}
+            onChange={(e) => setTemplate(e.target.value)}
+            className={INPUT_CLASS}
+          >
+            <option value="">Automática (según la marca)</option>
+            {CERTIFICATE_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-text-tertiary">
+            {selectedTemplate?.description ??
+              "Se usa el diseño que corresponda a la marca que emite el diploma."}
+          </p>
+        </div>
+
+        {/* Código o norma */}
+        <div>
+          <label
+            htmlFor="cert-code"
+            className="mb-1.5 block text-sm font-medium text-text-primary"
+          >
+            Código o norma
+          </label>
+          <input
+            id="cert-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            maxLength={60}
+            placeholder="Ej: ISO 27001"
+            className={INPUT_CLASS}
+          />
+          <p className="mt-1 text-xs text-text-tertiary">
+            Encabeza el diploma, sobre el nombre de la formación. Déjalo vacío
+            si el curso no acredita ninguna norma.
+          </p>
+        </div>
+
+        {/* Nombre de la formación */}
+        <div>
+          <label
+            htmlFor="cert-name"
+            className="mb-1.5 block text-sm font-medium text-text-primary"
+          >
+            Nombre en el diploma
+          </label>
+          <input
+            id="cert-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={200}
+            placeholder={course.title}
+            className={INPUT_CLASS}
+          />
+          <p className="mt-1 text-xs text-text-tertiary">
+            Si lo dejas vacío se imprime el título del curso. Úsalo cuando el
+            título de la plataforma lleve el código pegado delante o abreviado.
+          </p>
+        </div>
+
+        {/* Descripción */}
+        <div>
+          <label
+            htmlFor="cert-description"
+            className="mb-1.5 block text-sm font-medium text-text-primary"
+          >
+            Descripción
+          </label>
+          <textarea
+            id="cert-description"
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={1000}
+            placeholder='Ej: "Impartida en 40 horas, bajo el(los) estándar(es) ISO 19011:2018, ISO/IEC 27001:2022, por José Segovia, Auditor Líder de tercera parte, BVQI."'
+            className={INPUT_CLASS}
+          />
+          <p className="mt-1 text-xs text-text-tertiary">
+            Párrafo en letra pequeña bajo el nombre de la formación: horas,
+            estándares aplicados y quién la impartió.
+          </p>
+        </div>
+
+        {/* Firma */}
+        <div>
+          <label
+            htmlFor="cert-signer"
+            className="mb-1.5 block text-sm font-medium text-text-primary"
+          >
+            Firmado por
+          </label>
+          <input
+            id="cert-signer"
+            value={signer}
+            onChange={(e) => setSigner(e.target.value)}
+            maxLength={80}
+            placeholder={course.tenant?.name ?? "Nombre de quien autoriza"}
+            className={INPUT_CLASS}
+          />
+          <p className="mt-1 text-xs text-text-tertiary">
+            Aparece bajo la línea de firma. Si lo dejas vacío firma
+            {course.tenant?.name ? ` ${course.tenant.name}` : " la empresa"},
+            para que el documento represente a la empresa y no a una persona.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleUpdate}
+            disabled={isPending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
+          >
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Guardar diploma
+          </button>
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Vista previa
+          </a>
+        </div>
+        <p className="text-xs text-text-tertiary">
+          La vista previa abre un PDF de muestra con lo que hay escrito arriba,
+          aunque todavía no lo hayas guardado.
+        </p>
+      </div>
     </div>
   );
 }

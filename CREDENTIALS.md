@@ -36,10 +36,14 @@ Presentes tanto en la DB de **dev** como en **produccion** (https://prol.prosuit
 ## Acceso al VPS
 
 ```bash
-ssh panel-prosuite
+ssh panel-prosuite-2   # produccion: sirve https://prol.prosuite.pro
+ssh panel-prosuite     # host viejo: ya NO sirve el sitio, solo la DB de dev
 ```
 
-Host alias configurado en `~/.ssh/config`. IP: `66.29.152.229` (Debian 12, Dokploy).
+Alias configurados en `~/.ssh/config`. `panel-prosuite-2` es `195.26.255.71`;
+`panel-prosuite` es `66.29.152.229` (Debian 12, Dokploy). **Todo lo que opere
+produccion —deploy, `.env`, backups, psql, logs, schema— va contra
+`panel-prosuite-2`**; apuntar al viejo es tocar un sitio que nadie ve.
 
 ### Recursos en el VPS
 
@@ -84,7 +88,7 @@ ssh -f -N -L 5433:localhost:5433 panel-prosuite
 git push
 
 # VPS
-ssh panel-prosuite
+ssh panel-prosuite-2
 cd /opt/prol
 git pull                                                # usa deploy key automaticamente
 docker compose -f docker-compose.prod.yml build web
@@ -122,9 +126,9 @@ Pendientes (app funciona pero algunas features requeriran estas keys):
 ### Como actualizar variables
 
 ```bash
-ssh panel-prosuite "nano /opt/prol/.env"
+ssh panel-prosuite-2 "nano /opt/prol/.env"
 # Luego reiniciar solo el web container:
-ssh panel-prosuite "cd /opt/prol && docker compose -f docker-compose.prod.yml up -d web"
+ssh panel-prosuite-2 "cd /opt/prol && docker compose -f docker-compose.prod.yml up -d web"
 ```
 
 ---
@@ -137,61 +141,61 @@ ssh panel-prosuite "cd /opt/prol && docker compose -f docker-compose.prod.yml up
 # 1. Registrate en https://prol.prosuite.pro/sign-up con tu email real
 
 # 2. Promoverte a SUPER_ADMIN
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
   psql -U prol -d prol -c \"UPDATE users SET role='SUPER_ADMIN' WHERE email='tu@email.com';\""
 
 # 3. (Opcional) Borrar los super admin del seed
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
   psql -U prol -d prol -c \"DELETE FROM users WHERE email IN ('super@prol.prosuite.pro', 'admin@prol.prosuite.pro');\""
 ```
 
 ### Ver todos los usuarios
 
 ```bash
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
   psql -U prol -d prol -c 'SELECT email, name, role, \"createdAt\" FROM users ORDER BY role;'"
 ```
 
 ### Promover usuario existente
 
 ```bash
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
   psql -U prol -d prol -c \"UPDATE users SET role='PROFESSOR' WHERE email='usuario@ejemplo.com';\""
 ```
 
 ### Backup de la DB
 
 ```bash
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db \
   pg_dump -U prol prol" > backup_$(date +%Y%m%d).sql
 ```
 
 ### Restaurar backup
 
 ```bash
-cat backup_YYYYMMDD.sql | ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db psql -U prol -d prol"
+cat backup_YYYYMMDD.sql | ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec -T db psql -U prol -d prol"
 ```
 
 ### Abrir psql interactivo
 
 ```bash
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml exec db psql -U prol -d prol"
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml exec db psql -U prol -d prol"
 ```
 
 ### Ver logs de la app
 
 ```bash
-ssh panel-prosuite "docker compose -f /opt/prol/docker-compose.prod.yml logs -f web"
+ssh panel-prosuite-2 "docker compose -f /opt/prol/docker-compose.prod.yml logs -f web"
 ```
 
 ### Reiniciar servicios
 
 ```bash
 # Solo web
-ssh panel-prosuite "cd /opt/prol && docker compose -f docker-compose.prod.yml restart web"
+ssh panel-prosuite-2 "cd /opt/prol && docker compose -f docker-compose.prod.yml restart web"
 
 # Todo
-ssh panel-prosuite "cd /opt/prol && docker compose -f docker-compose.prod.yml restart"
+ssh panel-prosuite-2 "cd /opt/prol && docker compose -f docker-compose.prod.yml restart"
 ```
 
 ---
@@ -207,9 +211,9 @@ git commit -m "schema: describe cambio"
 git push
 
 # 2. En el VPS, pull + aplicar schema
-ssh panel-prosuite
+ssh panel-prosuite-2
 cd /opt/prol
-git pull
+git pull --ff-only
 
 # 3. Aplicar el cambio a la DB de produccion
 set -a; . .env; set +a

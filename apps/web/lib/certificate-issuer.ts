@@ -5,6 +5,7 @@ import {
   canonicalCertificateString,
   sha256Hex,
 } from "@/lib/certificates";
+import { resolveCertificateTemplate } from "@/lib/certificate-templates/catalog";
 
 /**
  * System-level certificate issuer. NOT exported from a "use server" module,
@@ -32,7 +33,7 @@ export async function issueCertificateForEnrollment(
           professor: { select: { name: true } },
         },
       },
-      tenant: { select: { name: true, certificatePrefix: true } },
+      tenant: { select: { name: true, slug: true, certificatePrefix: true } },
     },
   });
 
@@ -51,17 +52,38 @@ export async function issueCertificateForEnrollment(
   const prefix = enrollment.tenant.certificatePrefix ?? "PROL";
 
   const studentName = enrollment.student.name ?? "Estudiante";
-  const courseName = enrollment.course.title;
   const professorName = enrollment.course.professor.name ?? "Profesor";
   const tenantName = enrollment.tenant.name;
 
-  // Snapshot the course-level certificate description so future edits
-  // to the course don't change the wording of already-issued diplomas.
-  const courseDescription =
-    enrollment.course.certificateDescription?.trim() || null;
-  const metadata = courseDescription
-    ? { description: courseDescription }
-    : undefined;
+  // Snapshot de la configuración de diploma del curso. Se congela aquí y
+  // no se vuelve a leer del curso al imprimir el PDF, para que editar la
+  // plantilla o los textos no reescriba diplomas ya entregados.
+  const clean = (v: string | null | undefined) => v?.trim() || null;
+  const courseCode = clean(enrollment.course.certificateCode);
+  const courseDescription = clean(enrollment.course.certificateDescription);
+  const signerName = clean(enrollment.course.certificateSignerName);
+
+  // Se resuelve aquí, no al imprimir. Cuando el curso no elige plantilla
+  // la decide el nombre del tenant, y ese nombre puede cambiar: dejar la
+  // decisión para el momento de imprimir haría que un diploma ya entregado
+  // saliera con otro diseño el día que la empresa se renombre.
+  const template = resolveCertificateTemplate(
+    enrollment.course.certificateTemplate,
+    enrollment.tenant
+  );
+
+  // El nombre que se imprime puede diferir del título del curso en la
+  // plataforma (que suele traer el código pegado delante). Se guarda en
+  // `courseName` —y no solo en metadata— para que la página pública de
+  // verificación diga exactamente lo mismo que el papel: si no coinciden,
+  // quien verifica un diploma legítimo cree que es falso.
+  const courseName =
+    clean(enrollment.course.certificateCourseName) ?? enrollment.course.title;
+
+  const metadata: Record<string, string> = { template };
+  if (courseCode) metadata.courseCode = courseCode;
+  if (courseDescription) metadata.description = courseDescription;
+  if (signerName) metadata.authorizedByName = signerName;
 
   // All mutations live inside one $transaction so a failure in `create()`
   // also rolls back the counter increment. Without this, a partial failure
@@ -120,7 +142,7 @@ export async function issueCertificateForEnrollment(
         ...(opts?.finalExamScore !== undefined
           ? { finalExamScore: opts.finalExamScore }
           : {}),
-        ...(metadata ? { metadata } : {}),
+        metadata,
       },
     });
 

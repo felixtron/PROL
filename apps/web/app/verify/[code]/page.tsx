@@ -135,6 +135,17 @@ export default async function VerifyCertificatePage({ params }: PageProps) {
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-text-tertiary">
                 Por completar el curso
               </p>
+              {/* El código va aquí porque en el diploma impreso encabeza el
+                  nombre de la formación: quien compara papel y pantalla
+                  tiene que ver lo mismo en los dos sitios. */}
+              {typeof (certificate.metadata as Record<string, unknown> | null)
+                ?.courseCode === "string" && (
+                <p className="mb-0.5 text-sm font-bold uppercase tracking-wide text-text-secondary">
+                  {String(
+                    (certificate.metadata as Record<string, unknown>).courseCode
+                  )}
+                </p>
+              )}
               <p className="text-lg font-semibold text-primary-600">
                 {certificate.courseName}
               </p>

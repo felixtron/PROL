@@ -207,6 +207,14 @@ enum CertificateStatus {
   EXPIRED
 }
 
+/// Diseño del PDF que se usa al imprimir el diploma de un curso.
+/// Se elige por curso; si el curso no define ninguno, el route cae al
+/// criterio histórico basado en el tenant (ver certificate-templates).
+enum CertificateTemplate {
+  IBIZA
+  CLASSIC
+}
+
 enum InvitationStatus {
   PENDING
   ACCEPTED
@@ -491,10 +499,26 @@ model Course {
   totalDurationMinutes Int @default(0) @map("total_duration_minutes")
   totalLessons         Int @default(0) @map("total_lessons")
 
-  // Texto editable por el profesor que aparece debajo del título del
-  // curso en el diploma emitido al completar el examen. Si está vacío,
-  // el template usa un fallback genérico.
+  // ── Diploma ───────────────────────────────────────────────────────
+  // Configuración del diploma que se emite al completar el curso,
+  // editable por el profesor responsable. Todos estos campos se
+  // snapshotean en Certificate.metadata al emitir, así que editarlos
+  // nunca reescribe diplomas ya entregados.
+  //
+  // Plantilla del PDF. null = decidir por tenant (comportamiento previo
+  // a que esto fuera configurable), para no cambiar el diseño de los
+  // cursos que ya existían.
+  certificateTemplate CertificateTemplate? @map("certificate_template")
+  // Código o norma que encabeza el diploma, p. ej. "ISO 27001".
+  certificateCode String? @map("certificate_code")
+  // Nombre de la formación tal y como debe imprimirse. Si está vacío se
+  // usa el título del curso, que suele traer el código pegado delante.
+  certificateCourseName String? @map("certificate_course_name")
+  // Párrafo que aparece debajo del nombre de la formación. Si está
+  // vacío, el template usa un fallback genérico.
   certificateDescription String? @map("certificate_description") @db.Text
+  // Quién firma el diploma. Si está vacío firma el tenant.
+  certificateSignerName String? @map("certificate_signer_name")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

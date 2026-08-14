@@ -9,6 +9,7 @@ import {
   isCourseManager,
 } from "@/lib/course-access";
 import { createCourseSchema, updateCourseSchema } from "@prol/shared";
+import { isCertificateTemplateId } from "@/lib/certificate-templates/catalog";
 
 function slugify(text: string): string {
   return text
@@ -85,11 +86,50 @@ export async function updateCourse(courseId: string, formData: FormData) {
   }
 
   const category = formData.get("category") as string | null;
-  const certificateDescriptionRaw = formData.get("certificateDescription");
-  const certificateDescription =
-    typeof certificateDescriptionRaw === "string"
-      ? certificateDescriptionRaw.trim() || null
-      : undefined;
+
+  // Campos del diploma. `undefined` significa "el formulario no mandó este
+  // campo", y entonces no se toca; un string vacío sí es una orden de
+  // borrarlo. Distinguirlos importa porque hay formularios parciales.
+  const diplomaField = (key: string, maxLength: number, label: string) => {
+    const raw = formData.get(key);
+    if (typeof raw !== "string") return undefined;
+    const value = raw.trim();
+    if (value.length > maxLength) {
+      throw new Error(`${label} no puede exceder ${maxLength} caracteres`);
+    }
+    return value || null;
+  };
+
+  const certificateCode = diplomaField(
+    "certificateCode",
+    60,
+    "El código del diploma"
+  );
+  const certificateCourseName = diplomaField(
+    "certificateCourseName",
+    200,
+    "El nombre de la formación en el diploma"
+  );
+  const certificateDescription = diplomaField(
+    "certificateDescription",
+    1000,
+    "El texto del diploma"
+  );
+  const certificateSignerName = diplomaField(
+    "certificateSignerName",
+    80,
+    "El nombre de quien firma el diploma"
+  );
+
+  // Cadena vacía = "Automática": se guarda null y la plantilla la decide
+  // el tenant, como antes de que esto fuera configurable.
+  const templateRaw = formData.get("certificateTemplate");
+  const certificateTemplate =
+    typeof templateRaw !== "string"
+      ? undefined
+      : isCertificateTemplateId(templateRaw)
+        ? templateRaw
+        : null;
 
   await db.course.update({
     where: { id: courseId },
@@ -97,8 +137,16 @@ export async function updateCourse(courseId: string, formData: FormData) {
       ...validated,
       ...(validated.title ? { slug: slugify(validated.title) } : {}),
       ...(category !== null ? { category: category || null } : {}),
+      ...(certificateTemplate !== undefined ? { certificateTemplate } : {}),
+      ...(certificateCode !== undefined ? { certificateCode } : {}),
+      ...(certificateCourseName !== undefined
+        ? { certificateCourseName }
+        : {}),
       ...(certificateDescription !== undefined
         ? { certificateDescription }
+        : {}),
+      ...(certificateSignerName !== undefined
+        ? { certificateSignerName }
         : {}),
     },
   });
