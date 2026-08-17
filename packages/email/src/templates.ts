@@ -33,6 +33,15 @@ const C = {
   surfaceAlt: "#F9FAFB",
   /** Fondo de la página del correo. */
   canvas: "#F3F4F6",
+  // El resto de la paleta es neutra a propósito. Este amarillo es la única
+  // excepción y existe para una nota que el alumno no puede pasar por alto:
+  // si su nombre está mal cuando se emite el diploma, ya no hay arreglo.
+  /** Fondo de la nota resaltada. */
+  noteBg: "#FEF9C3",
+  /** Filo izquierdo de la nota resaltada. */
+  noteBorder: "#EAB308",
+  /** Texto sobre la nota resaltada. */
+  noteInk: "#713F12",
 } as const;
 
 function baseLayout(tenantName: string, body: string): string {
@@ -81,6 +90,23 @@ function ctaButton(label: string, url: string): string {
   <tr>
     <td style="border-radius:8px;background-color:${C.brand};">
       <a href="${url}" target="_blank" style="display:inline-block;padding:14px 32px;color:${C.onBrand};font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">${label}</a>
+    </td>
+  </tr>
+</table>`;
+}
+
+/**
+ * Bloque resaltado en amarillo.
+ *
+ * Va en <table> con el atributo `bgcolor` ademas del style: Outlook de
+ * escritorio ignora `background-color` en <div>, y sin el atributo la nota
+ * llegaria sin resaltar justo a los destinatarios corporativos.
+ */
+function highlightNote(html: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+  <tr>
+    <td bgcolor="${C.noteBg}" style="background-color:${C.noteBg};border-left:4px solid ${C.noteBorder};padding:14px 16px;border-radius:6px;">
+      <p style="margin:0;color:${C.noteInk};font-size:15px;line-height:1.6;">${html}</p>
     </td>
   </tr>
 </table>`;
@@ -141,6 +167,9 @@ export function enrollmentConfirmation({
     <p style="margin:0 0 8px;color:${C.body};font-size:16px;line-height:1.6;">
       Ya puedes acceder al contenido del curso y comenzar tu aprendizaje.
     </p>
+    ${highlightNote(
+      `<strong>Nota:</strong> Debes asegurarte que TU NOMBRE en el PERFIL de nuestra plataforma est&aacute; COMPLETO y es CORRECTO ya que, as&iacute; se imprimir&aacute; en los DIPLOMAS de los cursos en los que est&eacute;s inscrito(a); y tales diplomas NO PUEDEN MODIFICARSE despu&eacute;s de su emisi&oacute;n.`
+    )}
     ${ctaButton("Acceder al curso", courseUrl)}
     <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
       &iexcl;Mucho &eacute;xito en tu aprendizaje!

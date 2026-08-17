@@ -90,7 +90,7 @@ export async function GET(
       verificationUrl,
       qrDataUrl,
       finalScore: certificate.finalExamScore,
-      verifyEmail: certificate.tenant.contactEmail ?? "soporte@ibizabmb.com",
+      verifyEmail: certificate.tenant.contactEmail ?? "asesoria@ibizabmb.com",
       isRevoked: certificate.status === "REVOKED",
     });
 

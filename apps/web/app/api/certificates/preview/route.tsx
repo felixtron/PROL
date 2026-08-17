@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@prol/db";
 import { renderToStream } from "@react-pdf/renderer";
 import QRCode from "qrcode";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { courseAccessWhere } from "@/lib/course-access";
 import {
   buildVerificationUrl,
@@ -34,7 +34,14 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireUser();
+    // getCurrentUser en vez de requireUser: este ultimo lanza, y el catch de
+    // abajo lo convertiria en un 500 con traza en los logs. Una peticion sin
+    // sesion no es un fallo del servidor.
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get("courseId");
 
@@ -143,7 +150,7 @@ export async function GET(request: NextRequest) {
       verificationUrl,
       qrDataUrl,
       finalScore: 100,
-      verifyEmail: course.tenant.contactEmail ?? "soporte@ibizabmb.com",
+      verifyEmail: course.tenant.contactEmail ?? "asesoria@ibizabmb.com",
       isRevoked: false,
       // Deja claro que esta hoja no acredita nada aunque alguien la
       // imprima o la reenvíe: el folio y el QR son de muestra y no
