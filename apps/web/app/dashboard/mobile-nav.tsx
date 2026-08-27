@@ -8,7 +8,7 @@ const navItems = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/dashboard/courses", label: "Cursos", icon: BookOpen },
   { href: "/dashboard/workshops", label: "Sesiones", icon: Calendar },
-  { href: "/dashboard/certificates", label: "Certs", icon: Award },
+  { href: "/dashboard/certificates", label: "Diplomas", icon: Award },
   { href: "/dashboard/settings", label: "Cuenta", icon: Settings },
 ];
 

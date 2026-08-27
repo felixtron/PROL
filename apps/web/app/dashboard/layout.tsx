@@ -8,7 +8,9 @@ import {
   Settings,
   Building2,
   Laptop,
+  ListChecks,
   HelpCircle,
+  FileText,
 } from "lucide-react";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
@@ -27,10 +29,18 @@ const navItemsBefore = [
 ];
 
 const navItemsAfter = [
-  { href: "/dashboard/certificates", label: "Certificados", icon: Award },
+  { href: "/dashboard/certificates", label: "Diplomas", icon: Award },
   { href: "/dashboard/settings", label: "Configuración", icon: Settings },
   { href: "/dashboard/docs", label: "Ayuda", icon: HelpCircle },
 ];
+
+// La constancia DC-3 la emite el patrón: sin empresa asociada la entrada no
+// aparece, porque el documento no le corresponde a esa cuenta.
+const dc3NavItem = {
+  href: "/dashboard/dc3",
+  label: "Constancias DC-3",
+  icon: FileText,
+};
 
 export default async function DashboardLayout({
   children,
@@ -75,11 +85,14 @@ export default async function DashboardLayout({
           primaryColor: true,
           accentColor: true,
           advisoryEnabled: true,
+          surveysEnabled: true,
         },
       })
     : null;
 
-  // Consultoría Online sólo aparece si el tenant la tiene habilitada.
+  // Consultoría Online y Encuestas sólo aparecen si el tenant las habilitó.
+  // En Encuestas el alumno sólo responde y consulta lo publicado: la gestión
+  // vive en el panel del administrador.
   const navItems = [
     ...navItemsBefore,
     ...(tenant?.advisoryEnabled
@@ -91,7 +104,17 @@ export default async function DashboardLayout({
           },
         ]
       : []),
+    ...(tenant?.surveysEnabled
+      ? [
+          {
+            href: "/dashboard/surveys",
+            label: "Encuestas",
+            icon: ListChecks,
+          },
+        ]
+      : []),
     ...navItemsAfter,
+    ...(user.companyId ? [dc3NavItem] : []),
   ];
 
   return (

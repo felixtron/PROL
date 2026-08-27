@@ -14,6 +14,7 @@ import { getCompanyEvaluations } from "@/lib/queries/evaluation";
 import { InviteMemberForm } from "./invite-member-form";
 import { TeamReport } from "./team-report";
 import { EvaluationsPanel } from "./evaluations-panel";
+import { Dc3EmployerForm } from "@/components/dc3-employer-form";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,15 @@ export default async function MyCompanyPage() {
   const canInvite = isLeader || company.allowMemberInvitations;
   const teamReport = isLeader ? await getCompanyTeamReport(company.id) : null;
 
+  // El bloque del patrón sólo aparece si el tenant emite DC-3 en algún
+  // curso, o si la empresa ya tiene datos capturados. Sin eso sería ruido
+  // para las empresas que no usan el módulo.
+  const dc3InUse = user?.tenantId
+    ? (await db.course.count({
+        where: { tenantId: user.tenantId, dc3Enabled: true },
+      })) > 0 || Boolean(company.dc3Rfc)
+    : false;
+
   // Tenant-gated features for the leader: evaluations and surveys. Both
   // are read in a single tenant fetch so we don't double-roundtrip when
   // the leader opens this page.
@@ -68,8 +78,14 @@ export default async function MyCompanyPage() {
     }
     if (tenantFlag?.surveysEnabled) {
       surveysEnabled = true;
-      surveysCount = await db.survey.count({
-        where: { companyId: company.id },
+      // El líder no administra encuestas: sólo cuenta los consolidados que el
+      // administrador ya aprobó publicar para su empresa.
+      surveysCount = await db.surveyCampaign.count({
+        where: {
+          companyId: company.id,
+          resultsPublishedAt: { not: null },
+          resultsAudience: { in: ["LEADER", "PARTICIPANTS"] },
+        },
       });
     }
   }
@@ -107,6 +123,13 @@ export default async function MyCompanyPage() {
         </div>
       </div>
 
+      {/* Datos del patrón para el DC-3. El líder los edita; el resto de
+          miembros sólo los consulta, porque son los que saldrán impresos
+          en sus constancias. */}
+      {dc3InUse && (
+        <Dc3EmployerForm company={company} canEdit={Boolean(isLeader)} />
+      )}
+
       {/* Team report — only for the company leader */}
       {teamReport && (
         <TeamReport
@@ -126,11 +149,12 @@ export default async function MyCompanyPage() {
         />
       )}
 
-      {/* Surveys panel — leader only, tenant-gated. Links to the full
-          surveys CRUD under /dashboard/company/surveys. */}
+      {/* Encuestas — sólo lectura. La gestión (crear, lanzar, cerrar,
+          publicar) es exclusiva del administrador; aquí el líder únicamente
+          entra a responder lo suyo y a ver los consolidados publicados. */}
       {surveysEnabled && (
         <Link
-          href="/dashboard/company/surveys"
+          href="/dashboard/surveys"
           className="group flex items-center justify-between gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm transition-colors hover:bg-surface-secondary"
         >
           <div className="flex items-start gap-3">
@@ -143,8 +167,8 @@ export default async function MyCompanyPage() {
               </h2>
               <p className="mt-0.5 text-sm text-text-tertiary">
                 {surveysCount === 0
-                  ? "Crea tu primera encuesta para recolectar feedback."
-                  : `${surveysCount} encuesta${surveysCount !== 1 ? "s" : ""} de tu empresa. Crea más o revisa resultados.`}
+                  ? "Aquí verás las encuestas que te asignen y los resultados que se publiquen."
+                  : `${surveysCount} resultado${surveysCount !== 1 ? "s" : ""} publicado${surveysCount !== 1 ? "s" : ""} para tu empresa.`}
               </p>
             </div>
           </div>

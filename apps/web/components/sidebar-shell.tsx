@@ -20,6 +20,7 @@ import {
   ListChecks,
   Laptop,
   HelpCircle,
+  FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -40,6 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   ListChecks,
   Laptop,
   HelpCircle,
+  FileText,
 };
 
 export type SidebarIcon = keyof typeof ICONS;

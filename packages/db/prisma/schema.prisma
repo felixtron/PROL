@@ -242,6 +242,10 @@ enum CourseDraftStatus {
   ABANDONED
 }
 
+/// Estado de la PLANTILLA de encuesta (el cuestionario en si). No decide si
+/// se aceptan respuestas: eso lo decide la ventana del lanzamiento
+/// (`SurveyCampaign`). DRAFT = en edicion, PUBLISHED = lista para lanzarse,
+/// ARCHIVED = retirada del catalogo.
 enum SurveyStatus {
   DRAFT
   PUBLISHED
@@ -251,6 +255,48 @@ enum SurveyStatus {
 enum SurveyQuestionType {
   RATING_STARS
   MULTIPLE_CHOICE
+}
+
+/// Estado de un lanzamiento (envio) de encuesta.
+enum SurveyCampaignStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+/// A quien se dirige un lanzamiento dentro de una empresa.
+enum SurveyAudienceKind {
+  /// Solo el usuario lider de la empresa.
+  COMPANY_LEADER
+  /// Uno o varios usuarios elegidos a mano.
+  SPECIFIC_USERS
+  /// Todos los usuarios enrolados de la empresa.
+  COMPANY_ALL
+}
+
+/// Estado de cada destinatario dentro de un lanzamiento.
+enum SurveyRecipientStatus {
+  PENDING
+  SENT
+  RESPONDED
+  EXPIRED
+  REVOKED
+}
+
+/// Disparador automatico configurado en la plantilla.
+enum SurveyTrigger {
+  MANUAL
+  COURSE_COMPLETED
+  CERTIFICATE_ISSUED
+}
+
+/// Hasta donde llega el resultado consolidado una vez que el administrador
+/// aprueba su publicacion. NONE = solo el administrador lo ve.
+enum SurveyResultsAudience {
+  NONE
+  LEADER
+  PARTICIPANTS
 }
 
 enum DraftOperationType {
@@ -265,6 +311,35 @@ enum DraftOperationType {
   LESSONS_MERGED
   COHERENCE_CHECKED
   MANUAL_EDIT
+}
+
+/// Cómo se imparte un curso, a efectos del periodo que se imprime en el
+/// DC-3. La STPS exige un periodo real de ejecución ("De … a …"), y ese
+/// dato no se puede sacar de la fecha en que se creó el curso.
+///
+///   ONLINE — en línea / pregrabado. El periodo es la ventana real del
+///            alumno: de su inscripción a la fecha en que completó. Es lo
+///            único que consta como impartición efectiva.
+///   LIVE   — en vivo (presencial o virtual). El periodo lo fija la
+///            edición/evento al que asistió el alumno, porque la fecha
+///            programada y la real suelen diferir.
+enum Dc3DeliveryMode {
+  ONLINE
+  LIVE
+}
+
+enum Dc3Status {
+  ACTIVE
+  CANCELLED
+}
+
+/// Asientos del historial de un DC-3. `ISSUED` es el acto de emitir (una
+/// sola vez); `PRINTED` es cada copia que se descarga después — la
+/// primera y las reimpresiones se registran igual, y lo que las
+/// distingue es su posición en el historial.
+enum Dc3PrintAction {
+  ISSUED
+  PRINTED
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -348,6 +423,11 @@ model Tenant {
   aiCreditsLedger     AICreditsLedger[]
   evaluations         Evaluation[]
   surveys             Survey[]
+  surveyCampaigns     SurveyCampaign[]
+  trainingAgents      TrainingAgent[]
+  dc3Certificates     Dc3Certificate[]
+  dc3Counters         Dc3Counter[]
+  dc3CourseEditions   Dc3CourseEdition[]
 
   @@index([slug])
   @@index([status])
@@ -379,6 +459,22 @@ model User {
   disabledAt          DateTime? @map("disabled_at")
   lastLoginAt         DateTime? @map("last_login_at")
 
+  // ── DC-3: datos del trabajador ────────────────────────────────────
+  // Los llena el propio usuario (bloque amarillo del formato oficial).
+  // Viven en el usuario y no en la inscripción porque son datos de la
+  // persona: se capturan una vez y sirven para todos sus DC-3.
+  //
+  // `dc3FullName` existe aparte de `name` porque la STPS pide el orden
+  // "apellido paterno, materno y nombre(s)", que no es como la gente
+  // escribe su nombre en el perfil. Si está vacío se cae a `name`.
+  dc3FullName       String?   @map("dc3_full_name")
+  curp              String?   @map("curp")
+  /// Clave de área/subárea del Catálogo Nacional de Ocupaciones (p. ej. "04.4").
+  dc3OccupationCode String?   @map("dc3_occupation_code")
+  /// Puesto en la empresa. Opcional en el formato oficial.
+  dc3JobPosition    String?   @map("dc3_job_position")
+  dc3ConfirmedAt    DateTime? @map("dc3_confirmed_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -406,8 +502,14 @@ model User {
   evaluationParticipantsAdded EvaluationParticipant[]      @relation("EvaluationParticipantAddedBy")
   evaluationSubmissions       EvaluationSubmission[]
   surveysCreated              Survey[]                     @relation("SurveysCreated")
+  surveyCampaignsCreated      SurveyCampaign[]             @relation("SurveyCampaignsCreated")
+  surveyResultsPublished      SurveyCampaign[]             @relation("SurveyResultsPublisher")
+  surveyInvitations           SurveyRecipient[]            @relation("SurveyRecipientUser")
   courseCollaborations        CourseCollaborator[]         @relation("CourseCollaboratorUser")
   courseCollaboratorsAdded    CourseCollaborator[]         @relation("CourseCollaboratorAddedBy")
+  companiesDc3Confirmed       Company[]                    @relation("CompanyDc3ConfirmedBy")
+  dc3CertificatesIssued       Dc3Certificate[]             @relation("Dc3IssuedBy")
+  dc3PrintLogs                Dc3PrintLog[]                @relation("Dc3PrintedBy")
 
   @@index([tenantId])
   @@index([companyId])
@@ -508,17 +610,42 @@ model Course {
   // Plantilla del PDF. null = decidir por tenant (comportamiento previo
   // a que esto fuera configurable), para no cambiar el diseño de los
   // cursos que ya existían.
-  certificateTemplate CertificateTemplate? @map("certificate_template")
+  certificateTemplate    CertificateTemplate? @map("certificate_template")
   // Código o norma que encabeza el diploma, p. ej. "ISO 27001".
-  certificateCode String? @map("certificate_code")
+  certificateCode        String?              @map("certificate_code")
   // Nombre de la formación tal y como debe imprimirse. Si está vacío se
   // usa el título del curso, que suele traer el código pegado delante.
-  certificateCourseName String? @map("certificate_course_name")
+  certificateCourseName  String?              @map("certificate_course_name")
   // Párrafo que aparece debajo del nombre de la formación. Si está
   // vacío, el template usa un fallback genérico.
-  certificateDescription String? @map("certificate_description") @db.Text
+  certificateDescription String?              @map("certificate_description") @db.Text
   // Quién firma el diploma. Si está vacío firma el tenant.
-  certificateSignerName String? @map("certificate_signer_name")
+  certificateSignerName  String?              @map("certificate_signer_name")
+
+  // ── DC-3: datos del programa de capacitación ──────────────────────
+  // Bloque naranja del formato oficial. Lo configura el administrador
+  // del tenant (Ibiza), no el profesor: el DC-3 es un documento con
+  // efectos ante la STPS, no una pieza de marca del curso.
+  //
+  // `dc3Enabled` es el interruptor: mientras esté apagado el curso no
+  // ofrece DC-3 a nadie, aunque los alumnos tengan empresa. Arranca
+  // apagado para que activar el módulo no empiece a ofrecer constancias
+  // en cursos que nunca se diseñaron para acreditarse.
+  dc3Enabled          Boolean         @default(false) @map("dc3_enabled")
+  /// Nombre del curso tal y como debe imprimirse en el DC-3. Si está
+  /// vacío se usa el título del curso.
+  dc3CourseName       String?         @map("dc3_course_name")
+  /// Clave del Catálogo de Áreas Temáticas de los cursos (1000…9000).
+  dc3ThematicAreaCode String?         @map("dc3_thematic_area_code")
+  /// Duración en horas. Es un dato declarado, no la suma de los vídeos.
+  dc3DurationHours    Int?            @map("dc3_duration_hours")
+  dc3DeliveryMode     Dc3DeliveryMode @default(ONLINE) @map("dc3_delivery_mode")
+  /// Instructor o tutor que firma el DC-3. Puede no ser el profesor
+  /// dueño del curso en la plataforma.
+  dc3InstructorName   String?         @map("dc3_instructor_name")
+
+  dc3TrainingAgentId String?        @map("dc3_training_agent_id")
+  dc3TrainingAgent   TrainingAgent? @relation(fields: [dc3TrainingAgentId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -530,6 +657,9 @@ model Course {
   workshops          Workshop[]
   companyAssignments CompanyCourseAssignment[]
   collaborators      CourseCollaborator[]
+  surveyCampaigns    SurveyCampaign[]          @relation("SurveyCampaignCourse")
+  surveyTriggers     Survey[]                  @relation("SurveyTriggerCourse")
+  dc3Editions        Dc3CourseEdition[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -705,6 +835,12 @@ model Enrollment {
   enrolledAt  DateTime  @default(now()) @map("enrolled_at")
   completedAt DateTime? @map("completed_at")
 
+  // Edición/evento en el que este alumno recibió un curso en vivo. De
+  // aquí sale el periodo de ejecución del DC-3; para cursos en línea
+  // queda null y el periodo lo dan enrolledAt/completedAt.
+  dc3EditionId String?           @map("dc3_edition_id")
+  dc3Edition   Dc3CourseEdition? @relation(fields: [dc3EditionId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -712,6 +848,7 @@ model Enrollment {
   lessonProgresses      LessonProgress[]
   quizAttempts          QuizAttempt[]
   certificate           Certificate?
+  dc3Certificate        Dc3Certificate?
   assignmentSubmissions AssignmentSubmission[]
 
   @@unique([studentId, courseId])
@@ -719,6 +856,7 @@ model Enrollment {
   @@index([studentId])
   @@index([courseId])
   @@index([status])
+  @@index([dc3EditionId])
   @@map("enrollments")
 }
 
@@ -922,8 +1060,9 @@ model Workshop {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  bookings    WorkshopBooking[]
-  attendances WorkshopAttendance[]
+  bookings        WorkshopBooking[]
+  attendances     WorkshopAttendance[]
+  surveyCampaigns SurveyCampaign[]     @relation("SurveyCampaignWorkshop")
 
   @@index([tenantId])
   @@index([courseId])
@@ -1032,7 +1171,8 @@ model AdvisorySession {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  participants AdvisorySessionParticipant[]
+  participants    AdvisorySessionParticipant[]
+  surveyCampaigns SurveyCampaign[]             @relation("SurveyCampaignAdvisory")
 
   @@index([tenantId])
   @@index([advisorId])
@@ -1116,6 +1256,193 @@ model CertificateCounter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DC-3 — Constancia de Competencias o de Habilidades Laborales (STPS)
+//
+// Documento oficial mexicano, distinto del diploma de la plataforma: lo
+// emite el patrón para acreditar ante la STPS que capacitó a un
+// trabajador. Por eso sólo existe para alumnos que pertenecen a una
+// empresa con patrón registrado, y por eso sus datos vienen de tres
+// manos distintas (trabajador, líder de proyecto y administrador), que
+// es exactamente como está pintado el formato oficial.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Agente capacitador externo, tal y como lo pide el formato.
+///
+/// Es una entidad propia y no un campo de texto en el curso porque una
+/// misma consultora imparte muchos cursos y su registro ante la STPS
+/// tiene que ser idéntico en todos los DC-3 que firma. También evita
+/// asumir que el agente capacitador es el tenant que opera la
+/// plataforma: son cosas distintas y con frecuencia son empresas
+/// distintas.
+model TrainingAgent {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name         String
+  /// Registro del agente capacitador ante la STPS. Si el curso lo
+  /// imparte directamente la Secretaría, aquí va su clave (nota 3).
+  stpsRegistry String? @map("stps_registry")
+  rfc          String?
+
+  /// Logotipo opcional para el encabezado del DC-3, junto al del patrón:
+  /// el formato reserva ese espacio al agente capacitador externo.
+  logoUrl String? @map("logo_url")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  courses Course[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("training_agents")
+}
+
+/// Edición (evento) de impartición de un curso en vivo.
+///
+/// Existe porque el DC-3 exige el periodo REAL de ejecución y una misma
+/// plantilla de curso se imparte muchas veces en fechas distintas.
+/// Guardar las fechas en el curso haría que todos los alumnos de todas
+/// las generaciones recibieran el mismo periodo, que es falso.
+model Dc3CourseEdition {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  courseId String @map("course_id")
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  /// Etiqueta operativa, p. ej. "Generación marzo 2026 — Monterrey".
+  name String
+
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+
+  /// Sobrescriben lo declarado en el curso cuando esta edición se dio en
+  /// otras horas o con otro instructor. Null = usar lo del curso.
+  durationHours  Int?    @map("duration_hours")
+  instructorName String? @map("instructor_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  enrollments Enrollment[]
+
+  @@index([tenantId])
+  @@index([courseId])
+  @@map("dc3_course_editions")
+}
+
+/// Un DC-3 emitido. Todo lo imprimible está congelado aquí: corregir el
+/// CURP del trabajador o el RFC del patrón después de emitir NO cambia
+/// lo que dice un documento ya entregado, que es justamente lo que la
+/// leyenda de responsabilidad le advierte al usuario antes de imprimir.
+model Dc3Certificate {
+  id String @id @default(cuid())
+
+  enrollmentId String     @unique @map("enrollment_id")
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  companyId String?  @map("company_id")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  /// Folio interno de control: "{prefijo}-DC3-{año}-{NNNN}". El formato
+  /// oficial no lo pide, pero sin él no hay forma de rastrear una
+  /// reimpresión concreta.
+  folio  String    @unique
+  status Dc3Status @default(ACTIVE)
+
+  // ── Snapshot: datos del trabajador ──────────────────────────────
+  workerName      String  @map("worker_name")
+  workerCurp      String  @map("worker_curp")
+  occupationCode  String  @map("occupation_code")
+  occupationLabel String  @map("occupation_label")
+  jobPosition     String? @map("job_position")
+
+  // ── Snapshot: datos de la empresa ───────────────────────────────
+  employerName   String  @map("employer_name")
+  employerRfc    String  @map("employer_rfc")
+  legalRepName   String  @map("legal_rep_name")
+  workersRepName String? @map("workers_rep_name")
+
+  // ── Snapshot: datos del programa ────────────────────────────────
+  courseName            String   @map("course_name")
+  durationHours         Int      @map("duration_hours")
+  startDate             DateTime @map("start_date") @db.Date
+  endDate               DateTime @map("end_date") @db.Date
+  thematicAreaCode      String   @map("thematic_area_code")
+  thematicAreaLabel     String   @map("thematic_area_label")
+  trainingAgentName     String   @map("training_agent_name")
+  trainingAgentRegistry String?  @map("training_agent_registry")
+  instructorName        String   @map("instructor_name")
+
+  issuedAt   DateTime @default(now()) @map("issued_at")
+  issuedById String   @map("issued_by_id")
+  issuedBy   User     @relation("Dc3IssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+
+  printCount    Int       @default(0) @map("print_count")
+  lastPrintedAt DateTime? @map("last_printed_at")
+
+  cancelledAt     DateTime? @map("cancelled_at")
+  cancelledReason String?   @map("cancelled_reason")
+
+  metadata Json?
+
+  prints Dc3PrintLog[]
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([folio])
+  @@index([status])
+  @@map("dc3_certificates")
+}
+
+/// Historial de emisión y reimpresión. Un DC-3 puede reimprimirse
+/// legítimamente (se perdió el papel), pero cada copia que sale tiene
+/// que quedar registrada con quién y cuándo.
+model Dc3PrintLog {
+  id    String         @id @default(cuid())
+  dc3Id String         @map("dc3_id")
+  dc3   Dc3Certificate @relation(fields: [dc3Id], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation("Dc3PrintedBy", fields: [userId], references: [id], onDelete: Cascade)
+
+  action Dc3PrintAction
+
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([dc3Id])
+  @@index([userId])
+  @@map("dc3_print_logs")
+}
+
+/// Contador de folios DC-3 por tenant y año. Separado del de diplomas a
+/// propósito: son dos series de documentos distintas y mezclarlas dejaría
+/// huecos en ambas.
+model Dc3Counter {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  year     Int
+  lastSeq  Int    @default(0) @map("last_seq")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, year])
+  @@map("dc3_counters")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Companies (groups of users within a tenant — e.g. corporate clients)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1143,6 +1470,29 @@ model Company {
   leaderId String? @unique @map("leader_id")
   leader   User?   @relation("CompanyLeader", fields: [leaderId], references: [id], onDelete: SetNull)
 
+  // ── DC-3: datos del patrón ────────────────────────────────────────
+  // Bloque azul del formato oficial. Los captura y confirma el líder de
+  // proyecto de la empresa, y se reutilizan en todos los DC-3 de sus
+  // miembros. Se guardan aquí (y no en cada constancia) precisamente
+  // para no volver a pedirlos; cada DC-3 emitido conserva su propia
+  // copia congelada, así que corregirlos aquí no reescribe los ya
+  // impresos.
+  //
+  // `dc3LegalName` puede diferir de `name`: el formato pide la razón
+  // social, y la empresa suele estar dada de alta con su nombre
+  // comercial. Si está vacío se cae a `name`.
+  dc3LegalName      String?   @map("dc3_legal_name")
+  dc3Rfc            String?   @map("dc3_rfc")
+  /// Patrón o representante legal (nota 4 del formato).
+  dc3LegalRepName   String?   @map("dc3_legal_rep_name")
+  /// Representante de los trabajadores. Sólo aplica a empresas de más de
+  /// 50 trabajadores (nota 5), por eso es opcional.
+  dc3WorkersRepName String?   @map("dc3_workers_rep_name")
+  dc3ConfirmedAt    DateTime? @map("dc3_confirmed_at")
+
+  dc3ConfirmedById String? @map("dc3_confirmed_by_id")
+  dc3ConfirmedBy   User?   @relation("CompanyDc3ConfirmedBy", fields: [dc3ConfirmedById], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1153,7 +1503,9 @@ model Company {
   advisorySessions        AdvisorySession[]
   evaluationAssignments   EvaluationAssignment[]
   surveysAssigned         Survey[]                  @relation("SurveysForCompany")
+  surveyCampaigns         SurveyCampaign[]          @relation("SurveyCampaignCompany")
   surveyResponsesReceived SurveyResponse[]          @relation("SurveyRespondentCompany")
+  dc3Certificates         Dc3Certificate[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1585,28 +1937,45 @@ model EvaluationAnswer {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Surveys (encuestas) — feature flagged via `Tenant.surveysEnabled`.
-// Authored by professors, distributed via a public slug to non-authenticated
-// respondents who self-identify with email + company (chosen from the
-// tenant's list). Each survey is scoped to one company whose leader is the
-// expected viewer of the aggregated results dashboard.
+// Surveys (encuestas) — herramienta de evaluacion de satisfaccion, activada
+// con `Tenant.surveysEnabled`.
+//
+// El modulo lo administra EXCLUSIVAMENTE el administrador del tenant
+// (ADMIN / SUPER_ADMIN). Los usuarios cliente (STUDENT, incluido el lider de
+// una empresa) solo responden lo que se les asigna y, cuando el
+// administrador lo aprueba, consultan el resultado consolidado.
+//
+// Estructura en dos niveles:
+//   Survey          → la PLANTILLA (cuestionario reutilizable del tenant).
+//   SurveyCampaign  → un LANZAMIENTO de esa plantilla: a que empresa/curso/
+//                     proyecto va, cuando abre y cierra, a quien se manda y
+//                     hasta donde llegan sus resultados.
+//   SurveyRecipient → cada destinatario del lanzamiento, con su enlace unico.
+//
+// Separarlos es lo que permite lanzar la misma encuesta por bloques (una
+// campaña por curso/etapa/empresa) sin duplicar el cuestionario, y agregar
+// resultados por encuesta, curso, empresa o periodo.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Top-level survey container. Public access uses `publicSlug` so the
-/// internal id never leaks. `resultsShareToken` lets the professor share
-/// the read-only results dashboard externally without granting login.
+/// Plantilla de encuesta. `publicSlug` sobrevive del diseño anterior para no
+/// romper enlaces ya repartidos; el flujo vigente reparte enlaces por
+/// destinatario (`SurveyRecipient.token`), no por slug de encuesta.
 model Survey {
   id       String @id @default(cuid())
   tenantId String @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Autor: siempre un administrador del tenant. El nombre de la columna es
+  // herencia del diseño anterior (cuando la creaba un profesor) y se
+  // conserva para no reescribir datos existentes.
   professorId String @map("professor_id")
   professor   User   @relation("SurveysCreated", fields: [professorId], references: [id], onDelete: Cascade)
 
-  // Empresa cuyos resultados verá su líder. Una encuesta apunta a una
-  // sola empresa para que la agregación quede inequívoca.
-  companyId String  @map("company_id")
-  company   Company @relation("SurveysForCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  // Empresa sugerida por defecto al lanzar. Opcional: una plantilla puede
+  // servir a varias empresas, y la empresa real de cada envio vive en la
+  // campaña.
+  companyId String?  @map("company_id")
+  company   Company? @relation("SurveysForCompany", fields: [companyId], references: [id], onDelete: SetNull)
 
   title       String
   description String? @db.Text
@@ -1616,15 +1985,31 @@ model Survey {
 
   resultsShareToken String? @unique @map("results_share_token")
 
+  /// Duracion sugerida (dias) que se precarga al crear un lanzamiento.
+  defaultDurationDays Int @default(30) @map("default_duration_days")
+
+  /// Dias antes del cierre en los que sale un recordatorio automatico.
+  defaultReminderDays Int[] @default([7, 2]) @map("default_reminder_days")
+
+  /// Disparador automatico. COURSE_COMPLETED lanza la encuesta cuando el
+  /// alumno termina el curso indicado; CERTIFICATE_ISSUED cuando se emite su
+  /// diploma. MANUAL no dispara nada.
+  trigger         SurveyTrigger @default(MANUAL)
+  triggerCourseId String?       @map("trigger_course_id")
+  triggerCourse   Course?       @relation("SurveyTriggerCourse", fields: [triggerCourseId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   questions SurveyQuestion[]
   responses SurveyResponse[]
+  campaigns SurveyCampaign[]
 
   @@index([tenantId])
   @@index([companyId])
   @@index([professorId])
+  @@index([tenantId, status])
+  @@index([trigger, triggerCourseId])
   @@map("surveys")
 }
 
@@ -1640,6 +2025,15 @@ model SurveyQuestion {
   position Int
   options  Json?
 
+  /// Seccion a la que pertenece la pregunta ("Contenido", "Instructor"...).
+  /// Es texto libre en vez de tabla aparte: agrupa las metricas del informe
+  /// sin obligar al administrador a mantener un catalogo de secciones.
+  section String?
+
+  /// Peso relativo dentro del indice de satisfaccion. 0 excluye la pregunta
+  /// del indice (util para preguntas de clasificacion, no de satisfaccion).
+  weight Float @default(1)
+
   createdAt DateTime @default(now()) @map("created_at")
 
   answers SurveyAnswer[]
@@ -1648,15 +2042,131 @@ model SurveyQuestion {
   @@map("survey_questions")
 }
 
-/// Single submission from a respondent. The (surveyId, email) pair is
-/// unique so reattempting from the same email surfaces "ya respondiste".
-/// Company is captured by FK when chosen from the dropdown, otherwise
-/// the free-text fallback (`respondentCompanyName`) preserves the
-/// answer when the responder picks "Otra…".
+/// Lanzamiento de una encuesta: contexto, ventana de respuesta,
+/// destinatarios y visibilidad del resultado consolidado.
+model SurveyCampaign {
+  id       String @id @default(cuid())
+  surveyId String @map("survey_id")
+  survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdById String @map("created_by")
+  createdBy   User   @relation("SurveyCampaignsCreated", fields: [createdById], references: [id], onDelete: Restrict)
+
+  name String
+
+  audience SurveyAudienceKind @default(COMPANY_ALL)
+
+  // Contexto que se muestra al destinatario en el correo y en su panel.
+  companyId String?  @map("company_id")
+  company   Company? @relation("SurveyCampaignCompany", fields: [companyId], references: [id], onDelete: Cascade)
+
+  courseId String? @map("course_id")
+  course   Course? @relation("SurveyCampaignCourse", fields: [courseId], references: [id], onDelete: SetNull)
+
+  workshopId String?   @map("workshop_id")
+  workshop   Workshop? @relation("SurveyCampaignWorkshop", fields: [workshopId], references: [id], onDelete: SetNull)
+
+  advisorySessionId String?          @map("advisory_session_id")
+  advisorySession   AdvisorySession? @relation("SurveyCampaignAdvisory", fields: [advisorySessionId], references: [id], onDelete: SetNull)
+
+  /// Proyecto, evento o etapa cuando no hay una entidad en la plataforma que
+  /// referenciar (p. ej. "Proyecto Planta Norte — etapa 2").
+  projectLabel String? @map("project_label")
+
+  opensAt  DateTime @default(now()) @map("opens_at")
+  closesAt DateTime @map("closes_at")
+
+  /// Dias antes del cierre en los que sale cada recordatorio.
+  reminderDaysBefore Int[] @default([7, 2]) @map("reminder_days_before")
+
+  status   SurveyCampaignStatus @default(DRAFT)
+  sentAt   DateTime?            @map("sent_at")
+  closedAt DateTime?            @map("closed_at")
+
+  /// Enlace compartible (opcional) para casos donde no todos los asistentes
+  /// son usuarios de la plataforma. Se identifica por correo y genera un
+  /// destinatario al vuelo, asi que sigue sujeto a vencimiento y a una sola
+  /// respuesta por persona.
+  shareToken String? @unique @map("share_token")
+
+  /// Enlace de solo lectura del consolidado. Solo sirve si el administrador
+  /// ya aprobo la publicacion.
+  resultsShareToken String? @unique @map("results_share_token")
+
+  // Aprobacion de la publicacion del consolidado.
+  resultsAudience      SurveyResultsAudience @default(NONE) @map("results_audience")
+  resultsPublishedAt   DateTime?             @map("results_published_at")
+  resultsPublishedById String?               @map("results_published_by")
+  resultsPublishedBy   User?                 @relation("SurveyResultsPublisher", fields: [resultsPublishedById], references: [id], onDelete: SetNull)
+  resultsNote          String?               @map("results_note") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  recipients SurveyRecipient[]
+  responses  SurveyResponse[]
+
+  @@index([surveyId])
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([courseId])
+  @@index([status, closesAt])
+  @@index([tenantId, status])
+  @@map("survey_campaigns")
+}
+
+/// Destinatario de un lanzamiento. `token` es el enlace unico y personal:
+/// solo sirve para responder ESTE lanzamiento y no da acceso a nada mas.
+model SurveyRecipient {
+  id         String         @id @default(cuid())
+  campaignId String         @map("campaign_id")
+  campaign   SurveyCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  // Usuario de la plataforma cuando el destinatario tiene cuenta. Los
+  // destinatarios que llegan por enlace compartible no tienen userId.
+  userId String? @map("user_id")
+  user   User?   @relation("SurveyRecipientUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  email String
+  name  String?
+
+  token String @unique
+
+  status SurveyRecipientStatus @default(PENDING)
+
+  sentAt         DateTime? @map("sent_at")
+  lastRemindedAt DateTime? @map("last_reminded_at")
+  remindersSent  Int       @default(0) @map("reminders_sent")
+  respondedAt    DateTime? @map("responded_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  response SurveyResponse?
+
+  @@unique([campaignId, email])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([status])
+  @@map("survey_recipients")
+}
+
+/// Envio completo de un respondiente. Cada respuesta pertenece a un
+/// lanzamiento y a un destinatario; las filas con `campaignId` nulo son del
+/// diseño anterior (enlace publico abierto) y se conservan solo para el
+/// historico.
 model SurveyResponse {
   id       String @id @default(cuid())
   surveyId String @map("survey_id")
   survey   Survey @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  campaignId String?         @map("campaign_id")
+  campaign   SurveyCampaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  recipientId String?          @unique @map("recipient_id")
+  recipient   SurveyRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
 
   email String
 
@@ -1668,8 +2178,12 @@ model SurveyResponse {
 
   answers SurveyAnswer[]
 
-  @@unique([surveyId, email])
+  // Una respuesta por persona y por lanzamiento. La unicidad ya no es por
+  // encuesta: la misma plantilla se relanza por bloques y la misma persona
+  // debe poder responder cada lanzamiento.
+  @@unique([campaignId, email])
   @@index([surveyId])
+  @@index([campaignId])
   @@index([respondentCompanyId])
   @@map("survey_responses")
 }
