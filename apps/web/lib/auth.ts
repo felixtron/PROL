@@ -242,26 +242,12 @@ export const requireEvaluationAuthor = cache(async () => {
   return user;
 });
 
-/**
- * Requires the current user to be allowed to author surveys: same gating
- * as evaluation authors. Kept as a separate helper so future scoping
- * (e.g. allowing tenant ADMIN but not regular PROFESSOR) can change in
- * one place without touching evaluations.
- */
-export const requireSurveyAuthor = cache(async () => {
-  const user = await requireUser();
-  if (
-    user.role !== "PROFESSOR" &&
-    user.role !== "ADMIN" &&
-    user.role !== "SUPER_ADMIN"
-  ) {
-    throw new Error("No autorizado");
-  }
-  if (user.role !== "SUPER_ADMIN" && !user.tenantId) {
-    throw new Error("No autorizado: tenant requerido");
-  }
-  return user;
-});
+// Las encuestas ya NO se autorizan aquí. Son una herramienta de evaluación
+// de satisfacción que administra exclusivamente el administrador del tenant,
+// así que su gating vive en `lib/survey-access.ts` (`requireSurveyAdmin`).
+// El antiguo `requireSurveyAuthor` —que dejaba entrar a PROFESSOR— se quitó
+// a propósito: reintroducirlo volvería a abrir el módulo a quien no debe
+// administrarlo.
 
 /**
  * Requires the AI module to be enabled for the user's tenant. By default

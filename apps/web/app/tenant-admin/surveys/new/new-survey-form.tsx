@@ -4,49 +4,27 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { createSurvey } from "@/lib/actions/survey";
+import { DEFAULT_DURATION_DAYS } from "@/lib/surveys";
 
-interface CompanyOption {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-export function NewSurveyForm({
-  companies,
-  redirectPathBase = "/professor/surveys",
-  lockedCompanyId,
-}: {
-  companies: CompanyOption[];
-  /** Path to which the new survey id is appended after successful create. */
-  redirectPathBase?: string;
-  /** If set, hides the company picker and forces this id. Useful for the
-   *  leader flow where a leader can only create surveys for their company. */
-  lockedCompanyId?: string;
-}) {
+export function NewSurveyForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [companyId, setCompanyId] = useState(
-    lockedCompanyId ?? companies[0]?.id ?? "",
-  );
+  const [duration, setDuration] = useState(DEFAULT_DURATION_DAYS);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!companyId) {
-      setError("Selecciona la empresa que recibirá los resultados.");
-      return;
-    }
     startTransition(async () => {
       try {
         const res = await createSurvey({
           title,
           description: description || null,
-          companyId,
+          defaultDurationDays: duration,
         });
-        router.push(`${redirectPathBase}/${res.surveyId}`);
+        router.push(`/tenant-admin/surveys/${res.surveyId}`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al crear");
       }
@@ -70,7 +48,7 @@ export function NewSurveyForm({
           required
           minLength={3}
           maxLength={120}
-          placeholder='Ej: "Encuesta de satisfacción Q3"'
+          placeholder='Ej: "Satisfacción — cierre de curso"'
           className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
         />
       </div>
@@ -82,31 +60,26 @@ export function NewSurveyForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          placeholder="Una línea breve que verá el respondiente al abrir el link."
+          placeholder="Una línea breve que verá quien abra la encuesta."
           className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
         />
       </div>
-      {!lockedCompanyId && (
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-text-primary">
-            Empresa asignada
-          </label>
-          <select
-            value={companyId}
-            onChange={(e) => setCompanyId(e.target.value)}
-            className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
-          >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1.5 text-xs text-text-tertiary">
-            El líder de esta empresa verá el dashboard de resultados.
-          </p>
-        </div>
-      )}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium text-text-primary">
+          Duración sugerida (días)
+        </label>
+        <input
+          type="number"
+          min={1}
+          max={365}
+          value={duration}
+          onChange={(e) => setDuration(Number(e.target.value))}
+          className="w-32 rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-text-primary"
+        />
+        <p className="mt-1.5 text-xs text-text-tertiary">
+          Se precarga al lanzar y puedes cambiarla en cada envío.
+        </p>
+      </div>
       <div className="flex items-center gap-3 border-t border-border pt-5">
         <button
           type="submit"

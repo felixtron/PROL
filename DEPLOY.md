@@ -165,7 +165,27 @@ docker run --rm --network prol_prol-internal -v /opt/prol:/work -w /work/package
 
 El seed crea 5 usuarios, 3 cursos, 50 lecciones, etc. (ver [CREDENTIALS.md](./CREDENTIALS.md)).
 
-### 7. Verificar
+### 7. Cron de encuestas
+
+El modulo de Encuestas manda recordatorios y cierra los lanzamientos vencidos
+desde una ruta protegida. No hay worker en produccion, asi que lo dispara el
+cron del host una vez al dia.
+
+```bash
+# 1) Definir el secreto en /opt/prol/.env (chmod 600) y recrear web
+echo "CRON_SECRET=\"$(openssl rand -hex 32)\"" >> /opt/prol/.env
+docker compose -f docker-compose.prod.yml up -d web
+
+# 2) Entrada de crontab en el host (8:00 hora del servidor)
+#    crontab -e
+0 8 * * * . /opt/prol/.env; curl -fsS -X POST https://prol.prosuite.pro/api/cron/surveys -H "Authorization: Bearer $CRON_SECRET" >/dev/null
+```
+
+Sin `CRON_SECRET` la ruta responde 503 en vez de quedar abierta. Si el barrido
+no corre, lo unico que se pierde son los recordatorios: una encuesta vencida
+sigue rechazando respuestas porque la ventana se comprueba al responder.
+
+### 8. Verificar
 
 ```bash
 # Ver status de containers

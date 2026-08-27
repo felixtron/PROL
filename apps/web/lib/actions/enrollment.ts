@@ -6,6 +6,7 @@ import { sendEmail, enrollmentConfirmation } from "@prol/email";
 import { requireUser, requireTenantAdmin, assertSameTenant } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
+import { triggerSurveysForStudent } from "@/lib/survey-dispatch";
 import crypto from "crypto";
 
 export async function enrollInCourse(courseId: string) {
@@ -366,6 +367,14 @@ export async function updateLessonProgress(
   // became fully completed AND there's no final exam (the quiz flow handles
   // certificates when there is one).
   if (becameCompleted) {
+    // Encuestas configuradas para dispararse al terminar el curso. Es
+    // idempotente por persona y lanzamiento, y nunca lanza excepción.
+    await triggerSurveysForStudent({
+      userId: user.id,
+      courseId: enrollment.course.id,
+      reason: "COURSE_COMPLETED",
+    });
+
     try {
       const courseHasFinalExam = await db.quiz.findFirst({
         where: {

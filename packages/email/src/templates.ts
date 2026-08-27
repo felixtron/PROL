@@ -563,3 +563,172 @@ export function accountCreatedEmail({
     html: baseLayout(tenantName, body),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Encuestas de satisfacción
+//
+// El enlace que va en estos correos es personal e irrepetible: identifica al
+// destinatario y sólo sirve para responder ese lanzamiento. Por eso el pie
+// pide no reenviarlo — quien lo reciba respondería en nombre de otro.
+// ---------------------------------------------------------------------------
+
+export interface SurveyInvitationParams {
+  tenantName: string;
+  recipientName?: string | null;
+  surveyTitle: string;
+  description?: string | null;
+  /** "Acme S.A. · Curso: Seguridad Industrial" */
+  contextLine?: string | null;
+  answerUrl: string;
+  /** "12 de septiembre de 2026" */
+  closesAtLabel: string;
+  estimatedMinutes?: number | null;
+}
+
+function contextBlock(contextLine?: string | null): string {
+  if (!contextLine) return "";
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+  <tr>
+    <td style="background-color:${C.surfaceAlt};border:1px solid ${C.border};border-radius:8px;padding:12px 16px;">
+      <p style="margin:0;color:${C.muted};font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Corresponde a</p>
+      <p style="margin:4px 0 0;color:${C.ink};font-size:15px;line-height:1.5;">${escapeHtml(contextLine)}</p>
+    </td>
+  </tr>
+</table>`;
+}
+
+export function surveyInvitationEmail({
+  tenantName,
+  recipientName,
+  surveyTitle,
+  description,
+  contextLine,
+  answerUrl,
+  closesAtLabel,
+  estimatedMinutes,
+}: SurveyInvitationParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      ${escapeHtml(surveyTitle)}
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting} nos gustar&iacute;a conocer tu opini&oacute;n${
+        estimatedMinutes ? ` (toma unos ${estimatedMinutes} minutos)` : ""
+      }.
+    </p>
+    ${contextBlock(contextLine)}
+    ${
+      description
+        ? `<p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">${escapeHtml(description)}</p>`
+        : ""
+    }
+    ${ctaButton("Responder la encuesta", answerUrl)}
+    <p style="margin:0 0 8px;color:${C.body};font-size:15px;line-height:1.6;">
+      Puedes responder hasta el <strong>${escapeHtml(closesAtLabel)}</strong>. Despu&eacute;s
+      de esa fecha el enlace deja de aceptar respuestas.
+    </p>
+    <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
+      Este enlace es personal: no lo reenv&iacute;es.
+    </p>`;
+
+  return {
+    subject: `${surveyTitle} — tu opinión`,
+    html: baseLayout(tenantName, body),
+  };
+}
+
+export interface SurveyReminderParams extends SurveyInvitationParams {
+  daysLeft: number;
+}
+
+export function surveyReminderEmail({
+  tenantName,
+  recipientName,
+  surveyTitle,
+  contextLine,
+  answerUrl,
+  closesAtLabel,
+  daysLeft,
+}: SurveyReminderParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const remaining =
+    daysLeft <= 0
+      ? "hoy es el <strong>&uacute;ltimo d&iacute;a</strong> para responder"
+      : daysLeft === 1
+        ? "queda <strong>1 d&iacute;a</strong> para responder"
+        : `quedan <strong>${daysLeft} d&iacute;as</strong> para responder`;
+
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      Recordatorio: ${escapeHtml(surveyTitle)}
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting} todav&iacute;a no registramos tu respuesta y ${remaining}.
+    </p>
+    ${contextBlock(contextLine)}
+    ${ctaButton("Responder ahora", answerUrl)}
+    <p style="margin:0 0 8px;color:${C.body};font-size:15px;line-height:1.6;">
+      Cierra el <strong>${escapeHtml(closesAtLabel)}</strong>.
+    </p>
+    <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
+      Si ya respondiste, ignora este mensaje. Este enlace es personal: no lo reenv&iacute;es.
+    </p>`;
+
+  return {
+    subject: `Recordatorio — ${surveyTitle}`,
+    html: baseLayout(tenantName, body),
+  };
+}
+
+export interface SurveyResultsPublishedParams {
+  tenantName: string;
+  recipientName?: string | null;
+  surveyTitle: string;
+  contextLine?: string | null;
+  resultsUrl: string;
+  totalResponses: number;
+  note?: string | null;
+}
+
+export function surveyResultsPublishedEmail({
+  tenantName,
+  recipientName,
+  surveyTitle,
+  contextLine,
+  resultsUrl,
+  totalResponses,
+  note,
+}: SurveyResultsPublishedParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      Resultados disponibles: ${escapeHtml(surveyTitle)}
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting} ya puedes consultar el resultado consolidado de esta encuesta
+      (${totalResponses} ${totalResponses === 1 ? "respuesta" : "respuestas"}).
+    </p>
+    ${contextBlock(contextLine)}
+    ${
+      note
+        ? `<p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">${escapeHtml(note)}</p>`
+        : ""
+    }
+    ${ctaButton("Ver resultados", resultsUrl)}
+    <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
+      El informe muestra promedios y distribuciones del conjunto. Las respuestas
+      individuales no se publican.
+    </p>`;
+
+  return {
+    subject: `Resultados — ${surveyTitle}`,
+    html: baseLayout(tenantName, body),
+  };
+}

@@ -6,6 +6,7 @@ import {
   sha256Hex,
 } from "@/lib/certificates";
 import { resolveCertificateTemplate } from "@/lib/certificate-templates/catalog";
+import { triggerSurveysForStudent } from "@/lib/survey-dispatch";
 
 /**
  * System-level certificate issuer. NOT exported from a "use server" module,
@@ -93,7 +94,7 @@ export async function issueCertificateForEnrollment(
   // visible sequence ends up with holes. Concurrent calls for the same
   // enrollment are still safe: the second one collides on the unique
   // `(enrollmentId)` constraint and its tx rolls back too.
-  return db.$transaction(async (tx) => {
+  const outcome = await db.$transaction(async (tx) => {
     // Idempotency: if a certificate already exists for this enrollment,
     // return it without touching the counter.
     const existing = await tx.certificate.findUnique({
@@ -102,6 +103,7 @@ export async function issueCertificateForEnrollment(
     if (existing) {
       return {
         success: true,
+        created: false,
         certificateId: existing.id,
         folio: existing.folio,
         message: "El certificado ya existe",
@@ -148,9 +150,25 @@ export async function issueCertificateForEnrollment(
 
     return {
       success: true,
+      created: true,
       certificateId: certificate.id,
       folio: certificate.folio,
       message: "Certificado emitido exitosamente",
     };
   });
+
+  // Disparador de encuestas configuradas con CERTIFICATE_ISSUED. Va después
+  // del commit y sólo cuando el diploma se acaba de emitir: reemitir o
+  // reimprimir uno existente no debe volver a encuestar al alumno.
+  // `triggerSurveysForStudent` nunca lanza — un problema con la encuesta no
+  // puede tumbar la emisión del diploma.
+  if (outcome.created) {
+    await triggerSurveysForStudent({
+      userId: enrollment.studentId,
+      courseId: enrollment.courseId,
+      reason: "CERTIFICATE_ISSUED",
+    });
+  }
+
+  return outcome;
 }

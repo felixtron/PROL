@@ -5,6 +5,7 @@ import { db, Prisma } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { assertCourseEditAccess } from "@/lib/course-access";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
+import { triggerSurveysForStudent } from "@/lib/survey-dispatch";
 import { createNotification } from "@/lib/notifications";
 import { getFinalExamGateStatus } from "@/lib/queries/quiz";
 
@@ -460,6 +461,22 @@ export async function submitQuizAttempt(
 
     return created;
   });
+
+  // Encuestas de fin de curso: sólo en la transición a COMPLETED. Si la
+  // inscripción ya venía completada, reintentar un quiz no vuelve a encuestar.
+  if (enrollment.status !== "COMPLETED") {
+    const after = await db.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: { status: true },
+    });
+    if (after?.status === "COMPLETED") {
+      await triggerSurveysForStudent({
+        userId: user.id,
+        courseId: enrollment.course.id,
+        reason: "COURSE_COMPLETED",
+      });
+    }
+  }
 
   // Side-effects after the consistent state is committed.
   if (isFinalAndPassed) {
