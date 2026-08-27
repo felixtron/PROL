@@ -67,6 +67,57 @@ export const getEnrollmentsByMonth = cache(async (monthsBack = 6) => {
 });
 
 /**
+ * Ingresos mensuales del profesor, para la gráfica de tendencia.
+ *
+ * Deliberadamente alineada con `getRevenueStats` (lib/queries/revenue):
+ *
+ *   - suma `creatorReceives`, no `amount`, porque lo que ve el profesor es
+ *     lo que le queda tras el revenue share, no lo que pagó el alumno;
+ *   - filtra por `professorId` y no por `courseAccessWhere`, porque un
+ *     colaborador co-crea el curso pero no cobra por él;
+ *   - agrupa por `createdAt` y no por `paidAt`, que es nullable.
+ *
+ * Si estas tres decisiones no coincidieran con las de `getRevenueStats`,
+ * la gráfica y las tarjetas de la misma página contarían historias
+ * distintas.
+ */
+export const getRevenueByMonth = cache(async (monthsBack = 6) => {
+  const user = await requireUser();
+  const now = new Date();
+
+  const monthlyData = [];
+
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(
+      now.getFullYear(),
+      now.getMonth() - i + 1,
+      0,
+      23,
+      59,
+      59
+    );
+
+    const revenue = await db.coursePayment.aggregate({
+      where: {
+        course: { professorId: user.id },
+        status: "COMPLETED",
+        createdAt: { gte: monthStart, lte: monthEnd },
+      },
+      _sum: { creatorReceives: true },
+    });
+
+    monthlyData.push({
+      month: MONTH_NAMES[monthStart.getMonth()] ?? "",
+      // En pesos: la gráfica pinta el valor tal cual, y en la DB son centavos.
+      revenue: (revenue._sum.creatorReceives ?? 0) / 100,
+    });
+  }
+
+  return monthlyData;
+});
+
+/**
  * Get student distribution by course for donut chart
  */
 export const getCourseDistribution = cache(async () => {
