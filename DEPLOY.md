@@ -171,14 +171,33 @@ El modulo de Encuestas manda recordatorios y cierra los lanzamientos vencidos
 desde una ruta protegida. No hay worker en produccion, asi que lo dispara el
 cron del host una vez al dia.
 
-```bash
-# 1) Definir el secreto en /opt/prol/.env (chmod 600) y recrear web
-echo "CRON_SECRET=\"$(openssl rand -hex 32)\"" >> /opt/prol/.env
-docker compose -f docker-compose.prod.yml up -d web
+> Ojo: el host **no** usa `docker compose` ni lee `/opt/prol/.env` (ver la nota
+> de orquestacion real mas abajo). Las envs del contenedor viven en
+> `/etc/containers/env/prol-web-1.env`.
 
-# 2) Entrada de crontab en el host (8:00 hora del servidor)
+```bash
+# 1) Secreto en el env del contenedor (queda en 600, root)
+printf "CRON_SECRET=%s\n" "$(openssl rand -hex 32)" >> /etc/containers/env/prol-web-1.env
+chmod 600 /etc/containers/env/prol-web-1.env
+systemctl restart prol-web-1.service
+
+# 2) Script del barrido — lee el secreto del env para no repetirlo en el crontab
+#    (ya instalado en /usr/local/bin/prol-surveys-cron.sh, modo 700)
+
+# 3) Crontab de root. El host va en Europe/Berlin: 16:00 alli = 08:00 en
+#    America/Mexico_City, que es la zona de la plataforma.
 #    crontab -e
-0 8 * * * . /opt/prol/.env; curl -fsS -X POST https://prol.prosuite.pro/api/cron/surveys -H "Authorization: Bearer $CRON_SECRET" >/dev/null
+0 16 * * * /usr/local/bin/prol-surveys-cron.sh >/dev/null 2>&1 # prol-surveys
+```
+
+Verificacion:
+
+```bash
+# Sin credencial debe responder 401
+curl -s -X POST https://prol.prosuite.pro/api/cron/surveys
+
+# Con credencial devuelve el resumen del barrido
+/usr/local/bin/prol-surveys-cron.sh && echo OK
 ```
 
 Sin `CRON_SECRET` la ruta responde 503 en vez de quedar abierta. Si el barrido
@@ -197,6 +216,79 @@ curl -I https://prol.prosuite.pro
 # Logs
 docker compose -f docker-compose.prod.yml logs -f web
 ```
+
+---
+
+## Orquestacion real del VPS (verificado 2026-08-28)
+
+**Esta guia esta desactualizada de la mitad hacia abajo.** El host
+`195.26.255.71` ya no corre Docker Compose:
+
+| Lo que dice esta guia | Lo que hay en el host |
+| --- | --- |
+| `git pull` en `/opt/prol` | **no hay binario `git`**; `/opt/prol` es un checkout congelado en `a41c902` |
+| `docker compose ... build/up` | **no hay `docker`** (`docker.service` inactivo); corre **podman 5.4.2** |
+| Servicios de compose | **quadlets**: `/etc/containers/systemd/prol-{web,db}-1.container` → units `prol-web-1.service`, `prol-db-1.service` |
+| Envs en `/opt/prol/.env` | `/etc/containers/env/prol-web-1.env` (600, root) |
+| Imagen construida en el host | quadlet con `Image=localhost/prol-web` y **`Pull=never`**: la imagen se etiqueta por commit (`prol-web:<sha corto>`) y `latest` |
+| Red `dokploy-network` | redes `prol_prol-internal` (alias `db`) + `traefik` |
+
+Operaciones que si aplican hoy:
+
+```bash
+systemctl restart prol-web-1.service          # recrea el contenedor y toma cambios del env
+podman inspect prol-web-1 --format '{{.State.Health.Status}}'
+podman logs --since 10m prol-web-1
+podman images | grep prol-web                 # que tag/commit esta desplegado
+```
+
+Backup antes de cualquier cambio de schema (precedente en `/opt/prol/backup_*.sql`):
+
+```bash
+podman exec prol-db-1 pg_dump -U prol -d prol > /opt/prol/backup_$(date -u +%Y%m%d_%H%M)_pre_<motivo>.sql
+```
+
+Cambio de schema, usando **el schema que trae la imagen nueva** (no el de
+`/opt/prol`, que esta viejo). `migrate diff` muestra el SQL sin aplicarlo:
+
+```bash
+CID=$(podman create localhost/prol-web:latest)
+podman cp "$CID":/app/packages/db/prisma /root/prol-dbpush/prisma && podman rm -f "$CID"
+
+podman run --rm --network prol_prol-internal \
+  --env-file /etc/containers/env/prol-web-1.env \
+  -v /root/prol-dbpush:/work:Z -w /work docker.io/node:20-alpine \
+  sh -c 'apk add --no-cache openssl libc6-compat >/dev/null && \
+         npx -y prisma@5.22.0 migrate diff --from-url "$DATABASE_URL" \
+           --to-schema-datamodel prisma/schema.prisma --script'   # preview
+# ...y el mismo run cambiando el subcomando por: db push --schema prisma/schema.prisma --skip-generate
+```
+
+Build + despliegue completo (no hay CI/CD para PROL). El host no tiene `git`,
+asi que el arbol se manda con `git archive` a un directorio limpio, dejando
+`/opt/prol` intacto:
+
+```bash
+# en local, con el commit a desplegar en HEAD
+SHA=$(git rev-parse --short HEAD)
+git archive --format=tar.gz HEAD | ssh propodvps2 "mkdir -p /opt/prol-deploy-$SHA && tar -xz -C /opt/prol-deploy-$SHA"
+
+# en el host
+podman build -t localhost/prol-web:$SHA /opt/prol-deploy-$SHA
+# ...backup + db push (arriba)...
+podman tag localhost/prol-web:$SHA localhost/prol-web:latest
+systemctl restart prol-web-1.service
+```
+
+**El `latest` se mueve DESPUES del db push.** Si el contenedor reinicia antes,
+arranca contra tablas que todavia no existen.
+
+Rollback: `podman tag localhost/prol-web:<sha-anterior> localhost/prol-web:latest`
+y `systemctl restart prol-web-1.service`. Exige que cada imagen lleve su tag de
+SHA; si el cambio tocaba la DB, restaurar ademas el dump correspondiente.
+
+La directiva canonica de operacion vive en el vault ProBrain:
+`Projects/Prosuite-Directiva-Deployment-2026-08-22-Podman.md`.
 
 ---
 
