@@ -396,8 +396,12 @@ export function Dc3Document(d: Dc3RenderData) {
             <Text style={styles.fieldLabel}>
               Ocupación específica (Catálogo Nacional de Ocupaciones) 1/
             </Text>
+            {/* Solo la denominación. La clave (04.4, 8000…) se sigue
+                guardando en el snapshot para poder auditar de qué entrada
+                del catálogo salió, pero no se imprime: en el papel lo que
+                se lee es el nombre. */}
             <Text style={styles.fieldValue}>
-              {d.occupationCode} — {truncate(d.occupationLabel, 42)}
+              {truncate(d.occupationLabel, 46)}
             </Text>
           </View>
         </View>
@@ -491,7 +495,7 @@ export function Dc3Document(d: Dc3RenderData) {
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Área temática del curso 2/</Text>
           <Text style={styles.fieldValue}>
-            {d.thematicAreaCode} — {truncate(d.thematicAreaLabel, 80)}
+            {truncate(d.thematicAreaLabel, 90)}
           </Text>
         </View>
 
