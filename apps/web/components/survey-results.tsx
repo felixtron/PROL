@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import { scaleOptionScore } from "@/lib/surveys";
 import type { AggregatedResults, QuestionStats } from "@/lib/surveys";
 
 /**
@@ -180,28 +181,78 @@ function RatingResult({ q }: { q: QuestionStats }) {
 }
 
 function ChoiceResult({ q }: { q: QuestionStats }) {
+  // La escala etiquetada va de mejor a peor, así que se pinta con el mismo
+  // semáforo que el índice; la opción múltiple no tiene orden y va neutra.
+  const scaled = q.type === "SCALE_LABELED";
+  return (
+    <div className="space-y-3">
+      {scaled && q.score !== null && (
+        <div className="flex items-center justify-end">
+          <span className={`text-sm font-semibold ${scoreTone(q.score)}`}>
+            {q.score.toFixed(1)}/100
+          </span>
+        </div>
+      )}
+      <ul className="space-y-2">
+        {q.options.map((opt, idx) => {
+          const count = q.distribution[idx] ?? 0;
+          const pct = q.answeredCount > 0 ? Math.round((count / q.answeredCount) * 100) : 0;
+          const tone = scaled
+            ? scoreBar(scaleOptionScore(idx, q.options.length))
+            : "bg-primary-600";
+          return (
+            <li key={idx} className="text-xs">
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <span className="text-text-primary">{opt}</span>
+                <span className="shrink-0 text-text-tertiary">
+                  {count} · {pct}%
+                </span>
+              </div>
+              <div className="relative h-2 overflow-hidden rounded-full bg-surface-tertiary">
+                <div
+                  className={`absolute inset-y-0 left-0 rounded-full ${tone}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {q.notApplicableCount > 0 && (
+        <p className="text-xs text-text-tertiary">
+          {q.notApplicableCount} respondió «No aplica» — queda fuera del promedio.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Comentarios abiertos. Son respuestas individuales, así que solo llegan
+ * llenos cuando la consulta los pidió explícitamente (panel del
+ * administrador). En el consolidado publicado la lista viene vacía y este
+ * bloque se limita a decir cuántos comentarios hubo.
+ */
+function TextResult({ q }: { q: QuestionStats }) {
+  if (q.textAnswers.length === 0) {
+    return (
+      <p className="text-sm text-text-tertiary">
+        {q.answeredCount === 0
+          ? "Sin comentarios."
+          : `${q.answeredCount} comentario${q.answeredCount === 1 ? "" : "s"}. No se publican al cliente.`}
+      </p>
+    );
+  }
   return (
     <ul className="space-y-2">
-      {q.options.map((opt, idx) => {
-        const count = q.distribution[idx] ?? 0;
-        const pct = q.answeredCount > 0 ? Math.round((count / q.answeredCount) * 100) : 0;
-        return (
-          <li key={idx} className="text-xs">
-            <div className="mb-1 flex items-center justify-between gap-3">
-              <span className="text-text-primary">{opt}</span>
-              <span className="shrink-0 text-text-tertiary">
-                {count} · {pct}%
-              </span>
-            </div>
-            <div className="relative h-2 overflow-hidden rounded-full bg-surface-tertiary">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-primary-600"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </li>
-        );
-      })}
+      {q.textAnswers.map((t, i) => (
+        <li
+          key={i}
+          className="rounded-lg border border-border bg-surface-secondary px-4 py-3 text-sm text-text-secondary"
+        >
+          {t}
+        </li>
+      ))}
     </ul>
   );
 }
@@ -228,7 +279,13 @@ export function QuestionBreakdown({
               {q.answeredCount} {q.answeredCount === 1 ? "respuesta" : "respuestas"}
             </span>
           </header>
-          {q.type === "RATING_STARS" ? <RatingResult q={q} /> : <ChoiceResult q={q} />}
+          {q.type === "RATING_STARS" ? (
+            <RatingResult q={q} />
+          ) : q.type === "OPEN_TEXT" ? (
+            <TextResult q={q} />
+          ) : (
+            <ChoiceResult q={q} />
+          )}
         </article>
       ))}
     </div>

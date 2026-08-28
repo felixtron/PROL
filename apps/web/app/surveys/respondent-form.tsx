@@ -9,13 +9,20 @@ import {
 
 export type RespondentQuestion = {
   id: string;
-  type: "RATING_STARS" | "MULTIPLE_CHOICE";
+  type: "RATING_STARS" | "MULTIPLE_CHOICE" | "SCALE_LABELED" | "OPEN_TEXT";
   label: string;
   section: string | null;
   options: string[];
+  allowNotApplicable: boolean;
 };
 
-type Answers = Record<string, { rating?: number; option?: number }>;
+type Answers = Record<
+  string,
+  { rating?: number; option?: number; text?: string; na?: boolean }
+>;
+
+/** Etiqueta del "No aplica" — el "NA" del formulario en papel. */
+const NA_LABEL = "No aplica";
 
 /**
  * Formulario de respuesta.
@@ -62,14 +69,23 @@ export function RespondentForm({
   function setOption(questionId: string, value: number) {
     setAnswers((prev) => ({ ...prev, [questionId]: { option: value } }));
   }
+  function setNotApplicable(questionId: string) {
+    setAnswers((prev) => ({ ...prev, [questionId]: { na: true } }));
+  }
+  function setText(questionId: string, value: string) {
+    setAnswers((prev) => ({ ...prev, [questionId]: { text: value } }));
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
+    // El texto libre es opcional; el resto no.
     const missing = questions.find((q) => {
       const a = answers[q.id];
-      return q.type === "RATING_STARS" ? a?.rating === undefined : a?.option === undefined;
+      if (q.type === "OPEN_TEXT") return false;
+      if (q.type === "RATING_STARS") return a?.rating === undefined;
+      return a?.option === undefined && !a?.na;
     });
     if (missing) {
       setError("Responde todas las preguntas antes de enviar.");
@@ -80,6 +96,8 @@ export function RespondentForm({
       questionId: q.id,
       ratingValue: answers[q.id]?.rating ?? null,
       selectedOptionIndex: answers[q.id]?.option ?? null,
+      text: answers[q.id]?.text ?? null,
+      notApplicable: answers[q.id]?.na ?? false,
     }));
 
     startTransition(async () => {
@@ -195,6 +213,55 @@ export function RespondentForm({
                     );
                   })}
                 </div>
+              ) : q.type === "OPEN_TEXT" ? (
+                <div>
+                  <textarea
+                    value={answers[q.id]?.text ?? ""}
+                    onChange={(e) => setText(q.id, e.target.value)}
+                    rows={4}
+                    maxLength={2000}
+                    placeholder="Opcional"
+                    className="w-full rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm"
+                  />
+                  <p className="mt-1.5 text-xs text-neutral-500">
+                    Opcional. Máximo 2000 caracteres.
+                  </p>
+                </div>
+              ) : q.type === "SCALE_LABELED" ? (
+                <div className="flex flex-wrap gap-2">
+                  {q.options.map((opt, idx) => {
+                    const active = answers[q.id]?.option === idx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setOption(q.id, idx)}
+                        aria-pressed={active}
+                        className={`min-w-[7rem] flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                          active
+                            ? "border-neutral-900 bg-neutral-900 text-white"
+                            : "border-neutral-200 text-neutral-900 hover:bg-neutral-50"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                  {q.allowNotApplicable && (
+                    <button
+                      type="button"
+                      onClick={() => setNotApplicable(q.id)}
+                      aria-pressed={answers[q.id]?.na === true}
+                      className={`min-w-[7rem] flex-1 rounded-lg border border-dashed px-4 py-3 text-sm font-medium transition-colors ${
+                        answers[q.id]?.na
+                          ? "border-neutral-900 bg-neutral-100 text-neutral-900"
+                          : "border-neutral-300 text-neutral-500 hover:bg-neutral-50"
+                      }`}
+                    >
+                      {NA_LABEL}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-2">
                   {q.options.map((opt, idx) => (
@@ -216,6 +283,24 @@ export function RespondentForm({
                       <span className="text-neutral-900">{opt}</span>
                     </label>
                   ))}
+                  {q.allowNotApplicable && (
+                    <label
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg border border-dashed px-4 py-3 text-sm transition-colors ${
+                        answers[q.id]?.na
+                          ? "border-neutral-900 bg-neutral-50"
+                          : "border-neutral-300 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={q.id}
+                        checked={answers[q.id]?.na === true}
+                        onChange={() => setNotApplicable(q.id)}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-neutral-500">{NA_LABEL}</span>
+                    </label>
+                  )}
                 </div>
               )}
             </fieldset>

@@ -16,6 +16,7 @@ import {
   campaignState,
   describeCampaignContext,
   weightedIndex,
+  type AggregatableQuestion,
   type AggregatedResults,
   type CampaignState,
 } from "@/lib/surveys";
@@ -218,7 +219,9 @@ export async function getCampaignResultsForAdmin(campaignId: string) {
   assertTenantScope(user, campaign.tenantId);
 
   const [results, recipientCount] = await Promise.all([
-    aggregateCampaign(campaign.id, campaign.survey.questions),
+    // Único sitio con `includeText`: el administrador es el que puede leer
+    // los comentarios individuales.
+    aggregateCampaign(campaign.id, campaign.survey.questions, { includeText: true }),
     db.surveyRecipient.count({
       where: { campaignId: campaign.id, status: { not: "REVOKED" } },
     }),
@@ -234,18 +237,17 @@ export async function getCampaignResultsForAdmin(campaignId: string) {
   };
 }
 
-/** Agregación de un lanzamiento a partir de las preguntas de su plantilla. */
+/**
+ * Agregación de un lanzamiento a partir de las preguntas de su plantilla.
+ *
+ * `includeText` destapa las respuestas de texto libre y solo lo activa el
+ * panel del administrador. Va apagado por defecto para que ninguna vista del
+ * cliente pueda acabar mostrando verbatims por descuido.
+ */
 async function aggregateCampaign(
   campaignId: string,
-  questions: Array<{
-    id: string;
-    label: string;
-    type: "RATING_STARS" | "MULTIPLE_CHOICE";
-    section: string | null;
-    weight: number;
-    options: unknown;
-    position: number;
-  }>,
+  questions: AggregatableQuestion[],
+  opts: { includeText?: boolean } = {},
 ): Promise<AggregatedResults> {
   const [answers, totalResponses] = await Promise.all([
     db.surveyAnswer.findMany({
@@ -254,11 +256,13 @@ async function aggregateCampaign(
         questionId: true,
         ratingValue: true,
         selectedOptionIndex: true,
+        text: true,
+        notApplicable: true,
       },
     }),
     db.surveyResponse.count({ where: { campaignId } }),
   ]);
-  return aggregate(questions, answers, totalResponses);
+  return aggregate(questions, answers, totalResponses, opts);
 }
 
 // ─── Administrador: informe consolidado ──────────────────────────────────────
@@ -359,6 +363,7 @@ export async function getSurveyReportForAdmin(filters: SurveyReportFilters = {})
             questionId: true,
             ratingValue: true,
             selectedOptionIndex: true,
+            notApplicable: true,
             response: { select: { campaignId: true } },
           },
         }),
@@ -372,7 +377,12 @@ export async function getSurveyReportForAdmin(filters: SurveyReportFilters = {})
 
   const answersByCampaign = new Map<
     string,
-    Array<{ questionId: string; ratingValue: number | null; selectedOptionIndex: number | null }>
+    Array<{
+      questionId: string;
+      ratingValue: number | null;
+      selectedOptionIndex: number | null;
+      notApplicable: boolean;
+    }>
   >();
   for (const a of allAnswers) {
     const key = a.response.campaignId;
@@ -382,6 +392,7 @@ export async function getSurveyReportForAdmin(filters: SurveyReportFilters = {})
       questionId: a.questionId,
       ratingValue: a.ratingValue,
       selectedOptionIndex: a.selectedOptionIndex,
+      notApplicable: a.notApplicable,
     };
     if (bucket) bucket.push(row);
     else answersByCampaign.set(key, [row]);
@@ -681,6 +692,7 @@ export async function getRespondentByToken(token: string) {
                   section: true,
                   options: true,
                   position: true,
+                  allowNotApplicable: true,
                 },
               },
             },
@@ -742,6 +754,7 @@ export async function getCampaignByShareToken(token: string) {
               section: true,
               options: true,
               position: true,
+              allowNotApplicable: true,
             },
           },
         },

@@ -253,8 +253,18 @@ enum SurveyStatus {
 }
 
 enum SurveyQuestionType {
+  /// Estrellas 1-5.
   RATING_STARS
+  /// Opcion multiple SIN orden: aporta distribucion, no puntua.
   MULTIPLE_CHOICE
+  /// Escala con etiquetas ORDENADAS de mejor a peor
+  /// (p.ej. Excelente / Bueno / Regular / Deficiente). Puntua de 100 a 0
+  /// repartido en partes iguales, asi que sirve para el indice igual que las
+  /// estrellas pero conservando el vocabulario del formulario original.
+  SCALE_LABELED
+  /// Texto libre. Nunca puntua y sus respuestas son individuales, asi que
+  /// solo las ve el administrador: no salen en el consolidado publicado.
+  OPEN_TEXT
 }
 
 /// Estado de un lanzamiento (envio) de encuesta.
@@ -2034,6 +2044,11 @@ model SurveyQuestion {
   /// del indice (util para preguntas de clasificacion, no de satisfaccion).
   weight Float @default(1)
 
+  /// Solo SCALE_LABELED: ofrece ademas "No aplica". Marcarlo NO penaliza —
+  /// la respuesta se cuenta aparte y queda fuera del promedio, que es como
+  /// funciona el "NA" del formulario en papel.
+  allowNotApplicable Boolean @default(false) @map("allow_not_applicable")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   answers SurveyAnswer[]
@@ -2199,8 +2214,20 @@ model SurveyAnswer {
   questionId String         @map("question_id")
   question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
+  // Exactamente uno segun el tipo de la pregunta padre:
+  //   RATING_STARS                 -> ratingValue
+  //   MULTIPLE_CHOICE/SCALE_LABELED-> selectedOptionIndex (o notApplicable)
+  //   OPEN_TEXT                    -> text
   ratingValue         Int? @map("rating_value")
   selectedOptionIndex Int? @map("selected_option_index")
+
+  /// Respuesta de texto libre. Es dato individual: nunca se publica al
+  /// cliente, solo la ve el administrador.
+  text String? @db.Text
+
+  /// El respondiente marco "No aplica". Se guarda aparte de
+  /// `selectedOptionIndex` para no inventar un indice que no eligio.
+  notApplicable Boolean @default(false) @map("not_applicable")
 
   @@unique([responseId, questionId])
   @@index([questionId])

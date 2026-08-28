@@ -83,12 +83,15 @@ export interface AggregatableQuestion {
   weight: number;
   options: unknown;
   position: number;
+  allowNotApplicable?: boolean;
 }
 
 export interface AggregatableAnswer {
   questionId: string;
   ratingValue: number | null;
   selectedOptionIndex: number | null;
+  text?: string | null;
+  notApplicable?: boolean;
 }
 
 export interface QuestionStats {
@@ -101,10 +104,19 @@ export interface QuestionStats {
   answeredCount: number;
   /** Promedio 1–5. Solo para preguntas de estrellas. */
   average: number | null;
-  /** Promedio normalizado a 0–100. Solo para preguntas de estrellas. */
+  /** Promedio normalizado a 0–100. Estrellas y escala etiquetada. */
   score: number | null;
-  /** Estrellas: 5 cubos (1★…5★). Opción múltiple: un cubo por opción. */
+  /** Estrellas: 5 cubos (1★…5★). Opción/escala: un cubo por opción. */
   distribution: number[];
+  /** Cuántos marcaron "No aplica". Quedan fuera del promedio. */
+  notApplicableCount: number;
+  /**
+   * Respuestas de texto libre. Son datos individuales: `aggregate()` solo
+   * las rellena cuando se le pide explícitamente, y quien lo pide es el
+   * panel del administrador. El consolidado que ve el cliente las recibe
+   * siempre vacías.
+   */
+  textAnswers: string[];
 }
 
 export interface SectionStats {
@@ -135,18 +147,39 @@ export function ratingToScore(average: number): number {
 }
 
 /**
+ * Puntuación 0–100 de una opción de escala etiquetada.
+ *
+ * Las opciones van ordenadas de mejor a peor, así que la primera vale 100 y
+ * la última 0, repartiendo el resto en partes iguales. Con las cuatro de
+ * Ibiza (Excelente/Bueno/Regular/Deficiente) sale 100 / 66.7 / 33.3 / 0.
+ */
+export function scaleOptionScore(index: number, optionCount: number): number {
+  if (optionCount <= 1) return 100;
+  return (100 * (optionCount - 1 - index)) / (optionCount - 1);
+}
+
+/**
  * Estadística por pregunta, por sección e índice general.
  *
- * El índice de satisfacción solo lo alimentan las preguntas de estrellas:
- * son las únicas con un orden de "mejor a peor" conocido. Una pregunta de
- * opción múltiple aporta su distribución al informe pero no puntúa, porque
- * el sistema no sabe qué opción es "buena". `weight = 0` saca a una pregunta
- * del índice sin sacarla del informe.
+ * Puntúan al índice las preguntas con un orden de "mejor a peor" conocido:
+ * estrellas y escala etiquetada. La opción múltiple aporta su distribución
+ * al informe pero no puntúa, porque ahí el sistema no sabe cuál opción es
+ * "buena"; el texto libre tampoco. `weight = 0` saca a una pregunta del
+ * índice sin sacarla del informe.
+ *
+ * Los "No aplica" se cuentan aparte y no entran en el promedio: marcar que
+ * un ítem no aplica no debe bajar la puntuación, igual que en el formulario
+ * en papel.
+ *
+ * `opts.includeText` es lo único que destapa las respuestas de texto libre.
+ * Va apagado por defecto a propósito: son datos individuales y el
+ * consolidado que ve el cliente nunca debe llevarlos.
  */
 export function aggregate(
   questions: AggregatableQuestion[],
   answers: AggregatableAnswer[],
   totalResponses: number,
+  opts: { includeText?: boolean } = {},
 ): AggregatedResults {
   const byQuestion = new Map<string, AggregatableAnswer[]>();
   for (const a of answers) {
@@ -160,6 +193,32 @@ export function aggregate(
   const stats: QuestionStats[] = ordered.map((q) => {
     const rows = byQuestion.get(q.id) ?? [];
     const section = q.section?.trim() || UNSECTIONED;
+    const base = {
+      id: q.id,
+      label: q.label,
+      section,
+      type: q.type,
+      weight: q.weight,
+    };
+
+    if (q.type === "OPEN_TEXT") {
+      const texts = rows
+        .map((r) => r.text?.trim())
+        .filter((t): t is string => Boolean(t));
+      return {
+        ...base,
+        options: [],
+        answeredCount: texts.length,
+        average: null,
+        score: null,
+        distribution: [],
+        notApplicableCount: 0,
+        // Solo el administrador recibe los verbatims. Por defecto van
+        // vacíos para que un consolidado publicado no pueda filtrarlos
+        // aunque alguien olvide filtrarlos aguas abajo.
+        textAnswers: opts.includeText ? texts : [],
+      };
+    }
 
     if (q.type === "RATING_STARS") {
       const distribution = [0, 0, 0, 0, 0];
@@ -174,39 +233,54 @@ export function aggregate(
       }
       const average = count ? sum / count : null;
       return {
-        id: q.id,
-        label: q.label,
-        section,
-        type: q.type,
-        weight: q.weight,
+        ...base,
         options: [],
         answeredCount: count,
         average,
         score: average !== null ? ratingToScore(average) : null,
         distribution,
+        notApplicableCount: 0,
+        textAnswers: [],
       };
     }
 
+    // MULTIPLE_CHOICE y SCALE_LABELED comparten almacenamiento: la
+    // diferencia es que la escala tiene un orden conocido, así que puntúa.
     const options = toOptions(q.options);
     const distribution = new Array<number>(options.length).fill(0);
     let count = 0;
+    let notApplicableCount = 0;
     for (const r of rows) {
+      if (r.notApplicable) {
+        notApplicableCount += 1;
+        continue;
+      }
       const idx = r.selectedOptionIndex;
       if (typeof idx !== "number" || idx < 0 || idx >= distribution.length) continue;
       distribution[idx] = (distribution[idx] ?? 0) + 1;
       count += 1;
     }
+
+    let score: number | null = null;
+    if (q.type === "SCALE_LABELED" && count > 0) {
+      // Promedio de las puntuaciones de cada opción elegida. Los "No aplica"
+      // ya quedaron fuera del conteo, así que no arrastran el resultado.
+      let sum = 0;
+      for (let i = 0; i < distribution.length; i += 1) {
+        sum += (distribution[i] ?? 0) * scaleOptionScore(i, options.length);
+      }
+      score = sum / count;
+    }
+
     return {
-      id: q.id,
-      label: q.label,
-      section,
-      type: q.type,
-      weight: q.weight,
+      ...base,
       options,
       answeredCount: count,
       average: null,
-      score: null,
+      score,
       distribution,
+      notApplicableCount,
+      textAnswers: [],
     };
   });
 

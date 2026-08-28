@@ -44,6 +44,11 @@ function normalizeOptions(input: unknown): string[] | null {
   return cleaned.slice(0, 10);
 }
 
+/** Tipos cuyo enunciado se completa con una lista de opciones. */
+function needsOptions(type: SurveyQuestionType): boolean {
+  return type === "MULTIPLE_CHOICE" || type === "SCALE_LABELED";
+}
+
 function normalizeReminderDays(input: unknown): number[] {
   if (!Array.isArray(input)) return [];
   const days = input
@@ -260,6 +265,7 @@ export async function addQuestion(
     options?: string[] | null;
     section?: string | null;
     weight?: number;
+    allowNotApplicable?: boolean;
   },
 ) {
   await requireSurveyManageAccess(surveyId);
@@ -270,9 +276,15 @@ export async function addQuestion(
   }
 
   let options: string[] | null = null;
-  if (input.type === "MULTIPLE_CHOICE") {
+  if (needsOptions(input.type)) {
     options = normalizeOptions(input.options);
-    if (!options) throw new Error("Opción múltiple requiere al menos 2 opciones");
+    if (!options) {
+      throw new Error(
+        input.type === "SCALE_LABELED"
+          ? "La escala requiere al menos 2 niveles, del mejor al peor"
+          : "Opción múltiple requiere al menos 2 opciones",
+      );
+    }
   }
 
   const last = await db.surveyQuestion.findFirst({
@@ -290,6 +302,9 @@ export async function addQuestion(
       options: options ?? undefined,
       section: input.section?.trim() || null,
       weight: normalizeWeight(input.weight ?? 1),
+      // "No aplica" solo tiene sentido en la escala: es el "NA" del papel.
+      allowNotApplicable:
+        input.type === "SCALE_LABELED" ? Boolean(input.allowNotApplicable) : false,
     },
   });
 
@@ -304,6 +319,7 @@ export async function updateQuestion(
     options?: string[] | null;
     section?: string | null;
     weight?: number;
+    allowNotApplicable?: boolean;
   },
 ) {
   const q = await db.surveyQuestion.findUnique({
@@ -315,11 +331,11 @@ export async function updateQuestion(
 
   let options: string[] | undefined;
   if (input.options !== undefined) {
-    if (q.type !== "MULTIPLE_CHOICE") {
-      throw new Error("Solo opción múltiple acepta opciones");
+    if (!needsOptions(q.type)) {
+      throw new Error("Este tipo de pregunta no acepta opciones");
     }
     const normalized = normalizeOptions(input.options);
-    if (!normalized) throw new Error("Opción múltiple requiere al menos 2 opciones");
+    if (!normalized) throw new Error("Se requieren al menos 2 opciones");
     options = normalized;
   }
 
@@ -330,6 +346,9 @@ export async function updateQuestion(
       ...(options !== undefined ? { options } : {}),
       ...(input.section !== undefined ? { section: input.section?.trim() || null } : {}),
       ...(input.weight !== undefined ? { weight: normalizeWeight(input.weight) } : {}),
+      ...(input.allowNotApplicable !== undefined && q.type === "SCALE_LABELED"
+        ? { allowNotApplicable: input.allowNotApplicable }
+        : {}),
     },
   });
 
@@ -734,6 +753,19 @@ interface AnswerInput {
   questionId: string;
   ratingValue?: number | null;
   selectedOptionIndex?: number | null;
+  text?: string | null;
+  notApplicable?: boolean;
+}
+
+/** Tope del texto libre. Evita que una respuesta abierta llene la tabla. */
+const MAX_TEXT_LENGTH = 2000;
+
+interface AnswerRow {
+  questionId: string;
+  ratingValue: number | null;
+  selectedOptionIndex: number | null;
+  text: string | null;
+  notApplicable: boolean;
 }
 
 /**
@@ -742,16 +774,17 @@ interface AnswerInput {
  * directamente con el token.
  */
 function buildAnswerRows(
-  questions: Array<{ id: string; type: SurveyQuestionType; options: unknown }>,
+  questions: Array<{
+    id: string;
+    type: SurveyQuestionType;
+    options: unknown;
+    allowNotApplicable: boolean;
+  }>,
   answers: AnswerInput[] | undefined,
-) {
+): AnswerRow[] {
   const byId = new Map(questions.map((q) => [q.id, q]));
   const seen = new Set<string>();
-  const rows: Array<{
-    questionId: string;
-    ratingValue: number | null;
-    selectedOptionIndex: number | null;
-  }> = [];
+  const rows: AnswerRow[] = [];
 
   for (const answer of answers ?? []) {
     const q = byId.get(answer.questionId);
@@ -759,20 +792,75 @@ function buildAnswerRows(
     if (seen.has(q.id)) throw new Error("Cada pregunta admite una sola respuesta");
     seen.add(q.id);
 
+    if (q.type === "OPEN_TEXT") {
+      const text = answer.text?.trim();
+      rows.push({
+        questionId: q.id,
+        ratingValue: null,
+        selectedOptionIndex: null,
+        text: text ? text.slice(0, MAX_TEXT_LENGTH) : null,
+        notApplicable: false,
+      });
+      continue;
+    }
+
     if (q.type === "RATING_STARS") {
       const rating = Number(answer.ratingValue);
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
         throw new Error("Calificación inválida (1–5)");
       }
-      rows.push({ questionId: q.id, ratingValue: rating, selectedOptionIndex: null });
-    } else {
-      const options = Array.isArray(q.options) ? q.options : [];
-      const idx = Number(answer.selectedOptionIndex);
-      if (!Number.isInteger(idx) || idx < 0 || idx >= options.length) {
-        throw new Error("Opción seleccionada inválida");
-      }
-      rows.push({ questionId: q.id, ratingValue: null, selectedOptionIndex: idx });
+      rows.push({
+        questionId: q.id,
+        ratingValue: rating,
+        selectedOptionIndex: null,
+        text: null,
+        notApplicable: false,
+      });
+      continue;
     }
+
+    // MULTIPLE_CHOICE y SCALE_LABELED comparten almacenamiento.
+    if (answer.notApplicable) {
+      if (!q.allowNotApplicable) {
+        throw new Error('Esta pregunta no admite "No aplica"');
+      }
+      rows.push({
+        questionId: q.id,
+        ratingValue: null,
+        selectedOptionIndex: null,
+        text: null,
+        notApplicable: true,
+      });
+      continue;
+    }
+
+    const options = Array.isArray(q.options) ? q.options : [];
+    const idx = Number(answer.selectedOptionIndex);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= options.length) {
+      throw new Error("Opción seleccionada inválida");
+    }
+    rows.push({
+      questionId: q.id,
+      ratingValue: null,
+      selectedOptionIndex: idx,
+      text: null,
+      notApplicable: false,
+    });
+  }
+
+  // El texto libre es opcional —el "Comentarios" del formulario en papel lo
+  // es—, así que se completa en blanco si el respondiente lo dejó vacío. El
+  // resto de preguntas sí son obligatorias.
+  for (const q of questions) {
+    if (seen.has(q.id) || q.type !== "OPEN_TEXT") continue;
+    rows.push({
+      questionId: q.id,
+      ratingValue: null,
+      selectedOptionIndex: null,
+      text: null,
+      notApplicable: false,
+    });
+    seen.add(q.id);
   }
 
   if (rows.length !== questions.length) {
@@ -788,11 +876,7 @@ async function persistResponse(input: {
   email: string;
   companyId: string | null;
   companyName: string | null;
-  rows: Array<{
-    questionId: string;
-    ratingValue: number | null;
-    selectedOptionIndex: number | null;
-  }>;
+  rows: AnswerRow[];
 }) {
   await db.$transaction(async (tx) => {
     const response = await tx.surveyResponse.create({
@@ -811,6 +895,8 @@ async function persistResponse(input: {
         questionId: a.questionId,
         ratingValue: a.ratingValue,
         selectedOptionIndex: a.selectedOptionIndex,
+        text: a.text,
+        notApplicable: a.notApplicable,
       })),
     });
     await tx.surveyRecipient.update({
@@ -854,7 +940,12 @@ export async function submitSurveyResponseByToken(input: {
               id: true,
               questions: {
                 orderBy: { position: "asc" },
-                select: { id: true, type: true, options: true },
+                select: {
+                  id: true,
+                  type: true,
+                  options: true,
+                  allowNotApplicable: true,
+                },
               },
             },
           },
@@ -926,7 +1017,12 @@ export async function submitSurveyResponseByShareLink(input: {
           id: true,
           questions: {
             orderBy: { position: "asc" },
-            select: { id: true, type: true, options: true },
+            select: {
+                  id: true,
+                  type: true,
+                  options: true,
+                  allowNotApplicable: true,
+                },
           },
         },
       },

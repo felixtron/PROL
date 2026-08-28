@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Zap,
   Users,
+  MessageSquare,
 } from "lucide-react";
 import {
   addQuestion,
@@ -37,7 +38,24 @@ import {
 
 // ─── Tipos que refleja la query del servidor ────────────────────────────────
 
-type QuestionType = "RATING_STARS" | "MULTIPLE_CHOICE";
+type QuestionType =
+  | "RATING_STARS"
+  | "MULTIPLE_CHOICE"
+  | "SCALE_LABELED"
+  | "OPEN_TEXT";
+
+/** Tipos que se completan con una lista de opciones. */
+const WITH_OPTIONS: QuestionType[] = ["MULTIPLE_CHOICE", "SCALE_LABELED"];
+
+const TYPE_LABEL: Record<QuestionType, string> = {
+  RATING_STARS: "Estrellas (1–5)",
+  SCALE_LABELED: "Escala etiquetada (puntúa)",
+  MULTIPLE_CHOICE: "Opción múltiple (no puntúa)",
+  OPEN_TEXT: "Texto libre",
+};
+
+/** Escala por defecto: la del formulario de evaluación de eventos. */
+const DEFAULT_SCALE = "Excelente\nBueno\nRegular\nDeficiente";
 type Status = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 type Trigger = "MANUAL" | "COURSE_COMPLETED" | "CERTIFICATE_ISSUED";
 type Audience = "COMPANY_LEADER" | "SPECIFIC_USERS" | "COMPANY_ALL";
@@ -50,6 +68,7 @@ interface Question {
   options: unknown;
   section: string | null;
   weight: number;
+  allowNotApplicable: boolean;
 }
 
 interface CampaignRow {
@@ -494,12 +513,14 @@ function QuestionRow({
   const [section, setSection] = useState(question.section ?? "");
   const [weight, setWeight] = useState(question.weight);
   const [options, setOptions] = useState(toOptions(question.options).join("\n"));
+  const [notApplicable, setNotApplicable] = useState(question.allowNotApplicable);
 
   const dirty =
     label !== question.label ||
     section !== (question.section ?? "") ||
     weight !== question.weight ||
-    (question.type === "MULTIPLE_CHOICE" &&
+    notApplicable !== question.allowNotApplicable ||
+    (WITH_OPTIONS.includes(question.type) &&
       options !== toOptions(question.options).join("\n"));
 
   return (
@@ -511,6 +532,8 @@ function QuestionRow({
         </span>
         {question.type === "RATING_STARS" ? (
           <Star className="mt-2 h-4 w-4 shrink-0 text-amber-500" />
+        ) : question.type === "OPEN_TEXT" ? (
+          <MessageSquare className="mt-2 h-4 w-4 shrink-0 text-text-tertiary" />
         ) : (
           <ListOrdered className="mt-2 h-4 w-4 shrink-0 text-primary-600" />
         )}
@@ -547,10 +570,12 @@ function QuestionRow({
               />
             </div>
           </div>
-          {question.type === "MULTIPLE_CHOICE" && (
+          {WITH_OPTIONS.includes(question.type) && (
             <div>
               <label className="mb-1 block text-xs font-medium text-text-tertiary">
-                Opciones (una por línea)
+                {question.type === "SCALE_LABELED"
+                  ? "Niveles, del mejor al peor (uno por línea)"
+                  : "Opciones (una por línea)"}
               </label>
               <textarea
                 value={options}
@@ -558,6 +583,17 @@ function QuestionRow({
                 rows={Math.max(2, options.split("\n").length)}
                 className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
               />
+              {question.type === "SCALE_LABELED" && (
+                <label className="mt-2 flex items-center gap-2 text-xs text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={notApplicable}
+                    onChange={(e) => setNotApplicable(e.target.checked)}
+                    className="h-3.5 w-3.5"
+                  />
+                  Ofrecer «No aplica» (no penaliza el promedio)
+                </label>
+              )}
             </div>
           )}
           {dirty && (
@@ -570,7 +606,8 @@ function QuestionRow({
                       label,
                       section: section || null,
                       weight,
-                      ...(question.type === "MULTIPLE_CHOICE"
+                      allowNotApplicable: notApplicable,
+                      ...(WITH_OPTIONS.includes(question.type)
                         ? { options: options.split("\n") }
                         : {}),
                     }),
@@ -618,11 +655,20 @@ function QuestionRow({
 function AddQuestionForm({ surveyId }: { surveyId: string }) {
   const router = useRouter();
   const { pending, error, run } = useAction();
-  const [type, setType] = useState<QuestionType>("RATING_STARS");
+  const [type, setType] = useState<QuestionType>("SCALE_LABELED");
   const [label, setLabel] = useState("");
   const [section, setSection] = useState("");
   const [weight, setWeight] = useState(1);
-  const [options, setOptions] = useState("");
+  const [options, setOptions] = useState(DEFAULT_SCALE);
+  const [notApplicable, setNotApplicable] = useState(false);
+
+  // Al cambiar de tipo se precarga la escala estándar, que es lo que más se
+  // usa; en opción múltiple se parte de una lista vacía.
+  function changeType(next: QuestionType) {
+    setType(next);
+    setOptions(next === "SCALE_LABELED" ? DEFAULT_SCALE : "");
+    setNotApplicable(false);
+  }
 
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-border p-4">
@@ -630,11 +676,14 @@ function AddQuestionForm({ surveyId }: { surveyId: string }) {
       <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
         <select
           value={type}
-          onChange={(e) => setType(e.target.value as QuestionType)}
+          onChange={(e) => changeType(e.target.value as QuestionType)}
           className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
         >
-          <option value="RATING_STARS">Estrellas (1–5)</option>
-          <option value="MULTIPLE_CHOICE">Opción múltiple</option>
+          {(Object.keys(TYPE_LABEL) as QuestionType[]).map((t) => (
+            <option key={t} value={t}>
+              {TYPE_LABEL[t]}
+            </option>
+          ))}
         </select>
         <input
           value={label}
@@ -661,14 +710,36 @@ function AddQuestionForm({ surveyId }: { surveyId: string }) {
           className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
         />
       </div>
-      {type === "MULTIPLE_CHOICE" && (
-        <textarea
-          value={options}
-          onChange={(e) => setOptions(e.target.value)}
-          rows={3}
-          placeholder={"Una opción por línea\nMínimo 2"}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
-        />
+      {WITH_OPTIONS.includes(type) && (
+        <div>
+          <textarea
+            value={options}
+            onChange={(e) => setOptions(e.target.value)}
+            rows={4}
+            placeholder={
+              type === "SCALE_LABELED"
+                ? "Un nivel por línea, del mejor al peor"
+                : "Una opción por línea\nMínimo 2"
+            }
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary"
+          />
+          {type === "SCALE_LABELED" ? (
+            <label className="mt-2 flex items-center gap-2 text-xs text-text-secondary">
+              <input
+                type="checkbox"
+                checked={notApplicable}
+                onChange={(e) => setNotApplicable(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              Ofrecer «No aplica» (no penaliza el promedio)
+            </label>
+          ) : (
+            <p className="mt-1.5 text-xs text-text-tertiary">
+              La opción múltiple no puntúa: úsala para clasificar, no para medir
+              satisfacción.
+            </p>
+          )}
+        </div>
       )}
       <button
         disabled={pending || label.trim().length < 2}
@@ -680,11 +751,12 @@ function AddQuestionForm({ surveyId }: { surveyId: string }) {
                 label,
                 section: section || null,
                 weight,
-                options: type === "MULTIPLE_CHOICE" ? options.split("\n") : null,
+                allowNotApplicable: notApplicable,
+                options: WITH_OPTIONS.includes(type) ? options.split("\n") : null,
               }),
             () => {
               setLabel("");
-              setOptions("");
+              setOptions(type === "SCALE_LABELED" ? DEFAULT_SCALE : "");
               router.refresh();
             },
           )

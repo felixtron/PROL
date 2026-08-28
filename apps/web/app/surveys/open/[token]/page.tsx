@@ -52,6 +52,7 @@ export default async function OpenSurveyPage({
             type: q.type,
             label: q.label,
             section: q.section,
+            allowNotApplicable: q.allowNotApplicable,
             options: Array.isArray(q.options)
               ? (q.options as unknown[]).filter(
                   (o): o is string => typeof o === "string",
