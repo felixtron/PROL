@@ -128,7 +128,7 @@ export function TeamReport({
                     Progreso Prom.
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Sesiones y Talleres
+                    Talleres / Workshop
                   </th>
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Miembro Desde

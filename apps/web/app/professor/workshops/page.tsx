@@ -87,7 +87,7 @@ export default async function WorkshopsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-text-primary">
-            Sesiones y Talleres
+            Talleres / Workshop
           </h1>
           <p className="mt-1 text-text-secondary">
             Gestiona tus sesiones presenciales, virtuales e híbridas.
@@ -98,7 +98,7 @@ export default async function WorkshopsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
         >
           <Plus className="h-4 w-4" />
-          Nueva Sesión o Taller
+          Nuevo taller
         </Link>
       </div>
 
@@ -117,7 +117,7 @@ export default async function WorkshopsPage() {
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700"
           >
             <Plus className="h-4 w-4" />
-            Crear Sesión o Taller
+            Crear taller
           </Link>
         </div>
       ) : (

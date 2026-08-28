@@ -63,7 +63,7 @@ export default async function StudentsPage() {
                     Progreso Prom.
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Sesiones y Talleres Asistidos
+                    Talleres Asistidos
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Miembro Desde

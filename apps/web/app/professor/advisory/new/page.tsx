@@ -24,7 +24,7 @@ export default async function NewAdvisoryPage() {
           Consultoría Online
         </Link>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Nuevo Proyecto
+          Nueva sesión
         </h1>
         <p className="mt-1 text-text-secondary">
           Agenda un proyecto de acompañamiento con una empresa o con personas específicas.

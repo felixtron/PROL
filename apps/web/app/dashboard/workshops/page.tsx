@@ -25,7 +25,7 @@ export default async function StudentWorkshopsPage() {
       {/* Header */}
       <div className="mb-4 md:mb-6">
         <h1 className="font-heading text-xl font-bold text-text-primary md:text-2xl">
-          Sesiones y Talleres
+          Talleres / Workshop
         </h1>
         <p className="mt-0.5 text-sm text-text-secondary">
           Sesiones presenciales y virtuales con tus profesores.

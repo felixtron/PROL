@@ -21,10 +21,10 @@ export default async function NewWorkshopPage() {
           className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Sesiones y Talleres
+          Talleres / Workshop
         </Link>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Nueva Sesión o Taller
+          Nuevo taller
         </h1>
         <p className="mt-1 text-text-secondary">
           Crea una sesión presencial, virtual o híbrida para tus alumnos.
