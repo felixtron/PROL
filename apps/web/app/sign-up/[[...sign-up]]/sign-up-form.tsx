@@ -65,7 +65,8 @@ export function SignUpForm({
     const callbackUrl =
       callbackUrlRaw &&
       callbackUrlRaw.startsWith("/") &&
-      !callbackUrlRaw.startsWith("//")
+      !callbackUrlRaw.startsWith("//") &&
+      !callbackUrlRaw.startsWith("/\\")
         ? callbackUrlRaw
         : null;
 

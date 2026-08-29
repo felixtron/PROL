@@ -59,7 +59,8 @@ export function SignInForm({
     const callbackUrl =
       callbackUrlRaw &&
       callbackUrlRaw.startsWith("/") &&
-      !callbackUrlRaw.startsWith("//")
+      !callbackUrlRaw.startsWith("//") &&
+      !callbackUrlRaw.startsWith("/\\")
         ? callbackUrlRaw
         : null;
 
