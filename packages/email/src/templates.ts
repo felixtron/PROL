@@ -570,6 +570,12 @@ export function accountCreatedEmail({
 // El enlace que va en estos correos es personal e irrepetible: identifica al
 // destinatario y sólo sirve para responder ese lanzamiento. Por eso el pie
 // pide no reenviarlo — quien lo reciba respondería en nombre de otro.
+//
+// El cuerpo del mensaje sale de la DESCRIPCIÓN de la encuesta, no de aquí.
+// PROL es multi-tenant: un texto con el nombre de una consultora escrito en
+// la plantilla acabaría en los correos de las demás academias. Cada tenant
+// redacta el suyo al crear la encuesta y estas plantillas sólo aportan el
+// marco (saludo, botón, vencimiento y el aviso de que el enlace es personal).
 // ---------------------------------------------------------------------------
 
 export interface SurveyInvitationParams {
@@ -577,24 +583,10 @@ export interface SurveyInvitationParams {
   recipientName?: string | null;
   surveyTitle: string;
   description?: string | null;
-  /** "Acme S.A. · Curso: Seguridad Industrial" */
-  contextLine?: string | null;
   answerUrl: string;
   /** "12 de septiembre de 2026" */
   closesAtLabel: string;
   estimatedMinutes?: number | null;
-}
-
-function contextBlock(contextLine?: string | null): string {
-  if (!contextLine) return "";
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
-  <tr>
-    <td style="background-color:${C.surfaceAlt};border:1px solid ${C.border};border-radius:8px;padding:12px 16px;">
-      <p style="margin:0;color:${C.muted};font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Corresponde a</p>
-      <p style="margin:4px 0 0;color:${C.ink};font-size:15px;line-height:1.5;">${escapeHtml(contextLine)}</p>
-    </td>
-  </tr>
-</table>`;
 }
 
 export function surveyInvitationEmail({
@@ -602,7 +594,6 @@ export function surveyInvitationEmail({
   recipientName,
   surveyTitle,
   description,
-  contextLine,
   answerUrl,
   closesAtLabel,
   estimatedMinutes,
@@ -610,21 +601,23 @@ export function surveyInvitationEmail({
   const greeting = recipientName?.trim()
     ? `Hola ${escapeHtml(recipientName.trim())},`
     : "Hola,";
+  // Si la encuesta no trae descripción se usa un texto neutro: sin nombre de
+  // consultora, para que sirva a cualquier tenant.
+  const intro =
+    description?.trim() ||
+    `Nos gustar\u00eda conocer tu opini\u00f3n${
+      estimatedMinutes ? `. Responder te tomar\u00e1 unos ${estimatedMinutes} minutos` : ""
+    }.`;
   const body = `
     <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
       ${escapeHtml(surveyTitle)}
     </h2>
-    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
-      ${greeting} nos gustar&iacute;a conocer tu opini&oacute;n${
-        estimatedMinutes ? ` (toma unos ${estimatedMinutes} minutos)` : ""
-      }.
+    <p style="margin:0 0 12px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting}
     </p>
-    ${contextBlock(contextLine)}
-    ${
-      description
-        ? `<p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">${escapeHtml(description)}</p>`
-        : ""
-    }
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${escapeHtml(intro)}
+    </p>
     ${ctaButton("Responder la encuesta", answerUrl)}
     <p style="margin:0 0 8px;color:${C.body};font-size:15px;line-height:1.6;">
       Puedes responder hasta el <strong>${escapeHtml(closesAtLabel)}</strong>. Despu&eacute;s
@@ -648,7 +641,6 @@ export function surveyReminderEmail({
   tenantName,
   recipientName,
   surveyTitle,
-  contextLine,
   answerUrl,
   closesAtLabel,
   daysLeft,
@@ -670,7 +662,6 @@ export function surveyReminderEmail({
     <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
       ${greeting} todav&iacute;a no registramos tu respuesta y ${remaining}.
     </p>
-    ${contextBlock(contextLine)}
     ${ctaButton("Responder ahora", answerUrl)}
     <p style="margin:0 0 8px;color:${C.body};font-size:15px;line-height:1.6;">
       Cierra el <strong>${escapeHtml(closesAtLabel)}</strong>.
@@ -689,7 +680,6 @@ export interface SurveyResultsPublishedParams {
   tenantName: string;
   recipientName?: string | null;
   surveyTitle: string;
-  contextLine?: string | null;
   resultsUrl: string;
   totalResponses: number;
   note?: string | null;
@@ -699,7 +689,6 @@ export function surveyResultsPublishedEmail({
   tenantName,
   recipientName,
   surveyTitle,
-  contextLine,
   resultsUrl,
   totalResponses,
   note,
@@ -715,7 +704,6 @@ export function surveyResultsPublishedEmail({
       ${greeting} ya puedes consultar el resultado consolidado de esta encuesta
       (${totalResponses} ${totalResponses === 1 ? "respuesta" : "respuestas"}).
     </p>
-    ${contextBlock(contextLine)}
     ${
       note
         ? `<p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">${escapeHtml(note)}</p>`

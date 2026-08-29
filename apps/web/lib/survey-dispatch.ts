@@ -17,7 +17,7 @@ import {
   surveyResultsPublishedEmail,
 } from "@prol/email";
 import { APP_TIME_ZONE } from "@/lib/timezone";
-import { campaignState, daysUntil, describeCampaignContext } from "@/lib/surveys";
+import { campaignState, daysUntil } from "@/lib/surveys";
 
 /** Token URL-safe de 32 caracteres para enlaces de respuesta y resultados. */
 export function surveyToken(bytes = 24): string {
@@ -238,13 +238,11 @@ function invitationPayload(
   campaign: CampaignForDispatch,
   recipient: { email: string; name: string | null; token: string },
 ) {
-  const ctx = describeCampaignContext(campaign);
   const { subject, html } = surveyInvitationEmail({
     tenantName: campaign.tenant.name,
     recipientName: recipient.name,
     surveyTitle: campaign.survey.title,
     description: campaign.survey.description,
-    contextLine: ctx.line || null,
     answerUrl: answerUrl(recipient.token),
     closesAtLabel: formatDay(campaign.closesAt),
   });
@@ -404,7 +402,6 @@ export async function sendCampaignReminders(
     });
     if (targets.length === 0) continue;
 
-    const ctx = describeCampaignContext(campaign);
     let sent = 0;
     try {
       sent = await sendBulkEmail(
@@ -413,7 +410,6 @@ export async function sendCampaignReminders(
             tenantName: campaign.tenant.name,
             recipientName: r.name,
             surveyTitle: campaign.survey.title,
-            contextLine: ctx.line || null,
             answerUrl: answerUrl(r.token),
             closesAtLabel: formatDay(campaign.closesAt),
             daysLeft: Math.max(0, left),
@@ -516,7 +512,6 @@ export async function notifyResultsPublished(
 
   if (audience.length === 0) return { recipients: 0, sent: 0 };
 
-  const ctx = describeCampaignContext(campaign);
   const link = campaign.resultsShareToken
     ? resultsUrl(campaign.resultsShareToken)
     : `${appUrl()}/dashboard/surveys/${campaign.id}/results`;
@@ -529,7 +524,6 @@ export async function notifyResultsPublished(
           tenantName: campaign.tenant.name,
           recipientName: u.name,
           surveyTitle: campaign.survey.title,
-          contextLine: ctx.line || null,
           resultsUrl: link,
           totalResponses: campaign._count.responses,
           note: campaign.resultsNote,
