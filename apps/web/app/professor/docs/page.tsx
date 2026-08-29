@@ -769,6 +769,31 @@ const articles: DocsArticle[] = [
     badge: "actualizado",
     keywords: ["ingresos", "dinero", "ventas", "revenue", "facturación"],
   },
+
+  {
+    category: "diplomas",
+    title: "Las constancias DC-3 no se configuran desde el curso",
+    description:
+      "Además del diploma, la plataforma emite el formato DC-3 de la STPS. No lo verás en el editor de tu curso: lo administra la academia.",
+    steps: [
+      "El diploma sí es tuyo: plantilla, código, textos y firma los defines en los ajustes del curso.",
+      "El DC-3 lo configura el administrador de la academia en su propia sección, curso por curso.",
+      "Ahí se define el área temática oficial, las horas declaradas, el agente capacitador y el instructor que firma.",
+      "Si un curso tuyo debe emitir DC-3, pídeselo al administrador.",
+    ],
+    notes:
+      "Están separados a propósito: el diploma es una pieza de tu curso, y el DC-3 es un documento con efectos ante la autoridad que emite el patrón del alumno. Sólo lo reciben quienes se inscribieron a través de una empresa con datos fiscales registrados.",
+    badge: "nuevo",
+    keywords: [
+      "dc3",
+      "dc-3",
+      "stps",
+      "constancia",
+      "capacitación",
+      "diploma",
+      "diferencia",
+    ],
+  },
 ];
 
 export default function ProfessorDocsPage() {

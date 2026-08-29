@@ -36,6 +36,12 @@ const categories: DocsCategory[] = [
     summary: "Cómo se emite tu diploma y cómo se verifica.",
   },
   {
+    id: "dc3",
+    label: "Constancia DC-3",
+    icon: "Stamp",
+    summary: "El formato oficial de la STPS, si te inscribió tu empresa.",
+  },
+  {
     id: "empresa",
     label: "Mi empresa",
     icon: "Building2",
@@ -515,6 +521,109 @@ const articles: DocsArticle[] = [
       "Volverás a la pantalla de inicio de sesión.",
     ],
     keywords: ["salir", "logout", "cerrar sesión"],
+  },
+
+  // ─── Constancia DC-3 ──────────────────────────────────────────────
+  {
+    category: "dc3",
+    title: "Qué es la constancia DC-3 y si te toca",
+    description:
+      "Es el formato oficial de la STPS con el que tu empresa acredita que te capacitó. Es un documento distinto del diploma del curso, y no todo el mundo lo recibe.",
+    steps: [
+      "El diploma lo recibes siempre que terminas un curso.",
+      "La constancia DC-3 sólo aplica si te inscribió una empresa que tiene sus datos fiscales registrados en la plataforma.",
+      "Si tu cuenta no está asociada a ninguna empresa, no verás la sección: no es que te falte algo, es que ese documento no te corresponde.",
+      "Además, el curso tiene que estar configurado por el administrador para emitirla.",
+    ],
+    notes:
+      "Encontrarás la sección como Constancias DC-3 en el menú lateral, y también un acceso desde tus Diplomas.",
+    badge: "nuevo",
+    keywords: [
+      "dc3",
+      "dc-3",
+      "stps",
+      "constancia",
+      "capacitación",
+      "trabajo",
+      "empresa",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Completar tus datos para el DC-3",
+    description:
+      "Tú capturas el bloque del trabajador. Se guardan una sola vez y sirven para todas tus constancias.",
+    steps: [
+      "Ve a Constancias DC-3 en el menú.",
+      "En Datos del trabajador, revisa tu nombre: viene de tu perfil, pero el formato lo pide como apellido paterno, materno y nombre(s), y así es como se imprimirá.",
+      "Escribe tu CURP. Son 18 caracteres y se valida mientras escribes.",
+      "Elige tu ocupación específica del Catálogo Nacional de Ocupaciones.",
+      "Escribe tu puesto si quieres: el formato lo marca como dato no obligatorio.",
+      "Marca la casilla de verificación y confirma.",
+    ],
+    notes:
+      "Revisa bien antes de confirmar. Una vez emitida la constancia, los datos quedan congelados y cualquier corrección tiene que pedirse al administrador, que debe cancelarla y volver a emitirla.",
+    badge: "nuevo",
+    keywords: ["curp", "ocupación", "puesto", "datos", "capturar", "nombre"],
+  },
+  {
+    category: "dc3",
+    title: "Descargar tu constancia",
+    description:
+      "Cuando concluyes el curso y los datos de las tres partes están completos, la constancia se puede generar.",
+    steps: [
+      "Ve a Constancias DC-3 y busca el curso.",
+      "Si dice Lista para emitir, lee la leyenda de responsabilidad y pulsa Generar DC-3.",
+      "Se te asigna un folio y ya puedes imprimirla las veces que necesites.",
+      "También aparece un botón junto al diploma del curso, en la sección Diplomas.",
+    ],
+    notes:
+      "Necesitas tener la sesión abierta para descargar el PDF: el documento lleva tu CURP y el RFC de tu empresa, así que no es un enlace público como el del diploma. Cada descarga queda registrada.",
+    badge: "nuevo",
+    keywords: ["descargar", "imprimir", "generar", "pdf", "folio"],
+  },
+  {
+    category: "dc3",
+    title: "Dice que faltan datos y no puedo generarla",
+    description:
+      "La ficha del curso lista exactamente qué falta y quién es responsable de cada dato.",
+    steps: [
+      "Abre Constancias DC-3 y mira el recuadro ámbar del curso.",
+      "Cada línea trae entre paréntesis al responsable: Trabajador, Líder de proyecto o Administrador.",
+      "Lo que diga Trabajador lo arreglas tú en el formulario de esa misma pantalla.",
+      "Lo que diga Líder de proyecto son los datos fiscales de tu empresa: avisa a quien la lidera.",
+      "Lo que diga Administrador es configuración del curso: escribe a la academia.",
+    ],
+    notes:
+      "Si el curso todavía no aparece como concluido, primero termínalo. La constancia acredita formación terminada, así que hasta entonces la opción no se habilita.",
+    badge: "nuevo",
+    keywords: ["falta", "incompleto", "bloqueado", "no puedo", "error"],
+  },
+  {
+    category: "empresa",
+    title: "Capturar los datos del patrón para las constancias DC-3",
+    description:
+      "Si lideras una empresa, tú capturas el bloque del patrón. Se reutiliza en las constancias de todos tus compañeros, así que se hace una vez.",
+    steps: [
+      "Ve a Mi empresa, o a Constancias DC-3.",
+      "En Datos del patrón, escribe el nombre o razón social tal y como debe imprimirse.",
+      "Escribe el RFC con homoclave: 12 caracteres si es persona moral, 13 si es persona física.",
+      "Escribe el nombre del patrón o representante legal, que firma esa casilla del formato.",
+      "Si la empresa tiene más de 50 trabajadores, añade también el representante de los trabajadores. Si no, déjalo vacío.",
+      "Marca la casilla de verificación y confirma.",
+    ],
+    notes:
+      "Mientras estos datos falten o el RFC sea inválido, ningún miembro de tu empresa podrá emitir su constancia. Los demás miembros ven estos datos pero no pueden editarlos.",
+    badge: "nuevo",
+    keywords: [
+      "patrón",
+      "rfc",
+      "razón social",
+      "representante",
+      "líder",
+      "dc3",
+      "empresa",
+    ],
   },
 ];
 

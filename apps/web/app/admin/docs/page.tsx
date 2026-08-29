@@ -139,7 +139,7 @@ const articles: DocsArticle[] = [
       "Encuestas: cuestionarios con enlace público, sin necesidad de cuenta.",
     ],
     notes:
-      "Consultoría Online viene habilitada por defecto en las academias, porque el módulo ya estaba disponible para todas antes de existir el interruptor. Desactívalo expresamente si una academia no debe verlo.",
+      "Consultoría Online viene habilitada por defecto en las academias, porque el módulo ya estaba disponible para todas antes de existir el interruptor. Desactívalo expresamente si una academia no debe verlo. Las constancias DC-3 no son un módulo y no aparecen aquí: se activan curso por curso desde el panel de cada academia, y sólo aplican a alumnos inscritos por una empresa con datos fiscales registrados.",
     badge: "nuevo",
     keywords: [
       "consultoría",

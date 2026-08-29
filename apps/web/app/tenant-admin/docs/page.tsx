@@ -66,6 +66,13 @@ const categories: DocsCategory[] = [
     summary: "Satisfacción: cuestionarios, envíos y publicación de resultados.",
   },
   {
+    id: "dc3",
+    label: "Constancias DC-3",
+    icon: "Stamp",
+    summary:
+      "Formato oficial de la STPS: agentes capacitadores, configuración por curso y emisión.",
+  },
+  {
     id: "modulos",
     label: "Módulos",
     icon: "ToggleLeft",
@@ -494,7 +501,7 @@ const articles: DocsArticle[] = [
       "Encuestas: evaluación de satisfacción que administras tú, con envíos, vencimientos y publicación controlada de resultados.",
     ],
     notes:
-      "Al desactivar un módulo, sus secciones desaparecen del menú de profesores y alumnos, pero los datos existentes no se borran. Si necesitas activar o desactivar alguno, solicítalo al super administrador de la plataforma.",
+      "Al desactivar un módulo, sus secciones desaparecen del menú de profesores y alumnos, pero los datos existentes no se borran. Si necesitas activar o desactivar alguno, solicítalo al super administrador de la plataforma. Las constancias DC-3 no están en esta lista: no son un módulo de la academia sino un ajuste por curso, y lo controlas tú desde la sección DC-3.",
     badge: "actualizado",
     keywords: [
       "módulos",
@@ -616,6 +623,226 @@ const articles: DocsArticle[] = [
     notes:
       "Un lanzamiento con 2 respuestas no pesa lo mismo que uno con 200: el índice de cada grupo se pondera por respuestas, no por número de lanzamientos. Sólo cuentan los lanzamientos ya enviados.",
     keywords: ["informe", "consolidado", "índice", "ponderado", "periodo"],
+  },
+
+  // ─── Constancias DC-3 ─────────────────────────────────────────────
+  {
+    category: "dc3",
+    title: "Qué es el DC-3 y a quién le corresponde",
+    description:
+      "La Constancia de Competencias o de Habilidades Laborales es el formato oficial con el que un patrón acredita ante la STPS que capacitó a un trabajador. Es un documento distinto del diploma de la plataforma.",
+    steps: [
+      "El diploma lo emite tu academia y lo recibe cualquier alumno que termina un curso.",
+      "El DC-3 lo emite el patrón, y sólo le corresponde a quien se inscribió a través de una empresa con sus datos fiscales registrados.",
+      "Un alumno sin empresa asociada no ve la opción, ni siquiera al terminar el curso: no es un dato que le falte, es un documento que no le toca.",
+      "El curso también tiene que estar configurado para emitirlo. Arranca desactivado en todos.",
+    ],
+    notes:
+      "Las cuatro condiciones se exigen a la vez: alumno con empresa, curso con DC-3 activado, curso concluido y datos completos de las tres partes. Si falta cualquiera, el botón no se habilita.",
+    badge: "nuevo",
+    keywords: [
+      "dc3",
+      "dc-3",
+      "stps",
+      "constancia",
+      "capacitación",
+      "competencias",
+      "habilidades laborales",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Paso 1 — Registrar el agente capacitador",
+    description:
+      "El agente capacitador es quien impartió la formación y firma esa casilla del formato. Sin al menos uno registrado, ningún curso puede emitir constancias.",
+    steps: [
+      "Ve a DC-3 en el menú lateral.",
+      "En Agentes capacitadores, haz clic en Nuevo agente.",
+      "Escribe el nombre o razón social tal y como debe imprimirse.",
+      "Añade su registro ante la STPS si lo tiene, y su RFC si quieres dejarlo asentado.",
+      "Sube su logotipo si quieres que aparezca en el encabezado de la constancia, junto al de la empresa.",
+      "Guarda. A partir de ahí puedes elegirlo en cualquier curso.",
+    ],
+    notes:
+      "No se asume que el agente capacitador sea tu academia: con frecuencia son empresas distintas, y la constancia debe decir quién impartió de verdad. Puedes registrar varios y elegir uno por curso. Marcar uno como inactivo lo retira de los cursos nuevos, pero no lo quita de los que ya lo tienen asignado.",
+    badge: "nuevo",
+    keywords: ["agente", "capacitador", "stps", "registro", "externo", "logo"],
+  },
+  {
+    category: "dc3",
+    title: "Paso 2 — Activar el DC-3 en un curso",
+    description:
+      "La configuración del programa de capacitación vive aquí, no en el editor del profesor: son datos con efectos ante la autoridad, no decisiones editoriales del curso.",
+    steps: [
+      "Ve a DC-3 y entra al curso desde la lista.",
+      "Marca la casilla Este curso emite constancia DC-3.",
+      "Nombre del curso en el DC-3: déjalo vacío para usar el título de la plataforma, o escribe otro si ese título lleva códigos o abreviaturas.",
+      "Área temática: elígela del catálogo oficial de la STPS.",
+      "Duración en horas: son las horas declaradas del programa, no la suma de los videos.",
+      "Agente capacitador: elige uno de los registrados en el paso 1.",
+      "Instructor o tutor: quien firma la primera casilla del bloque de firmas. Puede no ser el profesor dueño del curso.",
+      "Elige la modalidad y guarda.",
+    ],
+    notes:
+      "La lista de cursos marca en ámbar lo que falta en cada uno, así que puedes ver de un vistazo cuáles están listos para emitir y cuáles no.",
+    badge: "nuevo",
+    keywords: [
+      "activar",
+      "configurar",
+      "curso",
+      "área temática",
+      "horas",
+      "instructor",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Paso 3 — La modalidad decide de dónde salen las fechas",
+    description:
+      "El formato exige el periodo real de ejecución. La fecha en que se creó el curso no sirve: no dice nada sobre cuándo se capacitó a nadie.",
+    steps: [
+      "En línea o pregrabado: el periodo es la ventana propia de cada alumno, de su inscripción a la fecha en que concluyó el curso. Es distinta para cada persona y el sistema la calcula solo.",
+      "En vivo, presencial o virtual: el periodo lo fija la edición a la que asistió el alumno. Hay que registrarla y asignársela.",
+      "Cambia la modalidad en la ficha del curso, en el bloque Modalidad y periodo de ejecución.",
+    ],
+    notes:
+      "Si eliges En vivo y no registras ediciones, ningún alumno de ese curso podrá emitir su constancia: le faltará el periodo. La lista de cursos te lo señala como dato pendiente.",
+    badge: "nuevo",
+    keywords: [
+      "periodo",
+      "fechas",
+      "ejecución",
+      "modalidad",
+      "en vivo",
+      "en línea",
+      "pregrabado",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Paso 4 — Ediciones de un curso en vivo",
+    description:
+      "Una misma plantilla de curso se imparte muchas veces en fechas distintas. Cada impartición es una edición con sus fechas reales.",
+    steps: [
+      "En la ficha DC-3 del curso, ve a Ediciones e impartición y crea una Nueva edición.",
+      "Ponle un nombre que reconozcas después, por ejemplo “Generación marzo 2026 — Monterrey”.",
+      "Captura la fecha real de inicio y la de término, no las programadas.",
+      "Si esa edición se dio en otras horas o con otro instructor, sobrescríbelo aquí; si no, déjalo vacío y hereda lo del curso.",
+      "Más abajo, en Alumnos, asigna a cada inscrito su edición desde el desplegable.",
+    ],
+    notes:
+      "Una edición con alumnos asignados no se puede eliminar: primero hay que reasignarlos, para que quien la borra vea a quién está dejando sin fechas.",
+    badge: "nuevo",
+    keywords: [
+      "edición",
+      "generación",
+      "evento",
+      "impartición",
+      "asignar",
+      "alumnos",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Quién captura cada bloque del formato",
+    description:
+      "El DC-3 se llena a tres manos, igual que está pintado el formato oficial. Tú sólo controlas uno de los tres bloques.",
+    steps: [
+      "Datos del trabajador: los captura el propio alumno en su panel — nombre en orden oficial, CURP, ocupación del Catálogo Nacional de Ocupaciones y puesto.",
+      "Datos de la empresa: los captura el líder de proyecto de esa empresa — razón social, RFC, representante legal y, si aplica, representante de los trabajadores.",
+      "Datos del programa: los capturas tú, en la ficha DC-3 del curso.",
+      "El periodo de ejecución y el folio de control los pone el sistema.",
+    ],
+    notes:
+      "Los datos del patrón se guardan en la empresa y se reutilizan en las constancias de todos sus miembros: se capturan una vez, no una por alumno. Si una empresa no tiene líder designado, puedes capturar esos datos tú desde la ficha de la empresa.",
+    badge: "nuevo",
+    keywords: [
+      "roles",
+      "quién",
+      "trabajador",
+      "patrón",
+      "líder",
+      "responsable",
+      "curp",
+      "rfc",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Paso 5 — Emitir la constancia",
+    description:
+      "Cuando las cuatro condiciones se cumplen, la constancia se puede emitir desde tu panel o desde el del propio alumno.",
+    steps: [
+      "Entra a DC-3 y abre el curso.",
+      "En Alumnos, localiza a la persona: si está lista verás el botón Emitir DC-3.",
+      "Púlsalo. El folio se asigna en ese momento, con una serie propia por academia y año.",
+      "A partir de ahí el botón se sustituye por el folio, que abre el PDF.",
+      "El alumno también puede emitirla él mismo desde Constancias DC-3 en su panel, y el líder de su empresa desde el suyo.",
+    ],
+    notes:
+      "Emitir es idempotente: si alguien ya la emitió, volver a pulsar devuelve la misma constancia en vez de duplicarla. Al emitirse, todos los datos quedan congelados — corregir después el CURP del alumno o el RFC del patrón no cambia lo que dice un documento ya entregado.",
+    badge: "nuevo",
+    keywords: ["emitir", "generar", "folio", "imprimir", "expedir"],
+  },
+  {
+    category: "dc3",
+    title: "Por qué un alumno aparece bloqueado",
+    description:
+      "La lista de alumnos dice exactamente qué falta y de quién depende, para que no tengas que adivinar a quién ir a buscar.",
+    steps: [
+      "No aplica: el alumno no pertenece a ninguna empresa, o el curso no tiene el DC-3 activado.",
+      "En progreso: todavía no concluye el curso. La constancia acredita formación terminada.",
+      "Datos incompletos: bajo la fila aparece la lista de lo que falta, con el responsable de cada dato entre paréntesis.",
+      "Actúa según el responsable: si es del trabajador o del patrón, avísales; si es del administrador, complétalo tú en la ficha del curso.",
+    ],
+    notes:
+      "El puesto del trabajador y el representante de los trabajadores son opcionales en el formato oficial, así que nunca bloquean la emisión. La CURP y el RFC sí, y además se validan de formato: una CURP mal capturada invalida la constancia y el error suele descubrirse cuando el trabajador la necesita.",
+    badge: "nuevo",
+    keywords: [
+      "bloqueado",
+      "falta",
+      "incompleto",
+      "no puedo emitir",
+      "pendiente",
+      "error",
+    ],
+  },
+  {
+    category: "dc3",
+    title: "Corregir o cancelar una constancia ya emitida",
+    description:
+      "Después de emitir, los datos están congelados. Corregirlos exige cancelar la constancia y volver a emitirla, y eso sólo lo puede hacer la administración.",
+    steps: [
+      "Pide a quien corresponda que corrija el dato en su panel: el alumno los suyos, el líder los del patrón, tú los del curso.",
+      "Cancela la constancia equivocada indicando el motivo.",
+      "Vuelve a emitirla: tomará los datos ya corregidos y un folio nuevo.",
+    ],
+    notes:
+      "Una constancia cancelada se sigue pudiendo abrir —hace falta para auditar qué se entregó— pero sale marcada con un sello CANCELADA para que nadie la presente como válida. Antes de imprimir, tanto el alumno como el líder ven la leyenda que les advierte de esto.",
+    badge: "nuevo",
+    keywords: ["corregir", "error", "cancelar", "anular", "reemitir", "cambio"],
+  },
+  {
+    category: "dc3",
+    title: "Historial de impresiones",
+    description:
+      "Cada copia que sale queda registrada con quién la descargó y cuándo.",
+    steps: [
+      "La emisión se asienta una sola vez, en el momento de generar la constancia.",
+      "Cada descarga posterior del PDF se asienta como una impresión más.",
+      "El folio de control del pie del documento permite rastrear una copia concreta.",
+    ],
+    notes:
+      "El PDF no es público como el del diploma: lleva la CURP del trabajador y el RFC de su patrón, así que sólo lo pueden abrir el propio trabajador, el líder de su empresa y la administración de la academia. Un enlace compartido a alguien fuera de ese círculo no abre.",
+    badge: "nuevo",
+    keywords: [
+      "historial",
+      "reimprimir",
+      "reimpresión",
+      "auditoría",
+      "descargas",
+      "privacidad",
+    ],
   },
 ];
 
