@@ -49,3 +49,23 @@ export async function getNotifications(page = 1, pageSize = 20): Promise<{
     hasMore,
   };
 }
+
+/**
+ * Últimas notificaciones para el rail del dashboard.
+ *
+ * Usa `getCurrentUser` y no `requireUser` —igual que `getUnreadNotificationCount`—
+ * porque la página y el layout se renderizan en paralelo: el redirect del layout
+ * no llega a tiempo de proteger a la página y un throw aquí tumbaría el render.
+ */
+export async function getRecentNotifications(
+  limit = 4,
+): Promise<Notification[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  return db.notification.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}

@@ -2,54 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  Bell,
-  GraduationCap,
-  DollarSign,
-  BookOpen,
-  Calendar,
-  Award,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight } from "lucide-react";
 import { markAsRead, markAllAsRead } from "@/lib/actions/notifications";
+import { getNotificationIcon } from "@/components/notification-icon";
+import { formatTimeAgo } from "@/lib/format-time-ago";
 import type { Notification } from "@prol/db";
 
 interface NotificationListProps {
   initialNotifications: Notification[];
   initialTotal: number;
   initialHasMore: boolean;
-}
-
-function getNotificationIcon(type: string) {
-  switch (type) {
-    case "ENROLLMENT":
-      return GraduationCap;
-    case "PAYMENT":
-      return DollarSign;
-    case "COURSE_UPDATE":
-      return BookOpen;
-    case "WORKSHOP":
-      return Calendar;
-    case "CERTIFICATE":
-      return Award;
-    case "SYSTEM":
-    default:
-      return Bell;
-  }
-}
-
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return "hace un momento";
-  if (diffMins < 60) return `hace ${diffMins} min`;
-  if (diffHours < 24) return `hace ${diffHours} hora${diffHours > 1 ? "s" : ""}`;
-  return `hace ${diffDays} día${diffDays > 1 ? "s" : ""}`;
 }
 
 export function NotificationList({

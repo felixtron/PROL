@@ -1,56 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Menu,
-  X,
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  DollarSign,
-  Calendar,
-  Settings,
-  Building2,
-  GraduationCap,
-  Home,
-  Award,
-  ClipboardCheck,
-  ListChecks,
-  Laptop,
-  HelpCircle,
-  FileText,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
+import { NAV_ICONS } from "./nav-icons";
+import { resolveActiveHref } from "./nav-active";
+import type { SidebarIcon, SidebarNavItem } from "./nav-icons";
 
-// Allowed icon names — keep in sync with the imports above. Using a string
-// map avoids passing React components across the server/client boundary.
-const ICONS: Record<string, LucideIcon> = {
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  DollarSign,
-  Calendar,
-  Settings,
-  Building2,
-  GraduationCap,
-  Home,
-  Award,
-  ClipboardCheck,
-  ListChecks,
-  Laptop,
-  HelpCircle,
-  FileText,
-};
-
-export type SidebarIcon = keyof typeof ICONS;
-
-export interface SidebarNavItem {
-  href: string;
-  label: string;
-  icon: SidebarIcon;
-}
+export type { SidebarIcon, SidebarNavItem };
 
 interface SidebarShellProps {
   navItems: SidebarNavItem[];
@@ -71,6 +29,15 @@ export function SidebarShell({
 }: SidebarShellProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const activeHref = useMemo(
+    () =>
+      resolveActiveHref(
+        pathname,
+        navItems.map((i) => i.href),
+      ),
+    [pathname, navItems],
+  );
 
   useEffect(() => {
     setOpen(false);
@@ -94,16 +61,18 @@ export function SidebarShell({
 
       {belowBrandSlot}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">
+      {/* `min-h-0` es lo que permite que este nav se desplace dentro de sí
+          mismo en vez de estirar el aside: sin él, un flex item no encoge por
+          debajo de su contenido y el `overflow-y-auto` nunca se activa. */}
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
         {navItems.map((item) => {
-          const Icon = ICONS[item.icon] ?? LayoutDashboard;
-          const active =
-            pathname === item.href ||
-            (item.href !== "/" && pathname?.startsWith(item.href + "/"));
+          const Icon = NAV_ICONS[item.icon] ?? LayoutDashboard;
+          const active = item.href === activeHref;
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
                   ? "bg-primary-50 text-primary-700"
@@ -120,7 +89,10 @@ export function SidebarShell({
   );
 
   return (
-    <div className="flex min-h-screen">
+    // El scroll vive en <main>, no en el <body>: así el sidebar conserva alto
+    // propio y los elementos `sticky` del contenido se anclan al área de
+    // contenido en lugar de competir con el header móvil.
+    <div className="flex h-dvh overflow-hidden">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex">
         {sidebarContent}
@@ -152,9 +124,9 @@ export function SidebarShell({
       )}
 
       {/* Main content */}
-      <div className="flex w-full min-w-0 flex-1 flex-col">
-        {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-3 md:hidden">
+      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Mobile top bar — fuera del contenedor con scroll, siempre visible */}
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface px-3 md:hidden">
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -168,7 +140,10 @@ export function SidebarShell({
           </span>
         </header>
 
-        <main className="flex-1 bg-surface-secondary">
+        <main
+          data-scroll-container
+          className="flex-1 overflow-y-auto bg-surface-secondary"
+        >
           <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
             {children}
           </div>

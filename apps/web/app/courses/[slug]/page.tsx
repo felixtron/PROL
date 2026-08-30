@@ -253,7 +253,7 @@ export default async function CourseDetailPage({
 
         {/* Sidebar (1/3, sticky) */}
         <aside className="mt-8 lg:mt-0">
-          <div className="sticky top-24 rounded-lg border border-border bg-surface p-6 shadow-sm">
+          <div className="rounded-lg border border-border bg-surface p-6 shadow-sm lg:sticky lg:top-6">
             {/* Thumbnail or preview */}
             {course.thumbnail ? (
               <div className="relative mb-6 aspect-video w-full overflow-hidden rounded-lg">

@@ -2,14 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Search,
-  Pencil,
-  Trash2,
-  Power,
-  Mail,
-  X,
-} from "lucide-react";
+import { Search, Pencil, Trash2, Power, Mail, X } from "lucide-react";
 import {
   deleteTenantUser,
   updateTenantUser,
@@ -102,12 +95,17 @@ export function UsersTable({
   return (
     <div className="space-y-4">
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
       )}
 
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-3">
-        <form onSubmit={handleSearchSubmit} className="relative flex-1 min-w-64">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="relative flex-1 min-w-64"
+        >
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
           <input
             type="text"
@@ -161,208 +159,225 @@ export function UsersTable({
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
-        <table className="min-w-full divide-y divide-border">
-          <thead className="bg-surface-secondary">
-            <tr>
-              <Th>Usuario</Th>
-              <Th>Rol</Th>
-              <Th>Empresa</Th>
-              <Th>Inscripciones</Th>
-              <Th>Último login</Th>
-              <Th>Estado</Th>
-              <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-text-tertiary">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {users.length === 0 ? (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-secondary">
               <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-8 text-center text-sm text-text-tertiary"
-                >
-                  No se encontraron usuarios con los filtros seleccionados.
-                </td>
+                <Th>Usuario</Th>
+                <Th>Rol</Th>
+                <Th>Empresa</Th>
+                <Th>Inscripciones</Th>
+                <Th>Último login</Th>
+                <Th>Estado</Th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium uppercase tracking-wider text-text-tertiary">
+                  Acciones
+                </th>
               </tr>
-            ) : (
-              users.map((u) => {
-                const isEditing = editingId === u.id;
-                const roleInfo = roleLabels[u.role] ?? roleLabels.STUDENT;
-                return (
-                  <tr
-                    key={u.id}
-                    className={u.disabledAt ? "bg-red-50/30" : undefined}
+            </thead>
+            <tbody className="divide-y divide-border">
+              {users.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="px-4 py-8 text-center text-sm text-text-tertiary"
                   >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {u.avatar ? (
-                          <img
-                            src={u.avatar}
-                            alt={u.name ?? u.email}
-                            className="h-8 w-8 rounded-full object-cover"
+                    No se encontraron usuarios con los filtros seleccionados.
+                  </td>
+                </tr>
+              ) : (
+                users.map((u) => {
+                  const isEditing = editingId === u.id;
+                  const roleInfo = roleLabels[u.role] ?? roleLabels.STUDENT;
+                  return (
+                    <tr
+                      key={u.id}
+                      className={u.disabledAt ? "bg-red-50/30" : undefined}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {u.avatar ? (
+                            <img
+                              src={u.avatar}
+                              alt={u.name ?? u.email}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                              {(u.name ?? u.email).slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-text-primary">
+                              {u.name ?? "—"}
+                            </p>
+                            <p className="truncate text-xs text-text-tertiary">
+                              {u.email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <RoleSelect
+                            userId={u.id}
+                            currentRole={u.role}
+                            onDone={() => {
+                              setEditingId(null);
+                              router.refresh();
+                            }}
+                            onError={setError}
                           />
                         ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-                            {(u.name ?? u.email).slice(0, 1).toUpperCase()}
-                          </div>
+                          <span
+                            className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-medium ${roleInfo!.color}`}
+                          >
+                            {roleInfo!.label}
+                          </span>
                         )}
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-text-primary">
-                            {u.name ?? "—"}
-                          </p>
-                          <p className="truncate text-xs text-text-tertiary">
-                            {u.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <RoleSelect
-                          userId={u.id}
-                          currentRole={u.role}
-                          onDone={() => {
-                            setEditingId(null);
-                            router.refresh();
-                          }}
-                          onError={setError}
-                        />
-                      ) : (
-                        <span
-                          className={`inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-medium ${roleInfo!.color}`}
-                        >
-                          {roleInfo!.label}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">
-                      {isEditing ? (
-                        <CompanySelect
-                          userId={u.id}
-                          currentCompanyId={u.companyId}
-                          companies={companies}
-                          onDone={() => router.refresh()}
-                          onError={setError}
-                        />
-                      ) : (
-                        u.company?.name ?? "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">
-                      {u._count.enrollments > 0 ? (
-                        <button
-                          type="button"
-                          title="Ver cursos inscritos"
-                          onClick={() =>
-                            setEnrollmentsUser({
-                              id: u.id,
-                              name: u.name,
-                              email: u.email,
-                            })
-                          }
-                          className="rounded text-primary-700 underline decoration-dotted underline-offset-2 hover:text-primary-800"
-                        >
-                          {u._count.enrollments}
-                        </button>
-                      ) : (
-                        u._count.enrollments
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-text-tertiary">
-                      {timeAgo(u.lastLoginAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {u.disabledAt ? (
-                        <span className="inline-flex items-center rounded-pill bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                          Deshabilitado
-                        </span>
-                      ) : u.mustResetPassword ? (
-                        <span className="inline-flex items-center rounded-pill bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                          Reset pendiente
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-pill bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          Activo
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <IconButton
-                          title={isEditing ? "Terminar edición" : "Editar"}
-                          onClick={() => setEditingId(isEditing ? null : u.id)}
-                          icon={isEditing ? X : Pencil}
-                        />
-                        {u.role === "STUDENT" && !u.disabledAt && (
-                          <EnrollUserButton
-                            student={{
-                              id: u.id,
-                              name: u.name,
-                              email: u.email,
-                            }}
-                            courses={courses}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">
+                        {isEditing ? (
+                          <CompanySelect
+                            userId={u.id}
+                            currentCompanyId={u.companyId}
+                            companies={companies}
+                            onDone={() => router.refresh()}
+                            onError={setError}
                           />
+                        ) : (
+                          (u.company?.name ?? "—")
                         )}
-                        <IconButton
-                          title="Reenviar invitación"
-                          onClick={() =>
-                            startTransition(async () => {
-                              try {
-                                await resendWelcomeEmail(u.id);
-                              } catch (err) {
-                                setError(err instanceof Error ? err.message : "Error");
-                              }
-                            })
-                          }
-                          icon={Mail}
-                          disabled={pending}
-                        />
-                        <IconButton
-                          title={u.disabledAt ? "Habilitar" : "Deshabilitar"}
-                          onClick={() =>
-                            startTransition(async () => {
-                              try {
-                                await updateTenantUser(u.id, {
-                                  disabled: !u.disabledAt,
-                                });
-                                router.refresh();
-                              } catch (err) {
-                                setError(err instanceof Error ? err.message : "Error");
-                              }
-                            })
-                          }
-                          icon={Power}
-                          disabled={pending}
-                        />
-                        <IconButton
-                          title="Eliminar"
-                          onClick={() => {
-                            if (!confirm(`Eliminar a ${u.email}?`)) return;
-                            startTransition(async () => {
-                              try {
-                                await deleteTenantUser(u.id);
-                                router.refresh();
-                              } catch (err) {
-                                setError(err instanceof Error ? err.message : "Error");
-                              }
-                            });
-                          }}
-                          icon={Trash2}
-                          disabled={pending}
-                          variant="danger"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">
+                        {u._count.enrollments > 0 ? (
+                          <button
+                            type="button"
+                            title="Ver cursos inscritos"
+                            onClick={() =>
+                              setEnrollmentsUser({
+                                id: u.id,
+                                name: u.name,
+                                email: u.email,
+                              })
+                            }
+                            className="rounded text-primary-700 underline decoration-dotted underline-offset-2 hover:text-primary-800"
+                          >
+                            {u._count.enrollments}
+                          </button>
+                        ) : (
+                          u._count.enrollments
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-tertiary">
+                        {timeAgo(u.lastLoginAt)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.disabledAt ? (
+                          <span className="inline-flex items-center rounded-pill bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                            Deshabilitado
+                          </span>
+                        ) : u.mustResetPassword ? (
+                          <span className="inline-flex items-center rounded-pill bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            Reset pendiente
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-pill bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            Activo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <IconButton
+                            title={isEditing ? "Terminar edición" : "Editar"}
+                            onClick={() =>
+                              setEditingId(isEditing ? null : u.id)
+                            }
+                            icon={isEditing ? X : Pencil}
+                          />
+                          {u.role === "STUDENT" && !u.disabledAt && (
+                            <EnrollUserButton
+                              student={{
+                                id: u.id,
+                                name: u.name,
+                                email: u.email,
+                              }}
+                              courses={courses}
+                            />
+                          )}
+                          <IconButton
+                            title="Reenviar invitación"
+                            onClick={() =>
+                              startTransition(async () => {
+                                try {
+                                  await resendWelcomeEmail(u.id);
+                                } catch (err) {
+                                  setError(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Error",
+                                  );
+                                }
+                              })
+                            }
+                            icon={Mail}
+                            disabled={pending}
+                          />
+                          <IconButton
+                            title={u.disabledAt ? "Habilitar" : "Deshabilitar"}
+                            onClick={() =>
+                              startTransition(async () => {
+                                try {
+                                  await updateTenantUser(u.id, {
+                                    disabled: !u.disabledAt,
+                                  });
+                                  router.refresh();
+                                } catch (err) {
+                                  setError(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Error",
+                                  );
+                                }
+                              })
+                            }
+                            icon={Power}
+                            disabled={pending}
+                          />
+                          <IconButton
+                            title="Eliminar"
+                            onClick={() => {
+                              if (!confirm(`Eliminar a ${u.email}?`)) return;
+                              startTransition(async () => {
+                                try {
+                                  await deleteTenantUser(u.id);
+                                  router.refresh();
+                                } catch (err) {
+                                  setError(
+                                    err instanceof Error
+                                      ? err.message
+                                      : "Error",
+                                  );
+                                }
+                              });
+                            }}
+                            icon={Trash2}
+                            disabled={pending}
+                            variant="danger"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       <p className="text-xs text-text-tertiary">
-        Mostrando {users.length} usuarios.{users.length >= 500 && " (limite 500, refina filtros)"}
+        Mostrando {users.length} usuarios.
+        {users.length >= 500 && " (limite 500, refina filtros)"}
       </p>
 
       {enrollmentsUser && (

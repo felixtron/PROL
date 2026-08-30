@@ -1,32 +1,6 @@
 import Link from "next/link";
-import {
-  Bell,
-  GraduationCap,
-  DollarSign,
-  BookOpen,
-  Calendar,
-  Award,
-} from "lucide-react";
 import { getNotifications } from "@/lib/queries/notifications";
 import { NotificationList } from "./notification-list";
-
-function getNotificationIcon(type: string) {
-  switch (type) {
-    case "ENROLLMENT":
-      return GraduationCap;
-    case "PAYMENT":
-      return DollarSign;
-    case "COURSE_UPDATE":
-      return BookOpen;
-    case "WORKSHOP":
-      return Calendar;
-    case "CERTIFICATE":
-      return Award;
-    case "SYSTEM":
-    default:
-      return Bell;
-  }
-}
 
 export default async function NotificationsPage() {
   const { notifications, total, hasMore } = await getNotifications(1, 20);

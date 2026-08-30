@@ -1141,7 +1141,7 @@ function LessonRow({
                 />
                 <div
                   role="menu"
-                  className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+                  className="absolute right-0 z-20 mt-1 max-h-72 w-56 overflow-y-auto rounded-lg border border-border bg-surface shadow-lg"
                 >
                   <p className="border-b border-border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
                     Mover lección a

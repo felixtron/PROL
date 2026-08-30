@@ -798,7 +798,7 @@ const articles: DocsArticle[] = [
 
 export default function ProfessorDocsPage() {
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl lg:max-w-none">
       <KnowledgeBase
         title="Base de conocimientos"
         subtitle="Busca por palabra clave o filtra por categoría para resolver dudas sobre tus cursos, alumnos y sesiones."

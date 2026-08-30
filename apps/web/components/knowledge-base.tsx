@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useHideOnScroll } from "@/lib/use-hide-on-scroll";
+import { normalize } from "@/lib/normalize";
 import {
   Award,
   BarChart3,
@@ -104,16 +106,19 @@ interface KnowledgeBaseProps {
   supportEmail?: string;
 }
 
-/** Minúsculas y sin acentos, para que "consultoria" encuentre "Consultoría". */
-function normalize(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
 function articleKey(article: DocsArticle): string {
   return `${article.category}::${article.title}`;
+}
+
+/** Un filtro, independiente de cómo se pinte: píldora u opción del rail. */
+interface FilterEntry {
+  id: string;
+  label: string;
+  icon?: DocsIcon;
+  count: number;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
 }
 
 const BADGE_STYLES: Record<DocsBadge, string> = {
@@ -142,6 +147,12 @@ export function KnowledgeBase({
   // Sólo guarda los artículos que el usuario abrió o cerró a mano; el resto
   // sigue el criterio por defecto (abiertos cuando hay una búsqueda activa).
   const [manualOpen, setManualOpen] = useState<Record<string, boolean>>({});
+
+  // La barra de filtros de móvil se retira al bajar y vuelve al subir, salvo
+  // mientras se escribe en el buscador.
+  const mobileBarRef = useRef<HTMLDivElement>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const barHidden = useHideOnScroll(mobileBarRef, { disabled: searchFocused });
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -235,8 +246,55 @@ export function KnowledgeBase({
     setManualOpen((prev) => ({ ...prev, [key]: !current }));
   }
 
+  // Una sola descripción de los filtros para las dos presentaciones: fila de
+  // píldoras desplazable en móvil y lista vertical en el rail de escritorio.
+  const filters: FilterEntry[] = [
+    {
+      id: "__all__",
+      label: "Todo",
+      count: counts.total,
+      active: activeCategory === null && !onlyNews,
+      onClick: () => {
+        setActiveCategory(null);
+        setOnlyNews(false);
+      },
+    },
+    ...(newsCount > 0
+      ? [
+          {
+            id: "__news__",
+            label: "Novedades",
+            icon: "Sparkles" as DocsIcon,
+            count: newsCount,
+            active: onlyNews,
+            onClick: () => setOnlyNews((v) => !v),
+          },
+        ]
+      : []),
+    ...categories.map((category) => {
+      const count = counts.byCategory.get(category.id) ?? 0;
+      return {
+        id: category.id,
+        label: category.label,
+        icon: category.icon,
+        count,
+        disabled: count === 0,
+        active: activeCategory === category.id,
+        onClick: () =>
+          setActiveCategory((prev) =>
+            prev === category.id ? null : category.id,
+          ),
+      };
+    }),
+  ];
+
+  const resultSummary =
+    counts.total === 0
+      ? "Sin resultados"
+      : `${counts.total} ${counts.total === 1 ? "artículo" : "artículos"}`;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
           {title}
@@ -244,196 +302,220 @@ export function KnowledgeBase({
         <p className="mt-1 text-text-secondary">{subtitle}</p>
       </div>
 
-      {/* ─── Buscador + filtros ─── */}
-      <div className="sticky top-0 z-20 bg-surface-secondary pb-3 pt-1">
-        <div className="space-y-3 rounded-xl border border-border bg-surface p-3 shadow-sm">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por palabra clave: certificado, empresa, examen…"
-              aria-label="Buscar en la documentación"
-              className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-9 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            />
-            {query !== "" && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface-secondary hover:text-text-primary"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+      <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
+        {/* ─── Filtros: rail fijo en escritorio ─── */}
+        <aside className="hidden lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)] lg:flex-col lg:gap-3 lg:rounded-xl lg:border lg:border-border lg:bg-surface lg:p-3 lg:shadow-sm">
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            onClear={() => setQuery("")}
+          />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterPill
-              active={activeCategory === null && !onlyNews}
-              onClick={() => {
-                setActiveCategory(null);
-                setOnlyNews(false);
-              }}
-              count={counts.total}
-            >
-              Todo
-            </FilterPill>
-
-            {newsCount > 0 && (
-              <FilterPill
-                active={onlyNews}
-                onClick={() => setOnlyNews((v) => !v)}
-                count={newsCount}
-                icon="Sparkles"
-              >
-                Novedades
-              </FilterPill>
-            )}
-
-            <span className="mx-1 hidden h-5 w-px bg-border sm:block" />
-
-            {categories.map((category) => {
-              const count = counts.byCategory.get(category.id) ?? 0;
-              return (
-                <FilterPill
-                  key={category.id}
-                  active={activeCategory === category.id}
-                  disabled={count === 0}
-                  onClick={() =>
-                    setActiveCategory((prev) =>
-                      prev === category.id ? null : category.id,
-                    )
-                  }
-                  count={count}
-                  icon={category.icon}
-                >
-                  {category.label}
-                </FilterPill>
-              );
-            })}
+          {/* El scroll vive aquí: con doce categorías la lista supera el alto
+              del rail y no debe estirar la columna. */}
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+            {filters.map((filter) => (
+              <FilterRow key={filter.id} {...filter} />
+            ))}
           </div>
 
           {hasFilters && (
-            <div className="flex items-center justify-between gap-3 text-xs text-text-tertiary">
-              <span>
-                {counts.total === 0
-                  ? "Sin resultados"
-                  : `${counts.total} ${counts.total === 1 ? "artículo" : "artículos"}`}
+            <div className="shrink-0 border-t border-border pt-2 text-xs text-text-tertiary">
+              <p className="px-1">
+                {resultSummary}
                 {query.trim() !== "" && ` para “${query.trim()}”`}
-              </span>
+              </p>
               <button
                 type="button"
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium transition-colors hover:bg-surface-secondary hover:text-text-primary"
+                className="mt-1 inline-flex items-center gap-1 rounded-md px-1 py-1 font-medium transition-colors hover:text-text-primary"
               >
                 <X className="h-3.5 w-3.5" />
                 Limpiar filtros
               </button>
             </div>
           )}
-        </div>
-      </div>
+        </aside>
 
-      {/* ─── Resultados ─── */}
-      {results.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface p-10 text-center">
-          <LifeBuoy className="mx-auto h-8 w-8 text-text-tertiary" />
-          <p className="mt-3 font-heading text-base font-semibold text-text-primary">
-            No encontramos nada con esos términos
-          </p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-text-secondary">
-            Prueba con una palabra más corta o revisa las categorías. Si el tema
-            no está cubierto, escríbenos a{" "}
-            <a
-              href={`mailto:${supportEmail}`}
-              className="text-primary-700 underline hover:no-underline"
-            >
-              {supportEmail}
-            </a>
-            .
-          </p>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary"
-          >
-            <X className="h-4 w-4" />
-            Limpiar filtros
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {results.map(({ category, items }) => {
-            const CategoryIcon = ICONS[category.icon];
-            return (
-              <section key={category.id} className="space-y-3">
-                <div className="flex items-start gap-2 border-b border-border pb-2">
-                  <CategoryIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
-                  <div className="min-w-0">
-                    <h2 className="font-heading text-lg font-semibold text-text-primary">
-                      {category.label}
-                    </h2>
-                    {category.summary && (
-                      <p className="text-sm text-text-tertiary">
-                        {category.summary}
-                      </p>
-                    )}
-                  </div>
-                </div>
+        {/* ─── Filtros: barra que se retira al bajar en móvil y tablet ─── */}
+        <div
+          ref={mobileBarRef}
+          className={`sticky top-0 z-20 bg-surface-secondary pb-3 pt-1 transition-transform duration-200 motion-reduce:transition-none lg:hidden ${
+            barHidden ? "-translate-y-[110%]" : "translate-y-0"
+          }`}
+        >
+          <div className="space-y-3 rounded-xl border border-border bg-surface p-3 shadow-sm">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              onClear={() => setQuery("")}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+            />
 
-                <div className="space-y-2">
-                  {items.map((article) => {
-                    const key = articleKey(article);
-                    const open = manualOpen[key] ?? searching;
-                    return (
-                      <ArticleCard
-                        key={key}
-                        article={article}
-                        open={open}
-                        onToggle={() => toggleArticle(key, open)}
-                      />
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      )}
+            {/* Fila única desplazable: con doce categorías el `flex-wrap`
+                anterior envolvía a cinco líneas y se comía media pantalla. */}
+            <div className="-mx-3 flex snap-x gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {filters.map((filter) => (
+                <FilterPill key={filter.id} {...filter} />
+              ))}
+            </div>
 
-      <div className="rounded-xl border border-primary-200 bg-primary-50 p-5">
-        <p className="text-sm font-medium text-primary-800">
-          ¿No encontraste lo que buscabas? Escribe a{" "}
-          <a
-            href={`mailto:${supportEmail}`}
-            className="underline hover:no-underline"
-          >
-            {supportEmail}
-          </a>{" "}
-          y te ayudamos.
-        </p>
+            {hasFilters && (
+              <div className="flex items-center justify-between gap-3 text-xs text-text-tertiary">
+                <span>
+                  {resultSummary}
+                  {query.trim() !== "" && ` para “${query.trim()}”`}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 font-medium transition-colors hover:bg-surface-secondary hover:text-text-primary"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── Resultados ─── */}
+        <div className="mt-5 space-y-6 lg:mt-0">
+          {results.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-surface p-10 text-center">
+              <LifeBuoy className="mx-auto h-8 w-8 text-text-tertiary" />
+              <p className="mt-3 font-heading text-base font-semibold text-text-primary">
+                No encontramos nada con esos términos
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-text-secondary">
+                Prueba con una palabra más corta o revisa las categorías. Si el
+                tema no está cubierto, escríbenos a{" "}
+                <a
+                  href={`mailto:${supportEmail}`}
+                  className="text-primary-700 underline hover:no-underline"
+                >
+                  {supportEmail}
+                </a>
+                .
+              </p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-secondary"
+              >
+                <X className="h-4 w-4" />
+                Limpiar filtros
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {results.map(({ category, items }) => {
+                const CategoryIcon = ICONS[category.icon];
+                return (
+                  <section key={category.id} className="space-y-3">
+                    <div className="flex items-start gap-2 border-b border-border pb-2">
+                      <CategoryIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+                      <div className="min-w-0">
+                        <h2 className="font-heading text-lg font-semibold text-text-primary">
+                          {category.label}
+                        </h2>
+                        {category.summary && (
+                          <p className="text-sm text-text-tertiary">
+                            {category.summary}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {items.map((article) => {
+                        const key = articleKey(article);
+                        const open = manualOpen[key] ?? searching;
+                        return (
+                          <ArticleCard
+                            key={key}
+                            article={article}
+                            open={open}
+                            onToggle={() => toggleArticle(key, open)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="rounded-xl border border-primary-200 bg-primary-50 p-5">
+            <p className="text-sm font-medium text-primary-800">
+              ¿No encontraste lo que buscabas? Escribe a{" "}
+              <a
+                href={`mailto:${supportEmail}`}
+                className="underline hover:no-underline"
+              >
+                {supportEmail}
+              </a>{" "}
+              y te ayudamos.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function FilterPill({
+/** Buscador. Se usa en las dos presentaciones del filtro. */
+function SearchField({
+  value,
+  onChange,
+  onClear,
+  onFocus,
+  onBlur,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onClear: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}) {
+  return (
+    <div className="relative shrink-0">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        placeholder="Buscar por palabra clave…"
+        aria-label="Buscar en la documentación"
+        className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-9 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+      />
+      {value !== "" && (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="Limpiar búsqueda"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-tertiary transition-colors hover:bg-surface-secondary hover:text-text-primary"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Presentación vertical del filtro, para el rail de escritorio. */
+function FilterRow({
   active,
   disabled,
   count,
   icon,
+  label,
   onClick,
-  children,
-}: {
-  active: boolean;
-  disabled?: boolean;
-  count: number;
-  icon?: DocsIcon;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+}: FilterEntry) {
   const Icon = icon ? ICONS[icon] : null;
   return (
     <button
@@ -441,7 +523,46 @@ function FilterPill({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`inline-flex items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium transition-colors ${
+      className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+        active
+          ? "bg-primary-50 font-medium text-primary-700"
+          : disabled
+            ? "cursor-not-allowed text-text-tertiary opacity-50"
+            : "text-text-secondary hover:bg-surface-secondary hover:text-text-primary"
+      }`}
+    >
+      {Icon && <Icon className="h-4 w-4 shrink-0" />}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span
+        className={`shrink-0 rounded-pill px-1.5 text-[10px] font-semibold ${
+          active
+            ? "bg-primary-600 text-white"
+            : "bg-surface-secondary text-text-tertiary"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
+/** Presentación en píldora, para la fila desplazable de móvil. */
+function FilterPill({
+  active,
+  disabled,
+  count,
+  icon,
+  label,
+  onClick,
+}: FilterEntry) {
+  const Icon = icon ? ICONS[icon] : null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={`inline-flex shrink-0 snap-start items-center gap-1.5 rounded-pill border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
         active
           ? "border-primary-600 bg-primary-600 text-white"
           : disabled
@@ -450,7 +571,7 @@ function FilterPill({
       }`}
     >
       {Icon && <Icon className="h-3.5 w-3.5" />}
-      {children}
+      {label}
       <span
         className={`rounded-pill px-1.5 text-[10px] font-semibold ${
           active

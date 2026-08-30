@@ -101,7 +101,7 @@ export default async function CompanyDetailPage({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map((t) => {
           const Icon = t.icon;
           const isActive = tab === t.id;

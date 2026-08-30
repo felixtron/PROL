@@ -1,17 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  Home,
-  BookOpen,
-  Calendar,
-  Award,
-  Settings,
-  Building2,
-  Laptop,
-  ListChecks,
-  HelpCircle,
-  FileText,
-} from "lucide-react";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
@@ -19,27 +7,31 @@ import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { TenantBrand } from "@/components/tenant-brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
+import type { SidebarNavItem } from "@/components/nav-icons";
+import { SidebarNav } from "./sidebar-nav";
 import { MobileNav } from "./mobile-nav";
 
-const navItemsBefore = [
-  { href: "/dashboard", label: "Inicio", icon: Home },
-  { href: "/dashboard/courses", label: "Mis Cursos", icon: BookOpen },
-  { href: "/dashboard/company", label: "Mi Empresa", icon: Building2 },
-  { href: "/dashboard/workshops", label: "Workshop", icon: Calendar },
+// Los iconos viajan como string: este layout es Server Component y no puede
+// pasar componentes React al nav, que es de cliente (ver components/nav-icons).
+const navItemsBefore: SidebarNavItem[] = [
+  { href: "/dashboard", label: "Inicio", icon: "Home" },
+  { href: "/dashboard/courses", label: "Mis Cursos", icon: "BookOpen" },
+  { href: "/dashboard/company", label: "Mi Empresa", icon: "Building2" },
+  { href: "/dashboard/workshops", label: "Talleres", icon: "Calendar" },
 ];
 
-const navItemsAfter = [
-  { href: "/dashboard/certificates", label: "Diplomas", icon: Award },
-  { href: "/dashboard/settings", label: "Configuración", icon: Settings },
-  { href: "/dashboard/docs", label: "Ayuda", icon: HelpCircle },
+const navItemsAfter: SidebarNavItem[] = [
+  { href: "/dashboard/certificates", label: "Diplomas", icon: "Award" },
+  { href: "/dashboard/settings", label: "Configuración", icon: "Settings" },
+  { href: "/dashboard/docs", label: "Ayuda", icon: "HelpCircle" },
 ];
 
 // La constancia DC-3 la emite el patrón: sin empresa asociada la entrada no
 // aparece, porque el documento no le corresponde a esa cuenta.
-const dc3NavItem = {
+const dc3NavItem: SidebarNavItem = {
   href: "/dashboard/dc3",
   label: "Constancias DC-3",
-  icon: FileText,
+  icon: "FileText",
 };
 
 export default async function DashboardLayout({
@@ -93,14 +85,14 @@ export default async function DashboardLayout({
   // Consultoría Online y Encuestas sólo aparecen si el tenant las habilitó.
   // En Encuestas el alumno sólo responde y consulta lo publicado: la gestión
   // vive en el panel del administrador.
-  const navItems = [
+  const navItems: SidebarNavItem[] = [
     ...navItemsBefore,
     ...(tenant?.advisoryEnabled
       ? [
           {
             href: "/dashboard/advisory",
             label: "Consultoría Online",
-            icon: Laptop,
+            icon: "Laptop" as const,
           },
         ]
       : []),
@@ -109,7 +101,7 @@ export default async function DashboardLayout({
           {
             href: "/dashboard/surveys",
             label: "Encuestas",
-            icon: ListChecks,
+            icon: "ListChecks" as const,
           },
         ]
       : []),
@@ -151,26 +143,12 @@ export default async function DashboardLayout({
         </Link>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-primary-50 hover:text-primary-700"
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <SidebarNav navItems={navItems} />
       </aside>
 
       {/* ─── Mobile top header ─── */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
           <Link
             href="/dashboard"
             className="font-heading text-xl font-bold text-primary-600"
@@ -198,13 +176,16 @@ export default async function DashboardLayout({
         </header>
 
         {/* ─── Main content ─── */}
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <main
+          data-scroll-container
+          className="flex-1 overflow-y-auto pb-20 md:pb-0"
+        >
           {children}
         </main>
       </div>
 
       {/* ─── Mobile bottom navigation ─── */}
-      <MobileNav />
+      <MobileNav navItems={navItems} />
     </div>
   );
 }

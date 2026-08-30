@@ -630,7 +630,7 @@ const articles: DocsArticle[] = [
 export default function StudentDocsPage() {
   return (
     <div className="px-4 py-5 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl lg:max-w-6xl">
         <KnowledgeBase
           title="Centro de ayuda"
           subtitle="Busca por palabra clave o filtra por categoría para resolver dudas sobre tus cursos, certificados y sesiones."

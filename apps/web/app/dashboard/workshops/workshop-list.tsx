@@ -88,7 +88,7 @@ export function WorkshopList({
   );
 
   const tabs = [
-    { id: "upcoming" as const, label: "Mis Sesiones", count: upcoming.length },
+    { id: "upcoming" as const, label: "Mis talleres", count: upcoming.length },
     { id: "available" as const, label: "Disponibles", count: available.length },
     { id: "past" as const, label: "Pasados", count: past.length },
   ];

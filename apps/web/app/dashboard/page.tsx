@@ -5,8 +5,9 @@ import {
   Clock,
   Award,
   Play,
-  ClipboardCheck,
   ArrowRight,
+  ArrowUpRight,
+  Bell,
 } from "lucide-react";
 import {
   getStudentDashboardStats,
@@ -14,16 +15,22 @@ import {
   getLastActiveCourse,
 } from "@/lib/queries/student";
 import { listMyPendingEvaluations } from "@/lib/queries/evaluation";
+import { getRecentNotifications } from "@/lib/queries/notifications";
 import { getCurrentUser } from "@/lib/auth";
+import { getNotificationIcon } from "@/components/notification-icon";
+import { formatTimeAgo } from "@/lib/format-time-ago";
+import { ProgressBar } from "@/components/progress-bar";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const [stats, courses, lastActive, evaluations] = await Promise.all([
-    getStudentDashboardStats(),
-    getStudentCourses("all"),
-    getLastActiveCourse(),
-    listMyPendingEvaluations(),
-  ]);
+  const [stats, courses, lastActive, evaluations, notifications] =
+    await Promise.all([
+      getStudentDashboardStats(),
+      getStudentCourses("all"),
+      getLastActiveCourse(),
+      listMyPendingEvaluations(),
+      getRecentNotifications(4),
+    ]);
 
   const statCards = [
     {
@@ -31,256 +38,303 @@ export default async function DashboardPage() {
       value: stats.enrolledCourses,
       icon: BookOpen,
       color: "text-primary-600",
-      bg: "bg-primary-50",
     },
     {
       label: "Lecciones",
       value: stats.completedLessons,
       icon: CheckCircle,
       color: "text-emerald-600",
-      bg: "bg-emerald-50",
     },
     {
       label: "Horas",
       value: stats.studyHours,
       icon: Clock,
       color: "text-accent-600",
-      bg: "bg-accent-50",
     },
     {
       label: "Certificados",
       value: stats.certificates,
       icon: Award,
       color: "text-violet-600",
-      bg: "bg-violet-50",
     },
   ];
 
   const displayName = user?.name?.split(" ")[0] ?? "Estudiante";
-  const recentCourses = courses.slice(0, 3);
+  const recentCourses = courses.slice(0, 4);
 
   return (
-    <div className="px-4 py-5 md:p-6 lg:p-8">
-      {/* ─── Mobile header ─── */}
-      <div className="mb-5 md:mb-8">
-        <h1 className="font-heading text-xl font-bold text-text-primary md:text-2xl">
+    <div className="mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-6">
+      {/* Encabezado a ancho completo: dentro de la columna principal quedaba
+          por debajo de todo el rail en móvil, que va primero en el DOM. */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-heading text-lg font-bold text-text-primary md:text-xl">
           Hola, {displayName}
         </h1>
-        <p className="mt-0.5 text-sm text-text-secondary">
-          Continúa donde lo dejaste.
-        </p>
-      </div>
 
-      {/* ─── Pending evaluations ─── */}
-      {evaluations.length > 0 && (
-        <section className="mb-5 md:mb-8">
-          <h2 className="mb-2 flex items-center gap-2 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-            <ClipboardCheck className="h-4 w-4" />
-            Evaluaciones asignadas
-          </h2>
-          <div className="space-y-2">
-            {evaluations.map((p) => {
-              const latest = p.submissions[0];
-              return (
-                <Link
-                  key={p.id}
-                  href={`/dashboard/evaluations/${p.id}`}
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary-300 hover:bg-primary-50/30"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-text-primary">
-                      {p.assignment.evaluation.title}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-text-tertiary">
-                      {p.assignment.company.name}
-                      {latest
-                        ? ` · Última versión: v${latest.version}`
-                        : " · Pendiente"}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium ${
-                      latest
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {latest ? "Editar" : "Contestar"}
-                    <ArrowRight className="h-3 w-3" />
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ─── Continue learning card ─── */}
-      {lastActive && (
-        <section className="mb-5 md:mb-8">
-          <Link
-            href={`/dashboard/courses/${lastActive.courseId}`}
-            className="group block overflow-hidden rounded-xl bg-surface shadow-sm active:scale-[0.99] transition-transform"
-          >
-            <div className="relative">
-              {/* Thumbnail */}
-              <div className="relative h-36 w-full bg-gradient-to-br from-primary-500 to-primary-700 sm:h-48">
-                {lastActive.thumbnail ? (
-                  <img
-                    src={lastActive.thumbnail}
-                    alt={lastActive.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                      <Play className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                )}
-                {/* Gradient overlay */}
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent" />
-                {/* Progress pill on image */}
-                <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-black/40 px-3 py-1 backdrop-blur-sm">
-                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/30">
-                    <div
-                      className="h-full rounded-full bg-white transition-all"
-                      style={{ width: `${lastActive.progress}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-white">
-                    {lastActive.progress}%
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4">
-              {lastActive.currentLessonTitle && (
-                <p className="mb-0.5 text-xs font-medium text-primary-600">
-                  {lastActive.currentLessonTitle}
-                </p>
-              )}
-              <h3 className="font-heading text-base font-bold text-text-primary md:text-lg">
-                {lastActive.title}
-              </h3>
-              <p className="mt-0.5 text-xs text-text-tertiary">
-                Prof. {lastActive.professor}
-              </p>
-            </div>
-          </Link>
-        </section>
-      )}
-
-      {/* ─── Stats grid ─── */}
-      <section className="mb-5 md:mb-8">
-        <div className="grid grid-cols-4 gap-2 md:gap-4">
+        {/* Franja de métricas: sustituye a cuatro tarjetas que en móvil
+            dejaban ~68 px por casilla y obligaban a truncar la etiqueta. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-xl border border-border bg-surface px-4 py-2.5 shadow-sm">
           {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div
-                key={stat.label}
-                className="rounded-xl bg-surface p-3 shadow-sm md:p-5"
-              >
-                <div className="flex flex-col items-center text-center md:flex-row md:items-center md:gap-3 md:text-left">
-                  <div
-                    className={`mb-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg md:mb-0 md:h-10 md:w-10 ${stat.bg}`}
-                  >
-                    <Icon
-                      className={`h-4 w-4 md:h-5 md:w-5 ${stat.color}`}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-lg font-bold text-text-primary md:text-2xl">
-                      {stat.value}
-                    </p>
-                    <p className="truncate text-[10px] text-text-tertiary md:text-xs">
-                      {stat.label}
-                    </p>
-                  </div>
-                </div>
+              <div key={stat.label} className="flex items-center gap-1.5">
+                <Icon className={`h-4 w-4 shrink-0 ${stat.color}`} />
+                <span className="text-base font-bold text-text-primary">
+                  {stat.value}
+                </span>
+                <span className="text-xs text-text-tertiary">{stat.label}</span>
               </div>
             );
           })}
         </div>
-      </section>
+      </div>
 
-      {/* ─── My courses ─── */}
-      <section>
-        <div className="mb-3 flex items-center justify-between md:mb-4">
-          <h2 className="font-heading text-base font-semibold text-text-primary md:text-lg">
-            Mis Cursos
-          </h2>
-          <Link
-            href="/dashboard/courses"
-            className="text-sm font-medium text-primary-600 active:text-primary-800"
-          >
-            Ver todos
-          </Link>
-        </div>
-
-        {recentCourses.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center md:p-12">
-            <BookOpen className="mx-auto h-8 w-8 text-text-tertiary md:h-10 md:w-10" />
-            <p className="mt-2 text-sm text-text-secondary">
-              Aún no tienes cursos inscritos.
-            </p>
-            <Link
-              href="/courses"
-              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm active:bg-primary-800"
-            >
-              Explorar Cursos
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3 md:grid md:grid-cols-2 md:gap-5 md:space-y-0 lg:grid-cols-3">
-            {recentCourses.map((course) => (
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+        {/*
+          El rail va primero en el DOM para que en móvil el avance y los
+          pendientes queden arriba; `lg:order-2` lo manda a la derecha en
+          escritorio, que es hacia donde barre la vista.
+        */}
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:order-2">
+          {/* ─── Continuar aprendiendo ─── */}
+          {lastActive && (
+            <section>
+              <h2 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                Continuar
+              </h2>
+              {/* Horizontal en móvil y vertical en el rail: en una sola
+                  columna una portada de 112 px de alto era hueco muerto. */}
               <Link
-                key={course.courseId}
-                href={`/dashboard/courses/${course.courseId}`}
-                className="flex gap-3 overflow-hidden rounded-xl bg-surface p-3 shadow-sm transition-shadow active:scale-[0.99] md:flex-col md:p-0"
+                href={`/dashboard/courses/${lastActive.courseId}`}
+                className="group flex gap-3 overflow-hidden rounded-xl border border-border bg-surface p-3 shadow-sm transition-colors hover:border-primary-300 active:scale-[0.99] lg:block lg:p-0"
               >
-                {/* Thumbnail */}
-                {course.thumbnail ? (
-                  <img
-                    src={course.thumbnail}
-                    alt={course.title}
-                    className="h-20 w-20 shrink-0 rounded-lg object-cover md:h-36 md:w-full md:rounded-none md:rounded-t-xl"
-                  />
-                ) : (
-                  <div className="h-20 w-20 shrink-0 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 md:h-36 md:w-full md:rounded-none md:rounded-t-xl" />
-                )}
-                {/* Content */}
-                <div className="flex min-w-0 flex-1 flex-col justify-center md:p-4">
-                  <h3 className="text-sm font-semibold text-text-primary line-clamp-2 md:font-heading md:text-base">
-                    {course.title}
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 lg:h-28 lg:w-full lg:rounded-none">
+                  {lastActive.thumbnail ? (
+                    <img
+                      src={lastActive.thumbnail}
+                      alt={lastActive.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm lg:h-10 lg:w-10">
+                        <Play className="h-4 w-4 text-white lg:h-5 lg:w-5" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex min-w-0 flex-1 flex-col justify-center lg:block lg:p-3">
+                  {lastActive.currentLessonTitle && (
+                    <p className="mb-0.5 truncate text-xs font-medium text-primary-600">
+                      {lastActive.currentLessonTitle}
+                    </p>
+                  )}
+                  <h3 className="font-heading text-sm font-bold text-text-primary line-clamp-2">
+                    {lastActive.title}
                   </h3>
                   <p className="mt-0.5 text-xs text-text-tertiary">
-                    {course.professor}
+                    Prof. {lastActive.professor}
                   </p>
-                  {/* Progress */}
-                  <div className="mt-2 md:mt-3">
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-[10px] text-text-tertiary md:text-xs">
-                        Progreso
-                      </span>
-                      <span className="text-[10px] font-semibold text-text-secondary md:text-xs">
-                        {course.progress}%
-                      </span>
-                    </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-primary-100 md:h-1.5">
-                      <div
-                        className="h-full rounded-full bg-primary-600 transition-all"
-                        style={{ width: `${course.progress}%` }}
-                      />
-                    </div>
+
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <ProgressBar
+                      value={lastActive.progress}
+                      label={`Avance de ${lastActive.title}`}
+                      size="sm"
+                    />
+                    <span className="shrink-0 text-xs font-semibold text-text-secondary">
+                      {lastActive.progress}%
+                    </span>
                   </div>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
-      </section>
+            </section>
+          )}
+
+          {/* ─── Evaluaciones asignadas ─── */}
+          {evaluations.length > 0 && (
+            <section>
+              <h2 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                Pendientes
+                <span className="ml-1.5 rounded-pill bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                  {evaluations.length}
+                </span>
+              </h2>
+              <div className="space-y-2">
+                {evaluations.map((p) => {
+                  const latest = p.submissions[0];
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/dashboard/evaluations/${p.id}`}
+                      className="group flex items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3 transition-colors hover:border-primary-300 hover:bg-primary-50/30"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-text-primary">
+                          {p.assignment.evaluation.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-text-tertiary">
+                          {p.assignment.company.name}
+                          {latest
+                            ? ` · Última versión: v${latest.version}`
+                            : " · Pendiente"}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-1 text-xs font-medium ${
+                          latest
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {latest ? "Editar" : "Contestar"}
+                        <ArrowRight className="h-3 w-3" />
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ─── Avisos ─── */}
+          {notifications.length > 0 && (
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="font-heading text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                  Avisos
+                </h2>
+                <Link
+                  href="/dashboard/notifications"
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary-600 hover:text-primary-800"
+                >
+                  Ver todos
+                  <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </div>
+              <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+                {notifications.map((n) => {
+                  const Icon = getNotificationIcon(n.type);
+                  return (
+                    <Link
+                      key={n.id}
+                      href="/dashboard/notifications"
+                      className={`flex gap-2.5 p-3 transition-colors hover:bg-surface-secondary ${
+                        n.isRead ? "" : "bg-primary-50/40"
+                      }`}
+                    >
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-100">
+                        <Icon className="h-3.5 w-3.5 text-primary-700" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-text-primary">
+                          {n.title}
+                        </p>
+                        <p className="mt-0.5 text-xs text-text-tertiary">
+                          {formatTimeAgo(n.createdAt)}
+                        </p>
+                      </div>
+                      {!n.isRead && (
+                        <span
+                          className="mt-1.5 ml-auto h-2 w-2 shrink-0 rounded-full bg-primary-600"
+                          aria-label="Sin leer"
+                        />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* El rail nunca queda vacío: sin curso activo ni pendientes ni
+              avisos, orienta hacia el catálogo. */}
+          {!lastActive &&
+            evaluations.length === 0 &&
+            notifications.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border bg-surface p-5 text-center">
+                <Bell className="mx-auto h-6 w-6 text-text-tertiary" />
+                <p className="mt-2 text-xs text-text-secondary">
+                  Aquí verás tu avance y tus avisos en cuanto empieces un curso.
+                </p>
+              </div>
+            )}
+        </aside>
+
+        {/* ─── Columna principal ─── */}
+        <div className="lg:order-1">
+          {/* ─── Mis cursos ─── */}
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-heading text-base font-semibold text-text-primary">
+                Mis Cursos
+              </h2>
+              <Link
+                href="/dashboard/courses"
+                className="text-sm font-medium text-primary-600 hover:text-primary-800 active:text-primary-800"
+              >
+                Ver todos
+              </Link>
+            </div>
+
+            {recentCourses.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center">
+                <BookOpen className="mx-auto h-8 w-8 text-text-tertiary" />
+                <p className="mt-2 text-sm text-text-secondary">
+                  Aún no tienes cursos inscritos.
+                </p>
+                <Link
+                  href="/courses"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 active:bg-primary-800"
+                >
+                  Explorar Cursos
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
+                {recentCourses.map((course) => (
+                  <Link
+                    key={course.courseId}
+                    href={`/dashboard/courses/${course.courseId}`}
+                    className="flex gap-3 overflow-hidden rounded-xl border border-border bg-surface p-3 shadow-sm transition-colors hover:border-primary-300 active:scale-[0.99]"
+                  >
+                    {course.thumbnail ? (
+                      <img
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="h-20 w-20 shrink-0 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700" />
+                    )}
+
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                      <h3 className="text-sm font-semibold text-text-primary line-clamp-2">
+                        {course.title}
+                      </h3>
+                      <p className="mt-0.5 truncate text-xs text-text-tertiary">
+                        {course.professor}
+                      </p>
+
+                      <div className="mt-2 flex items-center gap-2">
+                        <ProgressBar
+                          value={course.progress}
+                          label={`Avance de ${course.title}`}
+                          size="sm"
+                        />
+                        <span className="shrink-0 text-xs font-semibold text-text-secondary">
+                          {course.progress}%
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
