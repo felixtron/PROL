@@ -14,7 +14,7 @@ import { assertCourseEditAccess, canEditCourse } from "@/lib/course-access";
 // profesor — así un quiz intermedio configurado con passingScore=70 sigue
 // otorgando "lesson completed" con 70, pero no abre el examen final hasta
 // que el alumno saque al menos 80 en él (en cualquiera de sus intentos).
-const FINAL_EXAM_GATE_MIN_SCORE = 80;
+export const FINAL_EXAM_GATE_MIN_SCORE = 80;
 
 export interface FinalExamGateStatus {
   /** Hay un examen final asignado al curso (sea o no que aplique gate). */

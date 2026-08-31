@@ -6,6 +6,7 @@ import {
   BookOpen,
   Eye,
   Pencil,
+  ClipboardCheck,
   Archive,
 } from "lucide-react";
 import { getProfessorCourses } from "@/lib/queries/professor";
@@ -130,6 +131,14 @@ export default async function ProfessorCoursesPage() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       Editar
+                    </Link>
+                    <Link
+                      href={`/professor/courses/${course.id}/results`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                      title="Resultados de quizzes y examen final"
+                    >
+                      <ClipboardCheck className="h-3.5 w-3.5" />
+                      Resultados
                     </Link>
                     <Link
                       href={`/preview/courses/${course.id}`}
