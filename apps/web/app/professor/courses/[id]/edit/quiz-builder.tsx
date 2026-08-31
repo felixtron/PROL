@@ -61,7 +61,9 @@ export function QuizBuilder({
     !!courseFinalExamId && courseFinalExamId !== existingQuiz?.id;
 
   const [title, setTitle] = useState(existingQuiz?.title ?? "");
-  const [passingScore, setPassingScore] = useState(existingQuiz?.passingScore ?? 70);
+  // 80 y no 70: el gate del examen final exige 80 en todos los intermedios,
+  // así que por debajo el alumno completa la lección y el examen sigue cerrado.
+  const [passingScore, setPassingScore] = useState(existingQuiz?.passingScore ?? 80);
   // Sin límite ↔ null. Aceptamos 0 en la UI como sinónimo de null para que
   // el profesor pueda escribir "0" y entender "sin límite".
   const [timeLimit, setTimeLimit] = useState<number | null>(

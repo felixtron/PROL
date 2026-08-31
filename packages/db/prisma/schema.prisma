@@ -808,7 +808,10 @@ model Quiz {
   lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   title        String
-  passingScore Int    @default(70) @map("passing_score")
+  // 80 y no 70: el gate del examen final exige 80 en todos los quizzes
+  // intermedios, así que un mínimo menor dejaba al alumno con la lección
+  // completada y el examen cerrado, sin explicación visible.
+  passingScore Int    @default(80) @map("passing_score")
   questions    Json
   timeLimit    Int?   @map("time_limit")
   maxAttempts  Int    @default(3) @map("max_attempts")
