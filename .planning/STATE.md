@@ -75,10 +75,18 @@ Decisiones recientes que afectan al trabajo actual:
 
 ### Blockers/Concerns
 
-- **El respaldo de producción puede no estar corriendo.** `scripts/backup.sh` invoca `docker`, y DEPLOY.md documenta que el host sólo tiene podman. Hace falta un diagnóstico por SSH antes de dar por buena la fase 1; el arreglo del script no sirve de nada si el cron nunca lo ejecuta. (Sigue abierto tras 01-01: el script ya respalda los tres volúmenes con `docker`, pero no se sabe si el cron del host llega a ejecutarlo.)
+- ~~El respaldo de producción puede no estar corriendo.~~ **RESUELTO el 2026-09-01, y era peor de lo supuesto**: el respaldo automático llevaba **sin correr desde el 2026-05-19**. Al migrar a `panel-prosuite-2` no se recreó la entrada del cron, y el script tampoco habría funcionado (invocaba `docker`; el host sólo tiene podman, confirmado). Arreglado en `0e84566`: script agnóstico al runtime, tarball de uploads semanal (a diario llenaba el disco: 56 × 1.5 GB), poda por cantidad. Instalado en el VPS con cron a las 03:00 UTC y verificado de punta a punta.
 - ~~El volumen de evidencias no tiene respaldo hoy.~~ **Resuelto a nivel de repositorio en 01-01**: `scripts/backup.sh` genera `private_<fecha>.tar.gz` y `docker-compose.prod.yml` declara/monta `prol_private`. Queda pendiente el blocker de arriba (confirmar que el cron corre en producción) y desplegar el cambio (el VPS tiene `docker-compose.prod.yml` modificado sin commitear — ver DEPLOY.md líneas 30-39 — así que el próximo `git pull` puede requerir reconciliación manual).
 - **Nota de despliegue añadida en 01-01**: el VPS corre una versión de `docker-compose.prod.yml` divergente del repo (red `traefik` + variables de Turnstile, no commiteadas). Antes de desplegar los cambios de 01-01, reconciliar ese diff a mano.
 - **La fase 4 tiene una incógnita real**: si `<View fixed>` de react-pdf repite la cabecera de tabla entre páginas. Spike de una hora como primera tarea, con fallback ya definido.
+- **Antes de encender `documentsEnabled` en cualquier tenant**: falta añadir el cron de `/api/cron/compliance` en el host (el de encuestas ya está; el de cumplimiento no se instaló porque con el módulo apagado sería un no-op). Sin él no salen los recordatorios de actividades recurrentes.
+
+## Estado de producción (2026-09-01)
+
+- Desplegado `64f7476` en `panel-prosuite-2`. Rollback: `podman tag localhost/prol-web:5323a42 localhost/prol-web:latest && systemctl restart prol-web-1.service`.
+- El módulo de gestión documental está **en producción y apagado**: `documents_enabled = false` en Academia Digital MX, IBIZA Consultores y Mecanica G3.
+- Esquema aplicado con `db push`: 105 sentencias, ninguna destructiva. Respaldo previo en `/opt/prol/backup_20260901_2211_pre_modulo_documental.sql`.
+- Volumen `prol_prol_private` creado y montado en `/app/private-uploads`, con `PRIVATE_UPLOAD_DIR` en el env. Verificada la escritura desde el contenedor.
 
 ## Session Continuity
 
