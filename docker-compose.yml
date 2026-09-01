@@ -11,7 +11,9 @@ services:
       POSTGRES_PASSWORD: prol_dev_2026
       POSTGRES_DB: prol
     ports:
-      - "5432:5432"
+      # 5432 y 5433 los ocupan otros proyectos en esta máquina.
+      # Debe coincidir con el puerto de DATABASE_URL en .env.
+      - "5435:5432"
     volumes:
       - prol_pgdata:/var/lib/postgresql/data
     healthcheck:
