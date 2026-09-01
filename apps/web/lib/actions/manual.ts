@@ -877,26 +877,35 @@ export async function uploadCompanyDocument(input: {
     };
   }
 
-  const last = await db.companyDocument.findFirst({
-    where: { documentId: input.documentId, companyId: assignment.companyId },
-    orderBy: { version: "desc" },
-    select: { version: true },
-  });
+  await db.$transaction(async (tx) => {
+    // Serializa la siguiente versión de este documento para cualquier empresa.
+    // Se bloquea `manual_documents` y no `company_documents` a propósito: el par
+    // (documento, empresa) puede no tener ninguna fila todavía, y un FOR UPDATE
+    // sobre cero filas no bloquea nada.
+    await tx.$queryRaw`SELECT 1 FROM manual_documents WHERE id = ${input.documentId} FOR UPDATE`;
 
-  // Append-only: la versión anterior se conserva y la vigente es la mayor.
-  await db.companyDocument.create({
-    data: {
-      documentId: input.documentId,
-      companyId: assignment.companyId,
-      version: (last?.version ?? 0) + 1,
-      codeOverride: optionalText(input.codeOverride, 60),
-      fileKey: input.file.fileKey,
-      fileName: input.file.fileName,
-      fileSize: input.file.fileSize,
-      mimeType: input.file.mimeType,
-      notes: optionalText(input.notes, 500),
-      uploadedById: user.id,
-    },
+    const last = await tx.companyDocument.findFirst({
+      where: { documentId: input.documentId, companyId: assignment.companyId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
+
+    // Append-only: la versión anterior se conserva y la vigente es la mayor.
+    await tx.companyDocument.create({
+      data: {
+        documentId: input.documentId,
+        companyId: assignment.companyId,
+        version: (last?.version ?? 0) + 1,
+        codeOverride: optionalText(input.codeOverride, 60),
+        fileKey: input.file.fileKey,
+        fileName: input.file.fileName,
+        fileSize: input.file.fileSize,
+        mimeType: input.file.mimeType,
+        notes: optionalText(input.notes, 500),
+        uploadedById: user.id,
+      },
+      select: { id: true },
+    });
   });
 
   revalidatePath(`/tenant-admin/projects/${assignment.id}`);
