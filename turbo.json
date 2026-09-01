@@ -23,7 +23,8 @@
     "SEED_FORCE",
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
-    "UPLOAD_DIR"
+    "UPLOAD_DIR",
+    "PRIVATE_UPLOAD_DIR"
   ],
   "tasks": {
     "build": {

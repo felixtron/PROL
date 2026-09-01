@@ -192,6 +192,8 @@ enum NotificationType {
   WORKSHOP
   CERTIFICATE
   SYSTEM
+  /// Gestión documental: evidencias, revisiones y actividades de cumplimiento.
+  DOCUMENT
 }
 
 enum AIJobStatus {
@@ -352,6 +354,95 @@ enum Dc3PrintAction {
   PRINTED
 }
 
+// ─── Gestión documental y evidencias ─────────────────────────────────────────
+
+/// Ciclo de vida de un manual (la plantilla del tenant, no la copia de una
+/// empresa). Mismo vocabulario que `EvaluationStatus` y `SurveyStatus`.
+enum ManualStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Estado de la implantación de un manual en una empresa concreta.
+/// PAUSED conserva todo el avance: es una pausa del proyecto, no una baja.
+enum ManualAssignmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+/// Los dos checklists de una sección. STEP = "qué tenemos que hacer, paso a
+/// paso"; SELF_CHECK = "qué debemos obtener" (autoevaluación previa a avanzar).
+enum ManualItemKind {
+  STEP
+  SELF_CHECK
+}
+
+/// Cómo se satisface un requisito de evidencia.
+///   FILE            — se sube un archivo (Word, Excel, PDF, imagen, audio, video).
+///   RISK_MATRIX     — se llena la matriz de riesgos y oportunidades en la plataforma.
+///   EVALUATION_LINK — se enlaza una entrega del módulo de Evaluaciones (p. ej. el Test DAFO).
+enum EvidenceRequirementKind {
+  FILE
+  RISK_MATRIX
+  EVALUATION_LINK
+}
+
+/// Cada cuánto se repite una actividad de cumplimiento. Deliberadamente
+/// separado de `RecurrenceFrequency` (DAILY…MONTHLY), que modela la cadencia
+/// de talleres y sesiones: aquí el horizonte es el de una auditoría, y
+/// mezclarlos obligaría a ofrecer periodicidades que no existen en un SGC.
+enum EvidencePeriodicity {
+  ONCE
+  SEMIANNUAL
+  ANNUAL
+}
+
+/// Estado de una evidencia. Etiquetas en pantalla: Pendiente / En revisión /
+/// Requiere corrección / Aprobada.
+enum EvidenceStatus {
+  PENDING
+  IN_REVIEW
+  NEEDS_CORRECTION
+  APPROVED
+}
+
+/// Asiento del historial de una evidencia. Una sola bitácora cubre los
+/// cambios de estado, los comentarios sueltos y el circuito de eliminación,
+/// para que la trazabilidad se lea en una sola línea de tiempo.
+enum EvidenceReviewAction {
+  SUBMIT
+  START_REVIEW
+  APPROVE
+  REQUEST_CORRECTION
+  COMMENT
+  REQUEST_DELETION
+  APPROVE_DELETION
+  REJECT_DELETION
+}
+
+/// Estado de una actividad de la agenda. "Vencida" NO está aquí a propósito:
+/// se deriva de `dueAt` en cada lectura (igual que `campaignState` en
+/// encuestas), así que una actividad vence aunque el cron esté caído.
+enum ComplianceActivityStatus {
+  OPEN
+  COMPLETED
+  NOT_APPLICABLE
+  CANCELLED
+}
+
+/// La matriz viva se edita en DRAFT; SUBMITTED la congela como evidencia.
+enum RiskAssessmentStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum RiskItemType {
+  RISK
+  OPPORTUNITY
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,6 +483,8 @@ model Tenant {
   // porque el módulo ya estaba disponible para todos los tenants antes de
   // existir el flag: así activarlo no cambia lo que ven hoy.
   advisoryEnabled    Boolean @default(true) @map("advisory_enabled")
+  // Gestión documental y evidencias (manuales de sistemas de gestión).
+  documentsEnabled   Boolean @default(false) @map("documents_enabled")
 
   // AI billing — plan and credit balance (prices defined later, structure ready)
   aiPlan             String    @default("none") @map("ai_plan")
@@ -438,6 +531,9 @@ model Tenant {
   dc3Certificates     Dc3Certificate[]
   dc3Counters         Dc3Counter[]
   dc3CourseEditions   Dc3CourseEdition[]
+  manuals             Manual[]
+  manualAssignments   ManualAssignment[]
+  riskAssessments     RiskAssessment[]
 
   @@index([slug])
   @@index([status])
@@ -520,6 +616,19 @@ model User {
   companiesDc3Confirmed       Company[]                    @relation("CompanyDc3ConfirmedBy")
   dc3CertificatesIssued       Dc3Certificate[]             @relation("Dc3IssuedBy")
   dc3PrintLogs                Dc3PrintLog[]                @relation("Dc3PrintedBy")
+  manualsCreated              Manual[]                     @relation("ManualAuthor")
+  manualDocumentsUploaded     ManualDocument[]             @relation("ManualDocumentUploader")
+  manualAssignmentsActivated  ManualAssignment[]           @relation("ManualAssignmentActivatedBy")
+  manualAssignmentsConsulted  ManualAssignment[]           @relation("ManualAssignmentConsultant")
+  manualItemChecks            ManualItemCheck[]            @relation("ManualItemCheckedBy")
+  companyDocumentsUploaded    CompanyDocument[]            @relation("CompanyDocumentUploader")
+  evidencesUploaded           Evidence[]                   @relation("EvidenceUploader")
+  evidencesReviewed           Evidence[]                   @relation("EvidenceReviewer")
+  evidenceDeletionsRequested  Evidence[]                   @relation("EvidenceDeletionRequester")
+  evidencesDeleted            Evidence[]                   @relation("EvidenceDeletedBy")
+  evidenceReviewEntries       EvidenceReview[]             @relation("EvidenceReviewAuthor")
+  riskAssessmentsCreated      RiskAssessment[]             @relation("RiskAssessmentAuthor")
+  riskAssessmentsSubmitted    RiskAssessment[]             @relation("RiskAssessmentSubmitter")
 
   @@index([tenantId])
   @@index([companyId])
@@ -1519,6 +1628,9 @@ model Company {
   surveyCampaigns         SurveyCampaign[]          @relation("SurveyCampaignCompany")
   surveyResponsesReceived SurveyResponse[]          @relation("SurveyRespondentCompany")
   dc3Certificates         Dc3Certificate[]
+  manualAssignments       ManualAssignment[]
+  companyDocuments        CompanyDocument[]
+  riskAssessments         RiskAssessment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1794,6 +1906,8 @@ model Evaluation {
   sections    EvaluationSection[]
   assignments EvaluationAssignment[]
 
+  evidenceRequirements EvidenceRequirement[]
+
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("evaluations")
@@ -1916,7 +2030,8 @@ model EvaluationSubmission {
   version     Int      @default(1)
   submittedAt DateTime @default(now()) @map("submitted_at")
 
-  answers EvaluationAnswer[]
+  answers   EvaluationAnswer[]
+  evidences Evidence[]
 
   @@unique([participantId, version])
   @@index([participantId])
@@ -2235,4 +2350,554 @@ model SurveyAnswer {
   @@unique([responseId, questionId])
   @@index([questionId])
   @@map("survey_answers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gestión documental y evidencias
+//
+// Dos planos que conviene no confundir al leer:
+//
+//   CONTENIDO (del tenant) — Manual → ManualChapter → ManualSection, más su
+//   catálogo de documentos y sus requisitos de evidencia. Es la guía que la
+//   consultora escribe una vez y reutiliza con todos sus clientes.
+//
+//   ESTADO (de cada empresa) — ManualAssignment cuelga de ahí todo lo que es
+//   propio de un cliente: qué pasos lleva marcados, qué plantillas tiene
+//   personalizadas, qué actividades le tocan y qué evidencias ha entregado.
+//
+// A diferencia de un curso, esto no "se completa": es el expediente vivo del
+// sistema de gestión de la empresa, y por eso el avance es de la empresa (no
+// de cada usuario) y las evidencias no se borran nunca de verdad.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Manual de implementación de una norma (p. ej. ISO 9001). Plantilla del
+/// tenant: se escribe una vez y se activa para cada empresa cliente.
+model Manual {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdById String @map("created_by")
+  createdBy   User   @relation("ManualAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+
+  title       String
+  /// Norma que implementa, tal como se muestra ("ISO 9001:2015").
+  normaLabel  String? @map("norma_label")
+  description String? @db.Text
+  coverImage  String? @map("cover_image")
+
+  status ManualStatus @default(DRAFT)
+
+  /// Número de versión editorial del manual. Informativo por ahora: el
+  /// versionado con snapshots por publicación es una fase posterior.
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  chapters    ManualChapter[]
+  documents   ManualDocument[]
+  assignments ManualAssignment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("manuals")
+}
+
+/// Agrupador de secciones ("I. Planificación" → "Contexto de la organización").
+/// Admite un nivel de anidación mediante `parentChapterId`, igual que
+/// `Module.parentModuleId` en cursos.
+model ManualChapter {
+  id       String @id @default(cuid())
+  manualId String @map("manual_id")
+  manual   Manual @relation(fields: [manualId], references: [id], onDelete: Cascade)
+
+  parentChapterId String?         @map("parent_chapter_id")
+  parentChapter   ManualChapter?  @relation("ManualSubChapters", fields: [parentChapterId], references: [id], onDelete: Cascade)
+  subchapters     ManualChapter[] @relation("ManualSubChapters")
+
+  title    String
+  position Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sections ManualSection[]
+
+  @@index([manualId, position])
+  @@index([parentChapterId])
+  @@map("manual_chapters")
+}
+
+/// Una sección del manual: la unidad que el cliente lee y trabaja (p. ej. la
+/// cláusula 4.1). `contentHtml` guarda la narrativa completa —qué pide la
+/// norma, para qué sirve, quién es responsable, errores comunes— y se
+/// sanitiza SIEMPRE al escribir, nunca al leer.
+model ManualSection {
+  id        String        @id @default(cuid())
+  chapterId String        @map("chapter_id")
+  chapter   ManualChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  /// Código de la cláusula tal como lo usa la norma ("4.1").
+  code     String?
+  title    String
+  position Int
+
+  contentHtml String @default("") @map("content_html") @db.Text
+
+  estimatedMinutes Int? @map("estimated_minutes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items        ManualSectionItem[]
+  documents    ManualSectionDocument[]
+  requirements EvidenceRequirement[]
+
+  @@index([chapterId, position])
+  @@map("manual_sections")
+}
+
+/// Un ítem de los dos checklists de la sección (paso a paso y autoevaluación).
+///
+/// Filas y no un JSON en la sección: el estado de cada empresa apunta al `id`
+/// del ítem, así que el autor puede reordenar o corregir la redacción sin
+/// corromper lo que las empresas ya marcaron, y borrar un ítem se lleva sus
+/// marcas por cascada.
+model ManualSectionItem {
+  id        String        @id @default(cuid())
+  sectionId String        @map("section_id")
+  section   ManualSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  kind     ManualItemKind
+  text     String         @db.Text
+  helpText String?        @map("help_text") @db.Text
+  position Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  checks ManualItemCheck[]
+
+  @@index([sectionId, kind, position])
+  @@map("manual_section_items")
+}
+
+/// Documento del sistema de gestión con su código documental
+/// ("P-RFC-4.1-01") y su plantilla base descargable.
+///
+/// Cuelga del manual y no de la sección porque en una norma el mismo
+/// procedimiento o registro se referencia desde varias cláusulas: si
+/// perteneciera a la sección, la versión personalizada de cada empresa se
+/// duplicaría y las copias acabarían divergiendo.
+model ManualDocument {
+  id       String @id @default(cuid())
+  manualId String @map("manual_id")
+  manual   Manual @relation(fields: [manualId], references: [id], onDelete: Cascade)
+
+  code        String
+  name        String
+  description String? @db.Text
+
+  // Plantilla base global. Vive en el disco privado y se sirve por una ruta
+  // autenticada; `baseFileKey` es la ruta relativa dentro de ese disco.
+  baseFileKey  String? @map("base_file_key")
+  baseFileName String? @map("base_file_name")
+  baseFileSize Int?    @map("base_file_size")
+  baseMimeType String? @map("base_mime_type")
+
+  uploadedById String? @map("uploaded_by")
+  uploadedBy   User?   @relation("ManualDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sections         ManualSectionDocument[]
+  companyDocuments CompanyDocument[]
+
+  @@unique([manualId, code])
+  @@index([manualId])
+  @@map("manual_documents")
+}
+
+/// Qué documentos se usan en qué sección. El catálogo es del manual, pero
+/// cada sección declara los suyos y en qué orden se muestran.
+model ManualSectionDocument {
+  id        String        @id @default(cuid())
+  sectionId String        @map("section_id")
+  section   ManualSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  documentId String         @map("document_id")
+  document   ManualDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  position Int
+  note     String? @db.Text
+
+  @@unique([sectionId, documentId])
+  @@index([documentId])
+  @@map("manual_section_documents")
+}
+
+/// Qué evidencia debe producir una sección, cada cuánto, y con qué
+/// herramienta se produce.
+model EvidenceRequirement {
+  id        String        @id @default(cuid())
+  sectionId String        @map("section_id")
+  section   ManualSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String? @db.Text
+  position    Int
+
+  kind        EvidenceRequirementKind @default(FILE)
+  periodicity EvidencePeriodicity     @default(ONCE)
+  required    Boolean                 @default(true)
+
+  /// Días antes del vencimiento en los que sale cada recordatorio. Se copia
+  /// a cada actividad al crearla, para que cambiar el requisito no altere
+  /// los avisos de un ciclo que ya está en marcha.
+  reminderDaysBefore Int[] @default([14, 3]) @map("reminder_days_before")
+
+  /// Parametrización de la herramienta cuando `kind = RISK_MATRIX`: escalas
+  /// de probabilidad y consecuencia, y umbrales de nivel.
+  toolConfig Json? @map("tool_config")
+
+  /// Evaluación que satisface el requisito cuando `kind = EVALUATION_LINK`
+  /// (p. ej. el Test DAFO del módulo de Evaluaciones).
+  evaluationId String?     @map("evaluation_id")
+  evaluation   Evaluation? @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  activities      ComplianceActivity[]
+  riskAssessments RiskAssessment[]
+
+  @@index([sectionId, position])
+  @@index([evaluationId])
+  @@map("evidence_requirements")
+}
+
+/// Activación de un manual para una empresa. Es la raíz de todo el estado
+/// del cliente: sin esta fila la empresa no ve el manual.
+model ManualAssignment {
+  id       String @id @default(cuid())
+  manualId String @map("manual_id")
+  manual   Manual @relation(fields: [manualId], references: [id], onDelete: Cascade)
+
+  companyId String  @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Denormalizado desde el manual, igual que en `SurveyCampaign`: las colas
+  /// de revisión y la agenda filtran por tenant sin arrastrar dos joins.
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Consultor a cargo del proyecto. Si es null, las notificaciones van a
+  /// todos los revisores del tenant.
+  consultantId String? @map("consultant_id")
+  consultant   User?   @relation("ManualAssignmentConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
+
+  status ManualAssignmentStatus @default(ACTIVE)
+
+  activatedAt   DateTime @default(now()) @map("activated_at")
+  activatedById String   @map("activated_by")
+  activatedBy   User     @relation("ManualAssignmentActivatedBy", fields: [activatedById], references: [id], onDelete: Restrict)
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  itemChecks      ManualItemCheck[]
+  activities      ComplianceActivity[]
+  evidences       Evidence[]
+  riskAssessments RiskAssessment[]
+
+  @@unique([manualId, companyId])
+  @@index([companyId])
+  @@index([tenantId])
+  @@index([manualId])
+  @@map("manual_assignments")
+}
+
+/// Un ítem marcado por una empresa.
+///
+/// El avance es de la EMPRESA, no de cada usuario: "ya definimos el alcance
+/// del SGC" ocurre una vez en la organización, el líder supervisa un solo
+/// avance y el consultor aprueba a la empresa. `checkedById` deja la traza de
+/// quién lo marcó, que es lo que se pierde si el estado fuera global sin más.
+/// (Contraste deliberado con `LessonProgress`, que sí es por persona porque
+/// aprender sí es individual.)
+model ManualItemCheck {
+  id           String           @id @default(cuid())
+  assignmentId String           @map("assignment_id")
+  assignment   ManualAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  itemId String            @map("item_id")
+  item   ManualSectionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  checkedById String? @map("checked_by")
+  checkedBy   User?   @relation("ManualItemCheckedBy", fields: [checkedById], references: [id], onDelete: SetNull)
+
+  checkedAt DateTime @default(now()) @map("checked_at")
+
+  @@unique([assignmentId, itemId])
+  @@index([assignmentId])
+  @@index([itemId])
+  @@map("manual_item_checks")
+}
+
+/// Versión de un documento personalizada para una empresa (con su logo, su
+/// razón social, su pie de página y su código documental).
+///
+/// Append-only: sustituir una plantilla es insertar una versión nueva, nunca
+/// pisar la anterior. La vigente es la de mayor `version`, y el historial
+/// documental sale gratis.
+model CompanyDocument {
+  id         String         @id @default(cuid())
+  documentId String         @map("document_id")
+  document   ManualDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  companyId String  @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  version Int @default(1)
+
+  /// Código documental propio de la empresa cuando difiere del base.
+  codeOverride String? @map("code_override")
+
+  fileKey  String @map("file_key")
+  fileName String @map("file_name")
+  fileSize Int    @map("file_size")
+  mimeType String @map("mime_type")
+
+  notes String? @db.Text
+
+  uploadedById String? @map("uploaded_by")
+  uploadedBy   User?   @relation("CompanyDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([documentId, companyId, version])
+  @@index([companyId])
+  @@index([documentId])
+  @@map("company_documents")
+}
+
+/// Una ocurrencia de un requisito para una empresa: qué toca y para cuándo.
+/// Es la fila que ve la agenda y la que barre el cron de recordatorios.
+///
+/// Separar la actividad de la evidencia es lo que permite distinguir dos
+/// cosas que se parecen: reentregar tras una corrección (versión nueva DENTRO
+/// de la misma actividad) y llegar al siguiente semestre o año (actividad
+/// nueva con `periodNumber` + 1).
+model ComplianceActivity {
+  id           String           @id @default(cuid())
+  assignmentId String           @map("assignment_id")
+  assignment   ManualAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  requirementId String              @map("requirement_id")
+  requirement   EvidenceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  /// Ciclo: 1 el primero, 2 el siguiente semestre/año, etc.
+  periodNumber Int     @default(1) @map("period_number")
+  /// Etiqueta legible del ciclo ("2026-S1", "2026").
+  periodLabel  String? @map("period_label")
+
+  /// Fecha comprometida. Null mientras nadie la haya fijado: una actividad
+  /// sin fecha sigue apareciendo como pendiente, pero no genera avisos.
+  dueAt DateTime? @map("due_at")
+
+  status ComplianceActivityStatus @default(OPEN)
+
+  reminderDaysBefore Int[]     @default([14, 3]) @map("reminder_days_before")
+  /// Cuántos umbrales de aviso se han consumido ya. Hace idempotente el
+  /// barrido diario: correrlo dos veces no manda dos correos.
+  remindersSent      Int       @default(0) @map("reminders_sent")
+  lastRemindedAt     DateTime? @map("last_reminded_at")
+
+  completedAt DateTime? @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  evidences Evidence[]
+
+  @@unique([assignmentId, requirementId, periodNumber])
+  @@index([status, dueAt])
+  @@index([assignmentId])
+  @@index([requirementId])
+  @@map("compliance_activities")
+}
+
+/// Lo que la empresa entregó para una actividad. Filas inmutables: una
+/// corrección genera la versión siguiente, y la vigente es la mayor.
+///
+/// Nunca se borra de verdad. El expediente de cumplimiento debe poder
+/// reconstruirse años después, así que la eliminación es lógica
+/// (`deletedAt`) y las referencias a usuarios son SetNull para que dar de
+/// baja a una persona no se lleve por delante lo que entregó.
+model Evidence {
+  id         String             @id @default(cuid())
+  activityId String             @map("activity_id")
+  activity   ComplianceActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  /// Denormalizado: la cola de revisión y el panel del líder filtran por
+  /// empresa y estado sin pasar por la actividad.
+  assignmentId String           @map("assignment_id")
+  assignment   ManualAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  version Int @default(1)
+
+  kind   EvidenceRequirementKind
+  status EvidenceStatus          @default(PENDING)
+
+  title String?
+  /// Mensaje de quien entrega.
+  notes String? @db.Text
+
+  // Archivo entregado. Nulos cuando la evidencia es una captura hecha en la
+  // plataforma. `fileKey` es la ruta dentro del disco privado.
+  fileKey  String? @map("file_key")
+  fileName String? @map("file_name")
+  fileSize Int?    @map("file_size")
+  mimeType String? @map("mime_type")
+
+  /// Copia congelada de la captura en el momento de enviarla. Lo que se
+  /// aprobó no cambia aunque después se edite la herramienta viva.
+  formSnapshot Json? @map("form_snapshot")
+
+  riskAssessmentId String?         @map("risk_assessment_id")
+  riskAssessment   RiskAssessment? @relation(fields: [riskAssessmentId], references: [id], onDelete: SetNull)
+
+  evaluationSubmissionId String?               @map("evaluation_submission_id")
+  evaluationSubmission   EvaluationSubmission? @relation(fields: [evaluationSubmissionId], references: [id], onDelete: SetNull)
+
+  uploadedById String?  @map("uploaded_by")
+  uploadedBy   User?    @relation("EvidenceUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  submittedAt  DateTime @default(now()) @map("submitted_at")
+
+  reviewedById String?   @map("reviewed_by")
+  reviewedBy   User?     @relation("EvidenceReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime? @map("reviewed_at")
+  approvedAt   DateTime? @map("approved_at")
+
+  // Circuito de eliminación: el líder la solicita, el administrador la
+  // resuelve. El usuario final nunca borra.
+  deletionRequestedAt   DateTime? @map("deletion_requested_at")
+  deletionRequestedById String?   @map("deletion_requested_by")
+  deletionRequestedBy   User?     @relation("EvidenceDeletionRequester", fields: [deletionRequestedById], references: [id], onDelete: SetNull)
+
+  deletedAt   DateTime? @map("deleted_at")
+  deletedById String?   @map("deleted_by")
+  deletedBy   User?     @relation("EvidenceDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reviews EvidenceReview[]
+
+  @@unique([activityId, version])
+  @@index([assignmentId, status])
+  @@index([activityId])
+  @@index([status])
+  @@index([riskAssessmentId])
+  @@map("evidences")
+}
+
+/// Bitácora de una evidencia: cambios de estado, comentarios de revisión y
+/// solicitudes de eliminación, en una sola línea de tiempo.
+model EvidenceReview {
+  id         String   @id @default(cuid())
+  evidenceId String   @map("evidence_id")
+  evidence   Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  reviewerId String? @map("reviewer_id")
+  reviewer   User?   @relation("EvidenceReviewAuthor", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  action  EvidenceReviewAction
+  comment String?              @db.Text
+
+  fromStatus EvidenceStatus? @map("from_status")
+  toStatus   EvidenceStatus? @map("to_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([evidenceId, createdAt])
+  @@map("evidence_reviews")
+}
+
+/// Matriz de riesgos y oportunidades de una empresa. Herramienta común: los
+/// vínculos con el manual son opcionales a propósito, para que la misma
+/// matriz sirva a distintas normas y pueda usarse fuera de un manual.
+model RiskAssessment {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  companyId String  @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  assignmentId String?           @map("assignment_id")
+  assignment   ManualAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+
+  requirementId String?              @map("requirement_id")
+  requirement   EvidenceRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  title       String
+  periodLabel String? @map("period_label")
+
+  status RiskAssessmentStatus @default(DRAFT)
+
+  /// Escalas y umbrales congelados al crear la matriz, copiados del
+  /// requisito. Así reconfigurar la herramienta no reinterpreta los niveles
+  /// de una matriz ya llena.
+  config Json?
+
+  createdById String? @map("created_by")
+  createdBy   User?   @relation("RiskAssessmentAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  submittedById String?   @map("submitted_by")
+  submittedBy   User?     @relation("RiskAssessmentSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedAt   DateTime? @map("submitted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items     RiskItem[]
+  evidences Evidence[]
+
+  @@index([companyId, status])
+  @@index([tenantId])
+  @@index([assignmentId])
+  @@map("risk_assessments")
+}
+
+/// Una fila de la matriz: un riesgo o una oportunidad con su evaluación.
+model RiskItem {
+  id           String         @id @default(cuid())
+  assessmentId String         @map("assessment_id")
+  assessment   RiskAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  type        RiskItemType
+  description String       @db.Text
+
+  probability Int
+  impact      Int
+  /// Probabilidad × consecuencia, guardado para poder ordenar y filtrar en
+  /// la base sin recalcular.
+  score       Int
+  /// Etiqueta del nivel según los umbrales vigentes al capturar ("Alto").
+  level       String?
+
+  actions     String? @db.Text
+  responsible String?
+
+  position Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([assessmentId, position])
+  @@map("risk_items")
 }

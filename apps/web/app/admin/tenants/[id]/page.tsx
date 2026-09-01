@@ -236,6 +236,17 @@ export default async function AdminTenantDetailPage({
               label="Encuestas"
             />
           </div>
+          <div className="flex items-center justify-between rounded-lg bg-surface-secondary p-4">
+            <span className="text-sm font-medium text-text-primary">
+              Gestión documental
+            </span>
+            <TenantFeaturesToggle
+              tenantId={tenant.id}
+              feature="documentsEnabled"
+              enabled={tenant.documentsEnabled}
+              label="Gestión documental"
+            />
+          </div>
         </div>
       </div>
 

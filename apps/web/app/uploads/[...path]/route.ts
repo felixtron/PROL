@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile, stat } from "node:fs/promises";
 import { join, normalize } from "node:path";
-import { resolveUploadDir } from "@/lib/upload-paths";
+import { PRIVATE_SUBDIR, resolveUploadDir } from "@/lib/upload-paths";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,12 @@ const MIME_BY_EXT: Record<string, string> = {
  * static path. This route reads from the live disk on each request.
  *
  * Path traversal is blocked: we reject any segment containing "..".
+ *
+ * This route has NO authorization: anyone with the URL gets the file. That's
+ * fine for course thumbnails and lesson PDFs, and wrong for anything
+ * confidential, so files under `uploads/private/` (compliance evidence,
+ * per-company document templates) are rejected here and served only by the
+ * `/files/*` routes, which check the requester against the database first.
  */
 export async function GET(
   _req: NextRequest,
@@ -57,6 +63,10 @@ export async function GET(
 
   const [subdir, ...rest] = path;
   if (!subdir || rest.length === 0) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+  // Confidential files are never served from here — see the note above.
+  if (subdir === PRIVATE_SUBDIR) {
     return new NextResponse("Not found", { status: 404 });
   }
 

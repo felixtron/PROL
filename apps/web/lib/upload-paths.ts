@@ -29,3 +29,48 @@ export function resolveUploadDir(subdir: string): string {
   // Last resort: use the standalone path. mkdir -p will create it.
   return candidates[0]!;
 }
+
+/**
+ * Segmento reservado a archivos confidenciales. `app/uploads/[...path]` lo
+ * rechaza explícitamente, por si alguna configuración acabara dejándolos bajo
+ * el directorio público.
+ */
+export const PRIVATE_SUBDIR = "private";
+
+let warnedAboutPrivateDir = false;
+
+/**
+ * Directorio de los archivos confidenciales: evidencias de cumplimiento y
+ * plantillas documentales de cada empresa.
+ *
+ * Estos archivos NO pueden vivir bajo `public/`. El resto de uploads sí lo
+ * hace, y está bien —una portada de curso es pública—, pero `public/` lo sirve
+ * el propio Next sin pasar por ninguna comprobación de sesión, y el expediente
+ * de cumplimiento de un cliente no puede depender de que ese servidor estático
+ * no encuentre el archivo. Sólo debe salir por las rutas de `/files/*`, que
+ * comprueban la empresa contra la base antes de devolver un byte.
+ *
+ * Orden de resolución:
+ *   1. `PRIVATE_UPLOAD_DIR` — lo que debe configurar producción, apuntando a
+ *      un volumen persistente FUERA de `public/`.
+ *   2. `<cwd>/private-uploads` — sirve en desarrollo y, si producción se
+ *      desplegara sin configurarlo, deja los archivos en un sitio no público.
+ *      Perderlos al recrear el contenedor es un fallo visible y recuperable
+ *      (se vuelven a subir); una fuga silenciosa no lo sería.
+ */
+export function resolvePrivateUploadDir(subdir: string): string {
+  const base = process.env.PRIVATE_UPLOAD_DIR;
+  if (base) return join(base, subdir);
+
+  if (process.env.NODE_ENV === "production" && !warnedAboutPrivateDir) {
+    warnedAboutPrivateDir = true;
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        component: "uploads",
+        msg: "PRIVATE_UPLOAD_DIR no está configurada: las evidencias van a un directorio no persistente",
+      }),
+    );
+  }
+  return join(process.cwd(), "private-uploads", subdir);
+}

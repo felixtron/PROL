@@ -78,15 +78,34 @@ export default async function DashboardLayout({
           accentColor: true,
           advisoryEnabled: true,
           surveysEnabled: true,
+          documentsEnabled: true,
         },
       })
     : null;
+
+  // Los manuales son de la empresa: sin empresa asociada no hay nada que
+  // mostrar, igual que con el DC-3.
+  const showDocuments = Boolean(tenant?.documentsEnabled) && Boolean(user.companyId);
 
   // Consultoría Online y Encuestas sólo aparecen si el tenant las habilitó.
   // En Encuestas el alumno sólo responde y consulta lo publicado: la gestión
   // vive en el panel del administrador.
   const navItems: SidebarNavItem[] = [
     ...navItemsBefore,
+    ...(showDocuments
+      ? [
+          {
+            href: "/dashboard/manuals",
+            label: "Manuales",
+            icon: "FolderOpen" as const,
+          },
+          {
+            href: "/dashboard/agenda",
+            label: "Agenda",
+            icon: "CalendarClock" as const,
+          },
+        ]
+      : []),
     ...(tenant?.advisoryEnabled
       ? [
           {

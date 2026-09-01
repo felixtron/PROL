@@ -15,6 +15,9 @@ import {
   Laptop,
   HelpCircle,
   FileText,
+  FolderOpen,
+  CalendarClock,
+  FileCheck2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -40,6 +43,9 @@ export const NAV_ICONS = {
   Laptop,
   HelpCircle,
   FileText,
+  FolderOpen,
+  CalendarClock,
+  FileCheck2,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIcon = keyof typeof NAV_ICONS;

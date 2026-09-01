@@ -46,6 +46,7 @@ export default async function TenantAdminLayout({
           primaryColor: true,
           accentColor: true,
           surveysEnabled: true,
+          documentsEnabled: true,
         },
       })
     : null;
@@ -54,8 +55,18 @@ export default async function TenantAdminLayout({
   // Encuestas es un módulo de administración: sólo aparece aquí, y sólo si el
   // tenant lo tiene habilitado. Un SUPER_ADMIN sin tenant propio siempre lo ve.
   const showSurveys = user.role === "SUPER_ADMIN" || Boolean(tenant?.surveysEnabled);
+  const showDocuments =
+    user.role === "SUPER_ADMIN" || Boolean(tenant?.documentsEnabled);
   const navItems: SidebarNavItem[] = [
     ...baseNavItems,
+    ...(showDocuments
+      ? [
+          { label: "Manuales", href: "/tenant-admin/manuals", icon: "FolderOpen" as const },
+          { label: "Proyectos", href: "/tenant-admin/projects", icon: "Building2" as const },
+          { label: "Evidencias", href: "/tenant-admin/evidence", icon: "FileCheck2" as const },
+          { label: "Agenda", href: "/tenant-admin/agenda", icon: "CalendarClock" as const },
+        ]
+      : []),
     ...(showSurveys
       ? [{ label: "Encuestas", href: "/tenant-admin/surveys", icon: "ListChecks" as const }]
       : []),

@@ -42,6 +42,7 @@ export default async function ProfessorLayout({
       logo: true,
       evaluationsEnabled: true,
       advisoryEnabled: true,
+      documentsEnabled: true,
       primaryColor: true,
       accentColor: true,
     },
@@ -54,6 +55,15 @@ export default async function ProfessorLayout({
       : []),
     ...(tenant?.evaluationsEnabled
       ? [{ label: "Evaluaciones", href: "/professor/evaluations", icon: "ClipboardCheck" as const }]
+      : []),
+    // El consultor revisa evidencias y sigue la agenda de sus empresas; la
+    // autoría de los manuales vive en el panel del administrador.
+    ...(tenant?.documentsEnabled
+      ? [
+          { label: "Proyectos", href: "/professor/projects", icon: "Building2" as const },
+          { label: "Evidencias", href: "/professor/evidence", icon: "FileCheck2" as const },
+          { label: "Agenda", href: "/professor/agenda", icon: "CalendarClock" as const },
+        ]
       : []),
     { label: "Configuración", href: "/professor/settings", icon: "Settings" },
     { label: "Documentación", href: "/professor/docs", icon: "HelpCircle" },

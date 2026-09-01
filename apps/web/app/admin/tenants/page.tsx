@@ -89,6 +89,9 @@ export default async function AdminTenantsPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Encuestas
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                    Documental
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Acciones
                   </th>
@@ -170,6 +173,14 @@ export default async function AdminTenantsPage() {
                         feature="surveysEnabled"
                         enabled={tenant.surveysEnabled}
                         label="Encuestas"
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <TenantFeaturesToggle
+                        tenantId={tenant.id}
+                        feature="documentsEnabled"
+                        enabled={tenant.documentsEnabled}
+                        label="Gestión documental"
                       />
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">

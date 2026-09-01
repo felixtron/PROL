@@ -105,7 +105,8 @@ export async function toggleTenantFeature(
     | "workshopsEnabled"
     | "evaluationsEnabled"
     | "surveysEnabled"
-    | "advisoryEnabled",
+    | "advisoryEnabled"
+    | "documentsEnabled",
   enabled: boolean
 ) {
   await requireAdmin();

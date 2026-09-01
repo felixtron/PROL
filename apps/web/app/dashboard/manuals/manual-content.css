@@ -1,0 +1,257 @@
+/*
+ * Estilos del contenido narrativo de un manual.
+ *
+ * Todo cuelga de `.manual-content` para que el HTML del manual no pueda
+ * afectar al resto de la aplicación: el autor pega marcado de sus documentos
+ * y aquí decidimos cómo se ve. Las clases que se admiten en ese HTML están en
+ * `lib/sanitize-manual-html.ts`; añadir una aquí sin añadirla allí no tiene
+ * efecto, porque el saneado la habría descartado al guardar.
+ *
+ * La paleta reproduce el piloto de IBIZA (azul marino + bronce) usando los
+ * tokens del tenant donde aplica, para que un tenant con otra marca no vea
+ * colores ajenos.
+ */
+
+.manual-content {
+  --manual-ink: var(--color-primary-900, #13293d);
+  --manual-accent: var(--color-accent-600, #9c7a3c);
+  --manual-line: #dde1e5;
+  --manual-muted: #5b6672;
+
+  color: #242a30;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.manual-content > * + * {
+  margin-top: 0.9rem;
+}
+
+.manual-content h2 {
+  color: var(--manual-ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 1.75rem;
+}
+
+.manual-content h3 {
+  color: var(--manual-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+}
+
+.manual-content h4 {
+  color: var(--manual-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 1.25rem;
+}
+
+.manual-content a {
+  color: var(--color-primary-700, #1d4ed8);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.manual-content ul,
+.manual-content ol {
+  padding-left: 1.35rem;
+}
+
+.manual-content ul {
+  list-style: disc;
+}
+
+.manual-content ol {
+  list-style: decimal;
+}
+
+.manual-content li + li {
+  margin-top: 0.35rem;
+}
+
+.manual-content blockquote {
+  border-left: 3px solid var(--manual-line);
+  padding-left: 1rem;
+  color: var(--manual-muted);
+  font-style: italic;
+}
+
+.manual-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+/* Las tablas del manual suelen ser matrices anchas: que se desplacen dentro
+   de su caja y no rompan el ancho de la página en móvil. */
+.manual-content table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.manual-content th {
+  background: var(--manual-ink);
+  color: #fff;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  white-space: nowrap;
+}
+
+.manual-content td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid var(--manual-line);
+  vertical-align: top;
+}
+
+.manual-content tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Tarjeta numerada ────────────────────────────────────────────────────── */
+
+.manual-content .manual-card {
+  background: #fff;
+  border: 1px solid var(--manual-line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 1.25rem;
+}
+
+.manual-content .manual-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  background: #fbf9f5;
+  border-bottom: 1px solid var(--manual-line);
+  color: var(--manual-ink);
+  font-weight: 600;
+}
+
+.manual-content .manual-card-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  background: var(--manual-ink);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.manual-content .manual-card-body {
+  padding: 1rem 1.1rem;
+}
+
+/* ── Aviso ───────────────────────────────────────────────────────────────── */
+
+.manual-content .manual-callout {
+  border-left: 4px solid var(--manual-accent);
+  background: #fbf6ee;
+  padding: 0.9rem 1.1rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 1.25rem;
+}
+
+.manual-content .manual-callout-warn {
+  border-left-color: #9c5a2e;
+  background: #fdf3ec;
+}
+
+/* ── Ficha de documento y de rol ─────────────────────────────────────────── */
+
+.manual-content .manual-doc,
+.manual-content .manual-role {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 0.9rem;
+  border: 1px solid var(--manual-line);
+  border-radius: 6px;
+  background: #fbfbfc;
+  margin-top: 0.75rem;
+}
+
+.manual-content .manual-doc-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 5px;
+  background: var(--manual-ink);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.manual-content .manual-doc-name {
+  color: var(--manual-ink);
+  font-weight: 600;
+}
+
+.manual-content .manual-doc-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--manual-muted);
+}
+
+.manual-content .manual-doc-desc {
+  font-size: 0.88rem;
+  color: #444;
+}
+
+/* ── Vista previa ilustrativa ────────────────────────────────────────────── */
+
+.manual-content .manual-preview {
+  border: 1px dashed var(--manual-line);
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+  background: #fcfcfd;
+  margin-top: 0.75rem;
+}
+
+.manual-content .manual-preview-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--manual-accent);
+  background: rgb(156 122 60 / 0.12);
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  margin-bottom: 0.6rem;
+}
+
+.manual-content .manual-preview-note,
+.manual-content .manual-note {
+  font-size: 0.8rem;
+  color: var(--manual-muted);
+  font-style: italic;
+}
+
+.manual-content .manual-lead {
+  font-size: 1rem;
+  color: #333;
+}
+
+.manual-content .text-center {
+  text-align: center;
+}
+
+.manual-content .text-right {
+  text-align: right;
+}

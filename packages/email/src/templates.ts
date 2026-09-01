@@ -720,3 +720,220 @@ export function surveyResultsPublishedEmail({
     html: baseLayout(tenantName, body),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Gestión documental y evidencias
+//
+// Cuatro correos alrededor del ciclo de una evidencia: la entrega avisa al
+// consultor, la resolución avisa a quien entregó, el recordatorio persigue una
+// fecha comprometida y la solicitud de baja avisa a quien puede resolverla.
+// ---------------------------------------------------------------------------
+
+export interface EvidenceSubmittedParams {
+  tenantName: string;
+  recipientName?: string | null;
+  companyName: string;
+  manualTitle: string;
+  sectionTitle: string;
+  requirementName: string;
+  submittedByName: string;
+  reviewUrl: string;
+}
+
+export function evidenceSubmittedEmail({
+  tenantName,
+  recipientName,
+  companyName,
+  manualTitle,
+  sectionTitle,
+  requirementName,
+  submittedByName,
+  reviewUrl,
+}: EvidenceSubmittedParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      Nueva evidencia para revisar
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting} <strong>${escapeHtml(companyName)}</strong> entreg&oacute; una evidencia
+      y est&aacute; esperando tu revisi&oacute;n.
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+      <tr>
+        <td style="background-color:${C.surfaceAlt};border:1px solid ${C.border};border-radius:8px;padding:16px;">
+          <p style="margin:0 0 6px;color:${C.muted};font-size:13px;">${escapeHtml(manualTitle)} &middot; ${escapeHtml(sectionTitle)}</p>
+          <p style="margin:0 0 6px;color:${C.ink};font-size:16px;font-weight:600;">${escapeHtml(requirementName)}</p>
+          <p style="margin:0;color:${C.muted};font-size:14px;">Entregada por ${escapeHtml(submittedByName)}</p>
+        </td>
+      </tr>
+    </table>
+    ${ctaButton("Revisar evidencia", reviewUrl)}`;
+
+  return {
+    subject: `Evidencia por revisar — ${companyName}`,
+    html: baseLayout(tenantName, body),
+  };
+}
+
+export interface EvidenceReviewedParams {
+  tenantName: string;
+  recipientName?: string | null;
+  manualTitle: string;
+  sectionTitle: string;
+  requirementName: string;
+  approved: boolean;
+  comment?: string | null;
+  reviewerName: string;
+  sectionUrl: string;
+  /** Sólo en aprobaciones con periodicidad: cuándo toca la siguiente. */
+  nextReviewLabel?: string | null;
+}
+
+export function evidenceReviewedEmail({
+  tenantName,
+  recipientName,
+  manualTitle,
+  sectionTitle,
+  requirementName,
+  approved,
+  comment,
+  reviewerName,
+  sectionUrl,
+  nextReviewLabel,
+}: EvidenceReviewedParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const headline = approved
+    ? "Evidencia aprobada"
+    : "Tu evidencia requiere correcci&oacute;n";
+  const lead = approved
+    ? `${greeting} ${escapeHtml(reviewerName)} aprob&oacute; la evidencia de <strong>${escapeHtml(requirementName)}</strong>.`
+    : `${greeting} ${escapeHtml(reviewerName)} revis&oacute; la evidencia de <strong>${escapeHtml(requirementName)}</strong> y pide una correcci&oacute;n antes de aprobarla.`;
+
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      ${headline}
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${lead}
+    </p>
+    <p style="margin:0 0 16px;color:${C.muted};font-size:14px;line-height:1.6;">
+      ${escapeHtml(manualTitle)} &middot; ${escapeHtml(sectionTitle)}
+    </p>
+    ${comment?.trim() ? highlightNote(`<p style="margin:0;color:${C.noteInk};font-size:15px;line-height:1.6;"><strong>Comentario del revisor:</strong><br/>${escapeHtml(comment.trim())}</p>`) : ""}
+    ${
+      approved && nextReviewLabel
+        ? `<p style="margin:16px 0 0;color:${C.body};font-size:15px;line-height:1.6;">Pr&oacute;xima actualizaci&oacute;n programada: <strong>${escapeHtml(nextReviewLabel)}</strong>.</p>`
+        : ""
+    }
+    ${ctaButton(approved ? "Ver la sección" : "Corregir y volver a entregar", sectionUrl)}`;
+
+  return {
+    subject: approved
+      ? `Evidencia aprobada — ${requirementName}`
+      : `Requiere corrección — ${requirementName}`,
+    html: baseLayout(tenantName, body),
+  };
+}
+
+export interface ActivityReminderParams {
+  tenantName: string;
+  recipientName?: string | null;
+  companyName: string;
+  manualTitle: string;
+  sectionTitle: string;
+  requirementName: string;
+  dueAtLabel: string;
+  daysLeft: number;
+  sectionUrl: string;
+}
+
+export function activityReminderEmail({
+  tenantName,
+  recipientName,
+  companyName,
+  manualTitle,
+  sectionTitle,
+  requirementName,
+  dueAtLabel,
+  daysLeft,
+  sectionUrl,
+}: ActivityReminderParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const remaining =
+    daysLeft <= 0
+      ? "vence <strong>hoy</strong>"
+      : daysLeft === 1
+        ? "vence <strong>ma&ntilde;ana</strong>"
+        : `vence en <strong>${daysLeft} d&iacute;as</strong>`;
+
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      Actividad de cumplimiento pr&oacute;xima
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting} la actividad <strong>${escapeHtml(requirementName)}</strong> de
+      ${escapeHtml(companyName)} ${remaining} (${escapeHtml(dueAtLabel)}).
+    </p>
+    <p style="margin:0 0 16px;color:${C.muted};font-size:14px;line-height:1.6;">
+      ${escapeHtml(manualTitle)} &middot; ${escapeHtml(sectionTitle)}
+    </p>
+    ${ctaButton("Ir a la actividad", sectionUrl)}
+    <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
+      Si ya la atendiste, ignora este mensaje.
+    </p>`;
+
+  return {
+    subject: `Vence ${dueAtLabel} — ${requirementName}`,
+    html: baseLayout(tenantName, body),
+  };
+}
+
+export interface DeletionRequestedParams {
+  tenantName: string;
+  recipientName?: string | null;
+  companyName: string;
+  requirementName: string;
+  requestedByName: string;
+  reason?: string | null;
+  reviewUrl: string;
+}
+
+export function evidenceDeletionRequestedEmail({
+  tenantName,
+  recipientName,
+  companyName,
+  requirementName,
+  requestedByName,
+  reason,
+  reviewUrl,
+}: DeletionRequestedParams) {
+  const greeting = recipientName?.trim()
+    ? `Hola ${escapeHtml(recipientName.trim())},`
+    : "Hola,";
+  const body = `
+    <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
+      Solicitud de eliminaci&oacute;n de evidencia
+    </h2>
+    <p style="margin:0 0 16px;color:${C.body};font-size:16px;line-height:1.6;">
+      ${greeting} ${escapeHtml(requestedByName)} (${escapeHtml(companyName)}) solicit&oacute;
+      eliminar la evidencia de <strong>${escapeHtml(requirementName)}</strong>.
+    </p>
+    ${reason?.trim() ? highlightNote(`<p style="margin:0;color:${C.noteInk};font-size:15px;line-height:1.6;"><strong>Motivo:</strong><br/>${escapeHtml(reason.trim())}</p>`) : ""}
+    ${ctaButton("Resolver solicitud", reviewUrl)}
+    <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
+      La evidencia sigue disponible hasta que un administrador apruebe la baja.
+      Aun aprobada, el historial de la revisi&oacute;n se conserva.
+    </p>`;
+
+  return {
+    subject: `Solicitud de eliminación — ${companyName}`,
+    html: baseLayout(tenantName, body),
+  };
+}

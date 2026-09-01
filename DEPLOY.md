@@ -204,6 +204,46 @@ Sin `CRON_SECRET` la ruta responde 503 en vez de quedar abierta. Si el barrido
 no corre, lo unico que se pierde son los recordatorios: una encuesta vencida
 sigue rechazando respuestas porque la ventana se comprueba al responder.
 
+### 7b. Gestion documental y evidencias
+
+El modulo reutiliza el mismo `CRON_SECRET` y anade una segunda linea al
+crontab, mas un volumen propio para los archivos confidenciales.
+
+**Volumen privado.** Las evidencias y las plantillas por empresa NO pueden
+vivir bajo `public/uploads`: ese arbol lo sirve Next sin comprobar sesion, y
+estos archivos solo deben salir por `/files/*`, que autoriza contra la base.
+
+```bash
+# 1) Volumen dedicado, montado FUERA de public/
+podman volume create prol_prol_private
+# En /etc/containers/systemd/prol-web-1.container, anadir:
+#   Volume=prol_prol_private:/app/private-uploads:Z
+
+# 2) Ruta en el env del contenedor
+printf "PRIVATE_UPLOAD_DIR=%s\n" "/app/private-uploads" >> /etc/containers/env/prol-web-1.env
+systemctl daemon-reload && systemctl restart prol-web-1.service
+```
+
+Sin `PRIVATE_UPLOAD_DIR` la aplicacion arranca igual y deja los archivos en
+`./private-uploads` dentro del contenedor: no quedan expuestos, pero se pierden
+al recrearlo. El arranque lo avisa por log.
+
+**Barrido de recordatorios.** Manda los avisos de las actividades que se
+acercan a su fecha comprometida.
+
+```bash
+# Copia de prol-surveys-cron.sh apuntando a /api/cron/compliance
+# crontab -e
+30 16 * * * /usr/local/bin/prol-compliance-cron.sh >/dev/null 2>&1 # prol-compliance
+```
+
+Aqui no hay nada que cerrar: una actividad vencida se calcula por fecha en cada
+lectura, asi que si el barrido no corre solo se retrasan los avisos y la agenda
+sigue diciendo la verdad.
+
+**Flag por tenant.** El modulo no aparece hasta activar `documentsEnabled` en
+`/admin/tenants/<id>`.
+
 ### 8. Verificar
 
 ```bash
