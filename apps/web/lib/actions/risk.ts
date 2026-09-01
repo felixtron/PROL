@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db, type RiskItemType } from "@prol/db";
+import { EVIDENCE_SNAPSHOT_VERSION } from "@prol/shared";
 import {
   requireAssignmentMemberAccess,
   requireRiskAssessmentAccess,
@@ -226,6 +227,8 @@ export async function submitRiskMatrix(input: {
     where: { id: result.evidenceId! },
     data: {
       formSnapshot: {
+        snapshotVersion: EVIDENCE_SNAPSHOT_VERSION,
+        kind: "RISK_MATRIX",
         title: full.title,
         periodLabel: full.periodLabel,
         config: full.config,

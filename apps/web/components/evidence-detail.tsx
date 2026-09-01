@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Download, FileText } from "lucide-react";
+import { parseEvidenceSnapshot } from "@prol/shared";
 import {
   ACTIVITY_STATE_LABEL,
   EVIDENCE_STATUS_CLASS,
@@ -32,17 +33,6 @@ const ACTION_LABEL: Record<string, string> = {
   REJECT_DELETION: "Baja rechazada",
 };
 
-interface RiskSnapshotItem {
-  type: "RISK" | "OPPORTUNITY";
-  description: string;
-  probability: number;
-  impact: number;
-  score: number;
-  level: string | null;
-  actions: string | null;
-  responsible: string | null;
-}
-
 /**
  * Ficha de revisión de una evidencia: qué se entregó, para qué requisito, con
  * qué historial y con las acciones del consultor.
@@ -69,9 +59,7 @@ export function EvidenceDetail({
     dueAt: evidence.activity.dueAt,
   });
 
-  const snapshot = evidence.formSnapshot as
-    | { items?: RiskSnapshotItem[]; config?: unknown; periodLabel?: string | null }
-    | null;
+  const snapshot = parseEvidenceSnapshot(evidence.formSnapshot);
   const riskConfig = parseRiskConfig(snapshot?.config);
 
   return (
