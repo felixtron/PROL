@@ -55,10 +55,13 @@ Plans:
   2. Una evidencia anterior a la migración se descarga igual, sin haber tocado la base de datos.
   3. Otra empresa recibe 403 y una petición sin sesión recibe 401.
   4. Quitando la variable del bucket y reiniciando, la aplicación vuelve a leer del disco local.
-**Plans**: TBD
+**Plans**: 4 plans (olas estrictamente seriales: 1 → 02-01, 2 → 02-02, 3 → 02-03, 4 → 02-04). Los cuatro tocan los mismos módulos centrales y el mismo working tree; en la fase 1 dos ejecutores concurrentes se pisaron el índice de git, así que no hay paralelismo aquí a propósito.
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — Cliente R2 (`lib/r2.ts`), fail-fast de arranque y variables de entorno (R2-01, R2-04)
+- [ ] 02-02-PLAN.md — Backend conmutable en `document-storage.ts` y prefijo del bucket compartido (R2-01, R2-03)
+- [ ] 02-03-PLAN.md — Migración disco → R2, criterio de equivalencia y rollback (R2-02, R2-04)
+- [ ] 02-04-PLAN.md — Despliegue a producción, con checkpoint de aprobación (R2-01, R2-04)
 
 ### Phase 3: Procedimientos nativos
 **Goal**: Un procedimiento se redacta en la plataforma, se emite a cada empresa con su marca, y se versiona con historial — sin que exista un `.docx` de por medio.
@@ -138,7 +141,7 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
-| 2. R2 para el tier confidencial | 0/TBD | Not started | - |
+| 2. R2 para el tier confidencial | 0/4 | Planned     | - |
 | 3. Procedimientos nativos | 0/TBD | Not started | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
