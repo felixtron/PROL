@@ -275,11 +275,24 @@ que reconstruya pierde el volumen. `backup.sh` respalda ese volumen a diario
 **Barrido de recordatorios.** Manda los avisos de las actividades que se
 acercan a su fecha comprometida.
 
+> **Estado: INSTALADO en `panel-prosuite-2` el 2026-09-01.**
+
 ```bash
-# Copia de prol-surveys-cron.sh apuntando a /api/cron/compliance
-# crontab -e
-30 16 * * * /usr/local/bin/prol-compliance-cron.sh >/dev/null 2>&1 # prol-compliance
+# Copia de prol-surveys-cron.sh apuntando a /api/cron/compliance (modo 700)
+# crontab -e — 16:15 en Europe/Berlin = 08:15 en America/Mexico_City,
+# 15 min despues del barrido de encuestas para no solaparlos.
+15 16 * * * /usr/local/bin/prol-compliance-cron.sh >/dev/null 2>&1 # prol-compliance
 ```
+
+Verificacion:
+
+```bash
+curl -s -X POST https://prol.prosuite.pro/api/cron/compliance   # sin credencial: 401
+ssh panel-prosuite-2 '/usr/local/bin/prol-compliance-cron.sh && echo OK'
+```
+
+Mientras `documentsEnabled` este apagado en todos los tenants el barrido es un
+no-op: corre, no encuentra actividades y sale en 0.
 
 Aqui no hay nada que cerrar: una actividad vencida se calcula por fecha en cada
 lectura, asi que si el barrido no corre solo se retrasan los avisos y la agenda
