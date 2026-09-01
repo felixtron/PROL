@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import {
   Document,
   Page,
@@ -15,41 +13,7 @@ import {
 } from "@react-pdf/renderer";
 import { db, type EvaluationKind } from "@prol/db";
 import { getEvaluationResults } from "@/lib/queries/evaluation";
-import { resolveUploadDir } from "@/lib/upload-paths";
-
-/**
- * Load an upload URL ("/uploads/...") from the local volume and return it as
- * a data URL — what @react-pdf/renderer's <Image> accepts reliably. Mirrors
- * the helper used by the certificate PDF endpoint.
- */
-async function loadAsDataUrl(
-  url: string | null | undefined,
-): Promise<string | null> {
-  if (!url) return null;
-  if (url.startsWith("data:")) return url;
-  if (!url.startsWith("/uploads/")) return null;
-  const parts = url.replace(/^\/uploads\//, "").split("/");
-  if (parts.length < 2) return null;
-  const [subdir, ...rest] = parts;
-  const filename = rest.join("/");
-  if (!subdir || !filename || filename.includes("..")) return null;
-  const dir = resolveUploadDir(subdir);
-  const filePath = join(dir, filename);
-  const ext = (filename.split(".").pop() ?? "").toLowerCase();
-  const mime =
-    ext === "png" ? "image/png"
-    : ext === "jpg" || ext === "jpeg" ? "image/jpeg"
-    : ext === "webp" ? "image/webp"
-    : ext === "gif" ? "image/gif"
-    : null;
-  if (!mime) return null;
-  try {
-    const buf = await readFile(filePath);
-    return `data:${mime};base64,${buf.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
+import { loadUploadAsDataUrl } from "@/lib/certificate-assets";
 
 type ResultsData = Awaited<ReturnType<typeof getEvaluationResults>>;
 type SectionData = ResultsData["sections"][number];
@@ -1220,7 +1184,7 @@ export async function GET(
     }
 
     const tenant = assignment.evaluation.tenant;
-    const logoDataUrl = await loadAsDataUrl(tenant.logo);
+    const logoDataUrl = await loadUploadAsDataUrl(tenant.logo);
     const generatedAt = new Date().toLocaleDateString("es-MX", {
       day: "numeric",
       month: "long",

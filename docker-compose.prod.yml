@@ -33,6 +33,9 @@ services:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-prol}:${DB_PASSWORD}@db:5432/${DB_NAME:-prol}?schema=public
 
+      # Archivos confidenciales (evidencias y plantillas por empresa)
+      PRIVATE_UPLOAD_DIR: ${PRIVATE_UPLOAD_DIR:-/app/private-uploads}
+
       # App URL & Auth
       NEXT_PUBLIC_APP_URL: ${APP_URL}
       NEXT_PUBLIC_DOMAIN: ${APP_DOMAIN}
@@ -64,6 +67,8 @@ services:
     volumes:
       # Persist uploaded files (PDFs, thumbnails, avatars) across rebuilds
       - prol_uploads:/app/apps/web/public/uploads
+      # Evidencias y plantillas por empresa: FUERA de public/, sólo salen por /files/*
+      - prol_private:/app/private-uploads
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 30s
@@ -98,6 +103,7 @@ services:
 volumes:
   prol_db_data:
   prol_uploads:
+  prol_private:
 
 networks:
   prol-internal:
