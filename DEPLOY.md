@@ -204,6 +204,36 @@ Sin `CRON_SECRET` la ruta responde 503 en vez de quedar abierta. Si el barrido
 no corre, lo unico que se pierde son los recordatorios: una encuesta vencida
 sigue rechazando respuestas porque la ventana se comprueba al responder.
 
+### 7a-bis. Respaldo diario
+
+> **Estado: RESTAURADO el 2026-09-01.** El respaldo automatico llevaba
+> **sin correr desde el 2026-05-19**: al migrar de `panel-prosuite` a
+> `panel-prosuite-2` no se recreo la entrada del cron, y el script tampoco
+> habria funcionado porque invocaba `docker` y el host nuevo solo tiene podman.
+> En ese periodo lo unico que protegio la base fueron los `pg_dump` manuales
+> previos a cada despliegue.
+
+```bash
+# Script (elige podman o docker segun cual exista)
+scp scripts/backup.sh panel-prosuite-2:/usr/local/bin/prol-backup.sh
+ssh panel-prosuite-2 'chmod 700 /usr/local/bin/prol-backup.sh'
+
+# Cron diario a las 03:00 UTC
+#   0 3 * * * /usr/local/bin/prol-backup.sh >> /opt/prol/backups/backup.log 2>&1 # prol-backup
+```
+
+Cadencia y retencion en `scripts/README.md`. Resumen: dump de la base y tarball
+privado a diario, tarball de uploads **solo los domingos** (pesa ~1.5 GB), poda
+por cantidad. Estado estable ~12 GB.
+
+Verificar que sigue vivo:
+
+```bash
+ssh panel-prosuite-2 'tail -12 /opt/prol/backups/backup.log; du -sh /opt/prol/backups/*'
+```
+
+---
+
 ### 7b. Gestion documental y evidencias
 
 El modulo reutiliza el mismo `CRON_SECRET` y anade una segunda linea al
@@ -212,6 +242,12 @@ crontab, mas un volumen propio para los archivos confidenciales.
 **Volumen privado.** Las evidencias y las plantillas por empresa NO pueden
 vivir bajo `public/uploads`: ese arbol lo sirve Next sin comprobar sesion, y
 estos archivos solo deben salir por `/files/*`, que autoriza contra la base.
+
+> **Estado: APLICADO en `panel-prosuite-2` el 2026-09-01.** Hasta esa fecha esta
+> receta nunca se habia ejecutado: el quadlet solo montaba `prol_prol_uploads`,
+> el volumen privado no existia y `PRIVATE_UPLOAD_DIR` no estaba en el env. El
+> modulo se desplego apagado (`documents_enabled = false` en los tres tenants),
+> asi que no llego a escribirse ninguna evidencia en el directorio efimero.
 
 ```bash
 # 1) Volumen dedicado, montado FUERA de public/

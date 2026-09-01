@@ -9,12 +9,26 @@ versioned in the repo so changes go through git review.
 
 | Artifact | Path on host | Cadence |
 |---|---|---|
-| PostgreSQL custom-format dump | `/opt/prol/backups/db/prol_<ts>.dump` | every run |
-| Uploads volume tarball | `/opt/prol/backups/uploads/uploads_<date>.tar.gz` | every run |
-| Private volume tarball | `/opt/prol/backups/private/private_<date>.tar.gz` | every run |
+| PostgreSQL custom-format dump | `/opt/prol/backups/db/prol_<ts>.dump` | every run (~1.2 MB) |
+| Uploads volume tarball | `/opt/prol/backups/uploads/uploads_<date>.tar.gz` | **weekly, Sundays** (~1.5 GB) |
+| Private volume tarball | `/opt/prol/backups/private/private_<date>.tar.gz` | every run (small) |
 
-Retention defaults: **14 daily DB dumps**, **8 weekly upload tarballs** (los
-tarballs privados usan la misma retención que los de uploads).
+Retention defaults, **por cantidad y no por antigüedad**: `KEEP_DB=14`,
+`KEEP_UPLOADS=8`, `KEEP_PRIVATE=30`. Estado estable ≈ 12 GB.
+
+El tarball de uploads es **semanal a propósito**: pesa gigabytes, y generarlo a
+diario conservando 8 semanas llenaría el disco (56 × 1.5 GB ≈ 84 GB). Se genera
+los domingos, o cualquier día si todavía no existe ninguno; `FORCE_UPLOADS=1` lo
+fuerza.
+
+La poda va por cantidad para que el número de copias no dependa de la cadencia
+real del cron: si el cron se para un mes, al volver no se borra el histórico de
+golpe (que es exactamente lo que hacía `-mtime`).
+
+**Runtime de contenedores.** El script elige `podman` o `docker` según cuál
+exista, y `CONTAINER_CLI` lo fuerza. El host de producción corre podman y no
+tiene binario `docker`; en local hay docker. Antes de esto el script estaba
+atado a `docker` y **no podía correr en producción**.
 
 ### Off-site (recommended for prod)
 
