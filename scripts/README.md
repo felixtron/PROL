@@ -11,8 +11,10 @@ versioned in the repo so changes go through git review.
 |---|---|---|
 | PostgreSQL custom-format dump | `/opt/prol/backups/db/prol_<ts>.dump` | every run |
 | Uploads volume tarball | `/opt/prol/backups/uploads/uploads_<date>.tar.gz` | every run |
+| Private volume tarball | `/opt/prol/backups/private/private_<date>.tar.gz` | every run |
 
-Retention defaults: **14 daily DB dumps**, **8 weekly upload tarballs**.
+Retention defaults: **14 daily DB dumps**, **8 weekly upload tarballs** (los
+tarballs privados usan la misma retención que los de uploads).
 
 ### Off-site (recommended for prod)
 
@@ -58,5 +60,17 @@ docker run --rm \
   -v /opt/prol/backups/uploads:/in:ro \
   alpine:3.20 \
   sh -c 'cd /data && tar xzf /in/uploads_20260424.tar.gz'
+docker compose up -d web
+```
+
+To restore the private volume (evidencias y plantillas confidenciales) from a tarball:
+
+```bash
+docker compose stop web
+docker run --rm \
+  -v prol_prol_private:/data \
+  -v /opt/prol/backups/private:/in:ro \
+  alpine:3.20 \
+  sh -c 'cd /data && tar xzf /in/private_20260424.tar.gz'
 docker compose up -d web
 ```

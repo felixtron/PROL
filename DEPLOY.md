@@ -228,6 +228,14 @@ Sin `PRIVATE_UPLOAD_DIR` la aplicacion arranca igual y deja los archivos en
 `./private-uploads` dentro del contenedor: no quedan expuestos, pero se pierden
 al recrearlo. El arranque lo avisa por log.
 
+`docker-compose.prod.yml` declara el mismo volumen con la clave `prol_private`,
+que Compose antepone con el nombre del proyecto y resuelve a `prol_prol_private`,
+el mismo nombre que crea el `podman volume create` de arriba. El compose y el
+quadlet se mantienen sincronizados: produccion corre con quadlets, pero el
+compose es la receta para reconstruir desde cero, y si divergen el siguiente
+que reconstruya pierde el volumen. `backup.sh` respalda ese volumen a diario
+(`private_<date>.tar.gz`).
+
 **Barrido de recordatorios.** Manda los avisos de las actividades que se
 acercan a su fecha comprometida.
 
