@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: planning
+status: executing
 stopped_at: Completados 01-01-PLAN.md y 01-02-PLAN.md
-last_updated: "2026-09-01T21:22:00.000Z"
-last_activity: "2026-09-01 — Plan 01-01 completado: respaldo del volumen privado en backup.sh + docker-compose.prod.yml coherente con el quadlet de producción"
+last_updated: "2026-09-01T22:54:56.087Z"
+last_activity: "2026-09-01 — Planes 01-01 y 01-02 completados: respaldo del volumen privado + compose coherente; lock de fila en uploadCompanyDocument y helper de data-URL unificado"
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 4
   percent: 50
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 1 — Higiene y operación
+**Current focus:** Phase 2 — R2 para el tier confidencial
 
 ## Current Position
 
-Phase: 1 of 7 (Higiene y operación)
-Plan: 2 of 4 in current phase
-Status: In progress
-Last activity: 2026-09-01 — Planes 01-01 y 01-02 completados: respaldo del volumen privado + compose coherente; lock de fila en uploadCompanyDocument y helper de data-URL unificado
+Phase: 2 of 7 (R2 para el tier confidencial)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-09-01 — Fase 1 completa y verificada (8/8 must-haves). Módulo desplegado a producción apagado; respaldo automático restaurado tras 3 meses y medio parado.
 
-Progress: [█████░░░░░] 50%
+Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 
 ## Performance Metrics
 
@@ -76,10 +76,11 @@ Decisiones recientes que afectan al trabajo actual:
 ### Blockers/Concerns
 
 - ~~El respaldo de producción puede no estar corriendo.~~ **RESUELTO el 2026-09-01, y era peor de lo supuesto**: el respaldo automático llevaba **sin correr desde el 2026-05-19**. Al migrar a `panel-prosuite-2` no se recreó la entrada del cron, y el script tampoco habría funcionado (invocaba `docker`; el host sólo tiene podman, confirmado). Arreglado en `0e84566`: script agnóstico al runtime, tarball de uploads semanal (a diario llenaba el disco: 56 × 1.5 GB), poda por cantidad. Instalado en el VPS con cron a las 03:00 UTC y verificado de punta a punta.
-- ~~El volumen de evidencias no tiene respaldo hoy.~~ **Resuelto a nivel de repositorio en 01-01**: `scripts/backup.sh` genera `private_<fecha>.tar.gz` y `docker-compose.prod.yml` declara/monta `prol_private`. Queda pendiente el blocker de arriba (confirmar que el cron corre en producción) y desplegar el cambio (el VPS tiene `docker-compose.prod.yml` modificado sin commitear — ver DEPLOY.md líneas 30-39 — así que el próximo `git pull` puede requerir reconciliación manual).
-- **Nota de despliegue añadida en 01-01**: el VPS corre una versión de `docker-compose.prod.yml` divergente del repo (red `traefik` + variables de Turnstile, no commiteadas). Antes de desplegar los cambios de 01-01, reconciliar ese diff a mano.
+- ~~El volumen de evidencias no tiene respaldo.~~ **RESUELTO**: `backup.sh` genera `private_<fecha>.tar.gz` a diario, el volumen `prol_prol_private` existe y está montado en producción, y el respaldo corre por cron.
+- ~~Falta el cron de `/api/cron/compliance`.~~ **RESUELTO el 2026-09-01**: `/usr/local/bin/prol-compliance-cron.sh` instalado (modo 700) y cron a las 16:15 Europe/Berlin = 08:15 America/Mexico_City. Verificado: 401 sin credencial, exit 0 con ella.
+- **El VPS corre un `docker-compose.prod.yml` divergente del repo** (red `traefik` en vez de `dokploy-network`, más variables de Turnstile, todo sin commitear allí). **No afecta al despliegue por la ruta canónica** —`git archive` a `/opt/prol-deploy-$SHA` + quadlets, que no toca `/opt/prol`— pero rompería la sección "Re-deploy" de DEPLOY.md, que hace `git pull` en el host. No usar esa ruta sin reconciliar antes.
 - **La fase 4 tiene una incógnita real**: si `<View fixed>` de react-pdf repite la cabecera de tabla entre páginas. Spike de una hora como primera tarea, con fallback ya definido.
-- **Antes de encender `documentsEnabled` en cualquier tenant**: falta añadir el cron de `/api/cron/compliance` en el host (el de encuestas ya está; el de cumplimiento no se instaló porque con el módulo apagado sería un no-op). Sin él no salen los recordatorios de actividades recurrentes.
+- **Los ejecutores en paralelo se pisan el índice de git.** En la ola 1 de la fase 1, dos agentes sobre el mismo working tree (`branching_strategy: "none"`) se absorbieron mutuamente archivos entre el `add` y el `commit`. El contenido quedó íntegro, la atribución cruzada. **Antes de la fase 2 hay que serializarlos o darle worktree a cada uno**: las fases 2-7 tienen varios planes por ola.
 
 ## Estado de producción (2026-09-01)
 
@@ -87,6 +88,8 @@ Decisiones recientes que afectan al trabajo actual:
 - El módulo de gestión documental está **en producción y apagado**: `documents_enabled = false` en Academia Digital MX, IBIZA Consultores y Mecanica G3.
 - Esquema aplicado con `db push`: 105 sentencias, ninguna destructiva. Respaldo previo en `/opt/prol/backup_20260901_2211_pre_modulo_documental.sql`.
 - Volumen `prol_prol_private` creado y montado en `/app/private-uploads`, con `PRIVATE_UPLOAD_DIR` en el env. Verificada la escritura desde el contenedor.
+- **Desfase repo ↔ producción**: `64f7476` incluye el módulo y el lock de versión (`160bc5a`), pero **NO el tipado de `formSnapshot`** (`b697b3b`, `ab975e2`), que se commiteó después. Sin impacto mientras el módulo esté apagado; entra en el próximo despliegue.
+- Respaldo: cron diario a las 03:00 UTC. Cadencia db+privado diaria, uploads semanal (domingos), poda por cantidad. Estado estable ≈ 12 GB sobre 116 GB libres.
 
 ## Session Continuity
 
