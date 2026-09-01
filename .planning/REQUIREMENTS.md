@@ -47,7 +47,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 - [x] **OPS-01**: El respaldo diario incluye el volumen de evidencias.
 - [x] **OPS-02**: `docker-compose.prod.yml` declara el volumen privado que producción ya monta.
 - [x] **OPS-03**: Incrementar la versión de un documento de empresa toma lock y no puede colisionar.
-- [ ] **OPS-04**: `formSnapshot` se lee con un tipo discriminado y versionado, con rama legacy.
+- [x] **OPS-04**: `formSnapshot` se lee con un tipo discriminado y versionado, con rama legacy.
 - [ ] **OPS-05**: Toda consulta de "documento vigente" filtra por estatus, no por versión máxima.
 
 ## Out of Scope
@@ -67,7 +67,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | OPS-01 | Phase 1 | Complete |
 | OPS-02 | Phase 1 | Complete |
 | OPS-03 | Phase 1 | Complete |
-| OPS-04 | Phase 1 | Pending |
+| OPS-04 | Phase 1 | Complete |
 | R2-01 | Phase 2 | Pending |
 | R2-02 | Phase 2 | Pending |
 | R2-03 | Phase 2 | Pending |

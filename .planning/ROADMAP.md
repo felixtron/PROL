@@ -19,7 +19,7 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Higiene y operación** - Cierra la deuda del módulo anterior y el agujero de respaldo
+- [x] **Phase 1: Higiene y operación** - Cierra la deuda del módulo anterior y el agujero de respaldo (completed 2026-09-01)
 - [ ] **Phase 2: R2 para el tier confidencial** - Evidencias y plantillas salen del volumen local
 - [ ] **Phase 3: Procedimientos nativos** - El documento de texto vive en la plataforma
 - [ ] **Phase 4: Puente HTML→PDF** - El artefacto que se lleva el auditor
@@ -137,7 +137,7 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Higiene y operación | 2/4 | In Progress | - |
+| 1. Higiene y operación | 4/4 | Complete   | 2026-09-01 |
 | 2. R2 para el tier confidencial | 0/TBD | Not started | - |
 | 3. Procedimientos nativos | 0/TBD | Not started | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
