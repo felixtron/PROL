@@ -38,10 +38,13 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
   2. `docker-compose.prod.yml` declara el volumen privado que el quadlet de producción ya monta.
   3. Dos subidas simultáneas al mismo documento y empresa producen versiones consecutivas, no un error de unicidad.
   4. Las evidencias de matriz de riesgos ya existentes se siguen viendo después de introducir el snapshot discriminado y versionado.
-**Plans**: TBD
+**Plans**: 4 plans (olas: 1 → 01-01, 01-02, 01-03 en paralelo; 2 → 01-04)
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Respaldo del volumen privado y compose de producción coherente (OPS-01, OPS-02)
+- [ ] 01-02-PLAN.md — Lock de versión en `uploadCompanyDocument` y limpieza del helper data-URL (OPS-03)
+- [ ] 01-03-PLAN.md — Evidencia legacy de matriz de riesgos, creada por la interfaz antes del cambio (OPS-04)
+- [ ] 01-04-PLAN.md — Snapshot de evidencia tipado y versionado, con rama legacy (OPS-04)
 
 ### Phase 2: R2 para el tier confidencial
 **Goal**: Las evidencias y plantillas confidenciales se guardan y leen desde Cloudflare R2, sin que cambie el esquema, el cliente ni la autorización.
@@ -134,7 +137,7 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Higiene y operación | 0/TBD | Not started | - |
+| 1. Higiene y operación | 0/4 | Planned | - |
 | 2. R2 para el tier confidencial | 0/TBD | Not started | - |
 | 3. Procedimientos nativos | 0/TBD | Not started | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
