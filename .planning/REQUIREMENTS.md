@@ -17,6 +17,16 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 - [x] **DOC-06**: Editar un documento vigente abre un borrador; sólo publicar crea una versión nueva.
 - [x] **DOC-07**: El cliente ve cuándo su versión quedó atrás respecto a la plantilla del consultor.
 
+### Navegación y gestión documental en Drive
+
+- [ ] **NAV-01**: Las funciones del módulo viven bajo un menú desplegable único, cuyo rótulo define cada tenant.
+- [ ] **NAV-02**: El agrupamiento aparece en los paneles de administrador, consultor y cliente.
+- [ ] **NAV-03**: La interfaz distingue Manuales Maestros (plantillas) de Proyectos (implementaciones por empresa).
+- [ ] **DRV-01**: Cada proyecto guarda el enlace a su carpeta de Google Drive, editable por el administrador.
+- [ ] **DRV-02**: Abrir Evidencias desde un proyecto lleva al enlace de Drive configurado.
+- [ ] **DRV-03**: Sólo se aceptan URLs de Google Drive, y un proyecto sin enlace lo dice en vez de fallar.
+- [ ] **DRV-04**: Un requisito se da por cumplido sin subir archivo a PROL, conservando actividad, periodicidad, aprobación y bitácora.
+
 ### Registros nativos
 
 - [ ] **REG-01**: El consultor define la estructura de un formato con bloques, sin escribir código.
@@ -39,8 +49,8 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 - [x] **R2-02**: Los archivos anteriores a la migración siguen descargándose sin tocar la base.
 - [x] **R2-03**: `/files/*` sigue autorizando contra la base: 403 desde otra empresa, 401 sin sesión.
 - [x] **R2-04**: Quitar una variable de entorno devuelve la app al disco local, sin desplegar código.
-- [ ] **R2-05**: El cliente sube evidencias de más de 25 MB por URL firmada, con progreso visible.
-- [ ] **R2-06**: Una subida firmada que exceda el tope o mienta en su MIME se rechaza al confirmarla.
+- ~~**R2-05**~~: ~~El cliente sube evidencias de más de 25 MB por URL firmada, con progreso visible.~~ — **fuera de alcance desde el 2026-09-02**: las evidencias pesadas viven en Drive.
+- ~~**R2-06**~~: ~~Una subida firmada que exceda el tope o mienta en su MIME se rechaza al confirmarla.~~ — **fuera de alcance**, mismo motivo.
 
 ### Operación y deuda
 
@@ -89,13 +99,20 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | REG-05 | Phase 5 | Pending |
 | REG-06 | Phase 5 | Pending |
 | PDF-03 | Phase 5 | Pending |
-| R2-05 | Phase 6 | Pending |
-| R2-06 | Phase 6 | Pending |
+| NAV-01 | Phase 3.1 | Pending |
+| NAV-02 | Phase 3.1 | Pending |
+| NAV-03 | Phase 3.1 | Pending |
+| DRV-01 | Phase 3.1 | Pending |
+| DRV-02 | Phase 3.1 | Pending |
+| DRV-03 | Phase 3.1 | Pending |
+| DRV-04 | Phase 3.1 | Pending |
+| ~~R2-05~~ | ~~Phase 6~~ | Cancelado 2026-09-02 — las evidencias pesadas van a Drive, no a una URL firmada |
+| ~~R2-06~~ | ~~Phase 6~~ | Cancelado 2026-09-02 — mismo motivo |
 | DOC-02 | Phase 3 | Complete — cerrado en 03-06b: `POST /api/upload/document-body` real, con un `.docx` genuino (OOXML de prueba, no un mock del handler), devolvió una tabla con una celda combinada (`colspan="2"`). Ese HTML se guardó de verdad vía `updateManualDocumentBody` por HTTP (`template_version` 3→4) y `content_html` en `manual_documents` contiene la tabla completa, `colspan="2"` incluido, confirmado con una consulta directa a la fila. Ver `03-06-SUMMARY.md`. |
 
 **Coverage:**
-- v1.1 requirements: 28 total
-- Mapped to phases: 28
+- v1.1 requirements: 33 en total (28 originales + 7 de la fase 3.1 − 2 cancelados)
+- Mapped to phases: 33
 - Unmapped: 0
 
 ---

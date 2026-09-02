@@ -22,9 +22,10 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
 - [x] **Phase 1: Higiene y operación** - Cierra la deuda del módulo anterior y el agujero de respaldo (completed 2026-09-01)
 - [x] **Phase 2: R2 para el tier confidencial** - Evidencias y plantillas salen del volumen local (completed 2026-09-02)
 - [x] **Phase 3: Procedimientos nativos** - El documento de texto vive en la plataforma (completed 2026-09-02)
+- [ ] **Phase 3.1: Ibiza Experts 360 y Drive** - INSERTED 2026-09-02 · El expediente vive en Drive; PROL lleva el control
 - [ ] **Phase 4: Puente HTML→PDF** - El artefacto que se lleva el auditor
 - [ ] **Phase 5: Registros nativos** - El formato que el cliente llena en pantalla
-- [ ] **Phase 6: Subida directa a R2** - Se levanta el tope de 25 MB
+- ~~**Phase 6: Subida directa a R2**~~ - Cancelada el 2026-09-02: las evidencias pesadas van a Drive
 - ~~**Phase 7: Importación .docx**~~ - Absorbida por la fase 3 el 2026-09-02
 
 ## Phase Details
@@ -105,6 +106,32 @@ Plans:
 > con checkpoint, como hizo la 2, que además lleva al VPS el arreglo del 401
 > (`5e2352d`) que hoy sigue sin desplegar.
 
+### Phase 3.1: Ibiza Experts 360 y gestión documental en Drive — INSERTED (2026-09-02)
+**Goal**: Las funciones del módulo se agrupan bajo un menú propio de cada tenant, y el expediente de archivos deja de vivir en PROL: cada proyecto apunta a su carpeta de Google Drive, mientras PROL conserva el control de qué toca, cuándo vence y quién lo aprobó.
+**Depends on**: Phase 3
+**Requirements**: NAV-01, NAV-02, NAV-03, DRV-01, DRV-02, DRV-03, DRV-04
+**Success Criteria** (what must be TRUE):
+  1. Las entradas del módulo aparecen agrupadas bajo un menú desplegable en los paneles de administrador, consultor y cliente.
+  2. El rótulo del menú lo define cada tenant; IBIZA muestra "Ibiza Experts 360" y otro tenant muestra su propio rótulo sin tocar código.
+  3. La interfaz deja claro que Manuales Maestros son plantillas y Proyectos son implementaciones por empresa.
+  4. Un administrador pega el enlace de Drive de un proyecto y queda guardado.
+  5. Abrir Evidencias desde ese proyecto lleva a esa carpeta de Drive.
+  6. Una URL que no sea de Google Drive se rechaza, y un proyecto sin enlace lo dice en vez de fallar.
+  7. Un requisito se da por cumplido sin subir archivo a PROL, y conserva su actividad, su periodicidad, su aprobación y su bitácora.
+**Plans**: TBD
+
+Plans:
+- [ ] 03.1-01: TBD
+
+> **Por qué se inserta.** El 2026-09-02, con la fase 3 recién desplegada, se comprobó
+> que producción tenía **0 evidencias, 0 proyectos, 0 manuales y 0 actividades**: el
+> módulo nunca se había usado. Ese es el momento más barato posible para mover el
+> expediente de archivos fuera de la plataforma, y se encarece cada día que IBIZA lo
+> use. La decisión evita consumo de almacenamiento en el servidor y quita de encima
+> toda la complejidad de modelar carpetas, permisos y subida de archivos pesados —
+> que Drive ya resuelve. PROL se queda con lo que Drive no hace: saber qué requisito
+> toca, cuándo vence, quién lo aprobó y cómo va el avance de cada empresa.
+
 ### Phase 4: Puente HTML→PDF
 **Goal**: Cualquier documento nativo se exporta como PDF apto para auditoría, con encabezado ISO, pie numerado y tablas con bordes.
 **Depends on**: Phase 3
@@ -134,10 +161,13 @@ Plans:
 Plans:
 - [ ] 05-01: TBD
 
-### Phase 6: Subida directa a R2
-**Goal**: Las evidencias pesadas suben directas al bucket por URL firmada, levantando el tope de 25 MB sin abrir un agujero de escritura.
-**Depends on**: Phase 2
-**Requirements**: R2-05, R2-06
+### ~~Phase 6: Subida directa a R2~~ — CANCELADA (2026-09-02)
+**Goal original**: Las evidencias pesadas suben directas al bucket por URL firmada, levantando el tope de 25 MB.
+**Requirements**: R2-05, R2-06 → fuera de alcance.
+
+Existía para resolver un problema —fotos y video de más de 25 MB— que la fase 3.1
+elimina en origen: esos archivos ya no pasan por PROL, viven en Drive. R2 conserva su
+uso para las plantillas confidenciales, que no se mueven.
 **Success Criteria** (what must be TRUE):
   1. Un archivo de 100 MB sube desde el navegador con progreso visible.
   2. Una URL firmada usada con un archivo mayor al tope, o con un MIME distinto al declarado, se rechaza al confirmar.
@@ -160,9 +190,8 @@ de éxito viven ahora como el criterio 6 de la fase 3, sin rebajarse.
 ## Progress
 
 **Execution Order:**
-Las fases se ejecutan en orden numérico: 1 → 2 → 3 → 4 → 5 → 6.
-La fase 6 sólo depende de la 2, así que puede adelantarse o aplazarse sin bloquear nada.
-La 7 ya no existe: su contenido está dentro de la 3.
+Las fases se ejecutan en orden numérico: 1 → 2 → 3 → 3.1 → 4 → 5.
+La 7 ya no existe (su contenido está dentro de la 3) y la 6 se canceló: las evidencias pesadas van a Drive.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -171,5 +200,6 @@ La 7 ya no existe: su contenido está dentro de la 3.
 | 3. Procedimientos nativos | 8/8 | Complete    | 2026-09-02 |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
-| 6. Subida directa a R2 | 0/TBD | Not started | - |
+| 3.1. Ibiza Experts 360 y Drive | 0/TBD | Not started | - |
+| ~~6. Subida directa a R2~~ | — | Cancelada | 2026-09-02 |
 | ~~7. Importación .docx~~ | — | Absorbida por la 3 | 2026-09-02 |
