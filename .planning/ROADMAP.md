@@ -20,7 +20,7 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Higiene y operación** - Cierra la deuda del módulo anterior y el agujero de respaldo (completed 2026-09-01)
-- [ ] **Phase 2: R2 para el tier confidencial** - Evidencias y plantillas salen del volumen local
+- [x] **Phase 2: R2 para el tier confidencial** - Evidencias y plantillas salen del volumen local (completed 2026-09-02)
 - [ ] **Phase 3: Procedimientos nativos** - El documento de texto vive en la plataforma
 - [ ] **Phase 4: Puente HTML→PDF** - El artefacto que se lleva el auditor
 - [ ] **Phase 5: Registros nativos** - El formato que el cliente llena en pantalla
@@ -61,7 +61,7 @@ Plans:
 - [x] 02-01-PLAN.md — Cliente R2 (`lib/r2.ts`), fail-fast de arranque y variables de entorno (R2-01, R2-04)
 - [x] 02-02-PLAN.md — Backend conmutable en `document-storage.ts` y prefijo del bucket compartido (R2-01, R2-03)
 - [x] 02-03-PLAN.md — Migración disco → R2, criterio de equivalencia y rollback (R2-02, R2-04)
-- [ ] 02-04-PLAN.md — Despliegue a producción, con checkpoint de aprobación (R2-01, R2-04)
+- [x] 02-04-PLAN.md — Despliegue a producción, con checkpoint de aprobación (R2-01, R2-04)
 
 ### Phase 3: Procedimientos nativos
 **Goal**: Un procedimiento se redacta en la plataforma, se emite a cada empresa con su marca, y se versiona con historial — sin que exista un `.docx` de por medio.
@@ -141,7 +141,7 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
-| 2. R2 para el tier confidencial | 3/4 | In Progress | - |
+| 2. R2 para el tier confidencial | 4/4 | Complete   | 2026-09-02 |
 | 3. Procedimientos nativos | 0/TBD | Not started | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |

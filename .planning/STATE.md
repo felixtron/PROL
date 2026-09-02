@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 02-03-PLAN.md (3 de 4 planes de la fase 2)
-last_updated: "2026-09-02T02:49:16.213Z"
-last_activity: "2026-09-02 — Plan 02-03 completado: script de migración disco → R2 (apps/web/scripts/migrate-private-to-r2.mjs) idempotente, sin borrado y sin tocar la base, y sección 7c de DEPLOY.md. Criterio 2 demostrado: dos evidencias fabricadas con backend disco se descargan igual tras migrar y con el disco apartado (bytes sólo del bucket), DB sin tocar. Criterio 4 demostrado: quitar R2_BUCKET y reiniciar devuelve la app al disco (par 404/200), y la ida y vuelta R2→disco→R2 no requirió desplegar código. Matriz de cinco estados de configuración verificada, incluida la parcial (arranca, lee de disco, rechaza escritura con 503)."
+stopped_at: Completado 02-04-PLAN.md (4 de 4 planes de la fase 2) — Fase 2 completa
+last_updated: "2026-09-02T03:35:00.000Z"
+last_activity: "2026-09-02 — Plan 02-04 completado: usuario aprobó el despliegue, imagen 55c020d desplegada a producción por la ruta canónica de quadlets con las cuatro variables R2 aplicadas por SSH, verificación humana de que el panel y las descargas públicas siguen sanos, y DEPLOY.md §7c actualizada al estado real (APLICADO, migración en el host sigue como no-op por volumen vacío, módulo documental apagado). Fase 2 completa: R2-01 y R2-04 confirmados también en producción, no sólo en local."
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 14
+  completed_plans: 8
+  percent: 29
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 2 — R2 para el tier confidencial
+**Current focus:** Phase 3 — Procedimientos nativos
 
 ## Current Position
 
-Phase: 2 of 7 (R2 para el tier confidencial)
-Plan: 3 of 4 in current phase
-Status: Ready to execute
-Last activity: 2026-09-02 — Plan 02-03 completado: script de migración disco → R2 (apps/web/scripts/migrate-private-to-r2.mjs) idempotente, sin borrado y sin tocar la base, y sección 7c de DEPLOY.md. Criterio 2 demostrado: dos evidencias fabricadas con backend disco se descargan igual tras migrar y con el disco apartado (bytes sólo del bucket), DB sin tocar. Criterio 4 demostrado: quitar R2_BUCKET y reiniciar devuelve la app al disco (par 404/200), y la ida y vuelta R2→disco→R2 no requirió desplegar código. Matriz de cinco estados de configuración verificada, incluida la parcial (arranca, lee de disco, rechaza escritura con 503).
+Phase: 3 of 7 (Procedimientos nativos)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-09-02 — Fase 2 completa y desplegada a producción. Plan 02-04: el usuario aprobó el despliegue con alcance/riesgo/rollback/verificación por delante, imagen 55c020d desplegada por SSH (ruta canónica de quadlets) con las cuatro variables R2 aplicadas al env del contenedor, confirmación humana de que el panel y las descargas de PDF siguen normales, y DEPLOY.md §7c reescrita con el estado real (APLICADO, migración en el host sigue sin ejecutarse por volumen vacío, módulo documental apagado por diseño).
 
-Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
+Progress: [███░░░░░░░] 29% (2 de 7 fases)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 | Phase 02 P01 | 25min | 3 tasks | 9 files |
 | Phase 02 P02 | 45min | 3 tasks | 1 files |
 | Phase 02 P03 | 35min | 3 tasks | 3 files |
+| Phase 02 P04 | ~15min (tarea 4 de documentación; tareas 1-3 incluyen una pausa de aprobación humana no cronometrable) | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,10 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 02-03]: Demostrado en local (produccion no tiene datos): una fileKey subida con backend disco se descarga igual tras migrar, con el disco apartado -- los bytes solo pueden venir del bucket -- y la base no cambia ni una fila.
 - [Phase 02-03]: Demostrado el rollback completo R2 -> disco -> R2 solo cambiando R2_BUCKET y reiniciando el proceso, sin desplegar codigo; par 404/200 confirma el origen de los bytes en cada estado.
 - [Phase 02-03]: eslint.config.js de apps/web gana un override para scripts/**/*.mjs (global process) para que el script de migracion no rompa la linea base de lint (81 warnings) via no-undef.
+- [Phase 02-04]: Usuario aprobo explicitamente "desplegar ahora" (no diferir) tras revisar alcance, riesgo, rollback y verificacion. Produccion corre desde el 2026-09-01 con backend R2 (imagen 55c020d); R2-01 y R2-04 quedan confirmados tambien en produccion, no solo en local.
+- [Phase 02-04]: documents_enabled permanece false en los tres tenants -- decision de producto fuera de esta fase. El camino de escritura a R2 sigue sin ejercitarse por la interfaz en produccion hasta que se encienda.
+- [Phase 02-04]: La receta de migracion contra el host de produccion sigue sin ejecutarse: el volumen prol_prol_private estaba vacio (0 archivos) al desplegar, confirmado antes de tocar el env -- es un no-op real, no uno asumido.
+- [Phase 02-04]: Alias SSH panel-prosuite-2 y propodvps2 confirmados como el mismo host (195.26.255.71, hostname real propodvps2). Documentado en DEPLOY.md para no reaveriguarlo.
 
 ### Pending Todos
 
@@ -93,18 +98,20 @@ Decisiones recientes que afectan al trabajo actual:
 - **El VPS corre un `docker-compose.prod.yml` divergente del repo** (red `traefik` en vez de `dokploy-network`, más variables de Turnstile, todo sin commitear allí). **No afecta al despliegue por la ruta canónica** —`git archive` a `/opt/prol-deploy-$SHA` + quadlets, que no toca `/opt/prol`— pero rompería la sección "Re-deploy" de DEPLOY.md, que hace `git pull` en el host. No usar esa ruta sin reconciliar antes.
 - **La fase 4 tiene una incógnita real**: si `<View fixed>` de react-pdf repite la cabecera de tabla entre páginas. Spike de una hora como primera tarea, con fallback ya definido.
 - **Los ejecutores en paralelo se pisan el índice de git.** En la ola 1 de la fase 1, dos agentes sobre el mismo working tree (`branching_strategy: "none"`) se absorbieron mutuamente archivos entre el `add` y el `commit`. El contenido quedó íntegro, la atribución cruzada. **Antes de la fase 2 hay que serializarlos o darle worktree a cada uno**: las fases 2-7 tienen varios planes por ola.
+- **Trampa operativa: `grep` no es seguro para canalizar credenciales por SSH en esta máquina.** Encontrado durante el despliegue de R2 a producción (plan 02-04): un hook local de shell (`rtk`) reescribe la invocación de `grep` incluso en mitad de una tubería, y en vez del `VAR=valor` esperado se agrega la salida formateada del propio `rtk` (líneas `path:línea:contenido`) con el valor real incrustado en una línea que no es `VAR=valor`. Se detectó de inmediato porque el conteo de verificación posterior dio 0 en vez de 4; ningún valor de credencial llegó a salida visible ni a git. **Usar `awk` o una variable de shell capturada para mover valores sensibles**; `grep` sigue siendo seguro para contar después (paso de verificación), no para copiar antes. Documentado en `DEPLOY.md` §7c.
 
 ## Estado de producción (2026-09-01)
 
-- Desplegado `64f7476` en `panel-prosuite-2`. Rollback: `podman tag localhost/prol-web:5323a42 localhost/prol-web:latest && systemctl restart prol-web-1.service`.
-- El módulo de gestión documental está **en producción y apagado**: `documents_enabled = false` en Academia Digital MX, IBIZA Consultores y Mecanica G3.
-- Esquema aplicado con `db push`: 105 sentencias, ninguna destructiva. Respaldo previo en `/opt/prol/backup_20260901_2211_pre_modulo_documental.sql`.
-- Volumen `prol_prol_private` creado y montado en `/app/private-uploads`, con `PRIVATE_UPLOAD_DIR` en el env. Verificada la escritura desde el contenedor.
-- **Desfase repo ↔ producción**: `64f7476` incluye el módulo y el lock de versión (`160bc5a`), pero **NO el tipado de `formSnapshot`** (`b697b3b`, `ab975e2`), que se commiteó después. Sin impacto mientras el módulo esté apagado; entra en el próximo despliegue.
+- Desplegado `55c020d` en `panel-prosuite-2` (anterior: `64f7476`). Los alias `panel-prosuite-2` y `propodvps2` resuelven al **mismo host** (`195.26.255.71`, hostname real `propodvps2`). Rollback de imagen: `podman tag localhost/prol-web:64f7476 localhost/prol-web:latest && systemctl restart prol-web-1.service` (no ejecutado, no hizo falta; imágenes `64f7476`, `5323a42`, `7c287e8` siguen tagueadas).
+- **Backend de almacenamiento confidencial: R2 activo.** Las cuatro variables (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`) están en `/etc/containers/env/prol-web-1.env` (600, root), aplicadas por SSH — nunca sus valores. Verificado: 4 variables dentro del contenedor, 0 apariciones de "Configuración de R2 incompleta" en `journalctl`, `/api/health` y `/sign-in` en 200. Rollback de una variable (quitar `R2_BUCKET` y reiniciar) verificado de punta a punta en local (plan 02-03), no ejecutado en producción.
+- El módulo de gestión documental está **en producción y apagado**: `documents_enabled = false` en Academia Digital MX, IBIZA Consultores y Mecanica G3. Con el módulo apagado, el camino de escritura a R2 no se ha ejercitado por la interfaz en producción — sólo en local (planes 02-02/02-03) contra el bucket real.
+- Volumen `prol_prol_private` montado en `/app/private-uploads`, y confirmado **vacío (0 archivos)** justo antes de este despliegue: la receta de migración disco → R2 de `DEPLOY.md` §7c sigue sin ejecutarse contra el host porque es un no-op genuino, no uno asumido.
+- **Desfase repo ↔ producción RESUELTO**: `55c020d` ya incluye el tipado de `formSnapshot` (`b697b3b`, `ab975e2`) que `64f7476` no traía.
+- Esquema: `prisma migrate diff` en preview contra la base real de producción devolvió una migración vacía (0 sentencias) — la fase 2 no toca Prisma, confirmado, no asumido. No se corrió ningún `db push`.
 - Respaldo: cron diario a las 03:00 UTC. Cadencia db+privado diaria, uploads semanal (domingos), poda por cantidad. Estado estable ≈ 12 GB sobre 116 GB libres.
 
 ## Session Continuity
 
-Last session: 2026-09-02T02:49:16.209Z
-Stopped at: Completado 02-03-PLAN.md (3 de 4 planes de la fase 2)
+Last session: 2026-09-02T03:35:00.000Z
+Stopped at: Completado 02-04-PLAN.md (4 de 4 planes de la fase 2) — Fase 2 completa
 Resume file: None
