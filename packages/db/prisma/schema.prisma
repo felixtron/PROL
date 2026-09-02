@@ -400,7 +400,16 @@ enum CompanyDocumentStatus {
 }
 
 /// Cómo se satisface un requisito de evidencia.
-///   FILE            — se sube un archivo (Word, Excel, PDF, imagen, audio, video).
+///   FILE            — artefacto externo: vive en la carpeta de Google Drive del
+///                     proyecto (`ManualAssignment.driveUrl`), NO dentro de PROL.
+///                     Desde la fase 3.1 este valor **no exige subir ningún
+///                     archivo** a la plataforma: el requisito se marca como
+///                     cumplido y PROL conserva sólo el circuito (qué toca, cuándo
+///                     vence, quién lo aprobó, la bitácora). Se conservó el nombre
+///                     `FILE` a propósito, para no añadir un valor a un enum de
+///                     Postgres cuando la rama de interfaz había que reescribirla
+///                     igual. Si algún día vuelve a significar "archivo dentro de
+///                     PROL", este comentario es lo primero que hay que corregir.
 ///   RISK_MATRIX     — se llena la matriz de riesgos y oportunidades en la plataforma.
 ///   EVALUATION_LINK — se enlaza una entrega del módulo de Evaluaciones (p. ej. el Test DAFO).
 enum EvidenceRequirementKind {
@@ -505,6 +514,11 @@ model Tenant {
   advisoryEnabled    Boolean @default(true) @map("advisory_enabled")
   // Gestión documental y evidencias (manuales de sistemas de gestión).
   documentsEnabled   Boolean @default(false) @map("documents_enabled")
+  /// Rótulo del menú del módulo de gestión documental, propio de cada tenant
+  /// (IBIZA usa «Ibiza Experts 360»). Nullable a propósito: el neutro por defecto
+  /// vive en `apps/web/lib/tenant-labels.ts`, no en la base, para que cambiar ese
+  /// texto no exija un backfill.
+  documentsMenuLabel String? @map("documents_menu_label")
 
   // AI billing — plan and credit balance (prices defined later, structure ready)
   aiPlan             String    @default("none") @map("ai_plan")
@@ -2665,6 +2679,14 @@ model ManualAssignment {
   activatedBy   User     @relation("ManualAssignmentActivatedBy", fields: [activatedById], references: [id], onDelete: Restrict)
 
   notes String? @db.Text
+
+  /// Carpeta de Google Drive del proyecto: desde la fase 3.1 el expediente de
+  /// archivos vive ahí y no en PROL. Se guarda el enlace y nada más — no hay API
+  /// de Drive, ni OAuth, ni listado de archivos. El host se valida contra una
+  /// lista cerrada (`apps/web/lib/drive-url.ts`) al escribirlo Y al exponerlo:
+  /// es una URL que un usuario pega y otro sigue, es decir un redirector abierto
+  /// si no se valida en los dos extremos.
+  driveUrl String? @map("drive_url")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
