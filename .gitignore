@@ -43,3 +43,7 @@ yarn-error.log*
 
 # Uploads (local dev)
 apps/web/public/uploads/
+
+# Archivos confidenciales en desarrollo: evidencias y plantillas de prueba.
+# Nunca deben entrar al repositorio.
+private-uploads/
