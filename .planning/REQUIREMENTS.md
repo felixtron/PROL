@@ -72,12 +72,12 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | R2-02 | Phase 2 | Complete (02-03: dos evidencias fabricadas con backend disco se descargan con el mismo `sha256` tras migrar, incluso con el directorio de disco apartado — los bytes sólo pudieron venir del bucket — y la fila de la base (`file_key`) no cambió ni un carácter) |
 | R2-03 | Phase 2 | Complete — las tres mitades observadas. 403 desde otra empresa y 200 para la empresa dueña/revisor sobre una evidencia en R2, idénticos a antes del cambio de backend (02-02). El "401 sin sesión" **no** se observaba: un bug pre-existente y ajeno a esta fase (`d991c31`) dejó muertas las ramas de 401 de 8 rutas, que comparaban contra una cadena que ya nadie lanzaba. Arreglado en `5e2352d` con `UnauthenticatedError`, fuera del alcance de los cuatro planes y por decisión explícita del usuario tras la verificación. Re-verificado con las tres sesiones sobre las 8 rutas: sin sesión 401, otra empresa 403, dueña 200. |
 | R2-04 | Phase 2 | Complete (02-03: quitar `R2_BUCKET` y reiniciar devuelve la app al disco sin desplegar código — par 404/200 con el disco apartado/presente demuestra el origen de los bytes — y la ida y vuelta R2 → disco → R2 se completó cambiando sólo esa variable. **02-04**: el mismo rollback quedó disponible y documentado en producción — imagen anterior `64f7476` sigue tagueada, comando de una variable listo para copiar y pegar — pero no se ejecutó contra producción porque no hizo falta; sigue verificado sólo en local, no en el host real) |
-| DOC-01 | Phase 3 | Pending (03-01 puso el esquema; el editor del consultor llega en 03-06) |
+| DOC-01 | Phase 3 | Pending (03-01 puso el esquema; 03-04 puso `updateManualDocumentBody` con su política de versión, verificada contra la base; el editor del consultor llega en 03-06) |
 | DOC-03 | Phase 3 | Pending (03-01 puso las columnas de congelado; la acción de emitir llega en 03-05) |
-| DOC-04 | Phase 3 | Pending |
+| DOC-04 | Phase 3 | Pending (03-04 puso `DocumentIdentity` resuelta —logo en vivo, razón social DC-3, código y nombre con overrides— pero nadie la renderiza todavía en pantalla; eso es 03-06/03-07) |
 | DOC-05 | Phase 3 | Pending |
 | DOC-06 | Phase 3 | Pending (03-01 puso el enum de estatus; el bucle borrador/publicar llega en 03-05 y 03-06) |
-| DOC-07 | Phase 3 | Pending |
+| DOC-07 | Phase 3 | Pending (03-04 puso `isTemplateOutdated`/`isOutdated` compartida entre `DocumentIdentity` y `getManualDocumentForEdit`; la insignia visible al consultor y al cliente llega en 03-06/03-07) |
 | OPS-05 | Phase 3 | Complete |
 | PDF-01 | Phase 4 | Pending |
 | PDF-02 | Phase 4 | Pending |
