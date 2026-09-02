@@ -890,12 +890,31 @@ export async function uploadCompanyDocument(input: {
       select: { version: true },
     });
 
-    // Append-only: la versión anterior se conserva y la vigente es la mayor.
+    // Como mucho una VIGENTE por (documento, empresa). Va dentro de la misma
+    // transacción y bajo el mismo lock que el cálculo de versión: si se hiciera
+    // fuera, dos subidas concurrentes podrían degradar la fila que la otra acaba
+    // de crear. Aplica también —sobre todo— a los documentos que se siguen
+    // subiendo como archivo: sin esto, el arreglo de OPS-05 se sostiene sólo
+    // para los nativos.
+    await tx.companyDocument.updateMany({
+      where: {
+        documentId: input.documentId,
+        companyId: assignment.companyId,
+        status: "VIGENTE",
+      },
+      data: { status: "OBSOLETO" },
+    });
+
+    // Append-only: no se borra nada. La vigente ya no es "la de mayor
+    // versión" — es la que tiene el estatus VIGENTE, que el updateMany de
+    // arriba acaba de dejar libre para esta nueva fila.
     await tx.companyDocument.create({
       data: {
         documentId: input.documentId,
         companyId: assignment.companyId,
         version: (last?.version ?? 0) + 1,
+        kind: "FILE",
+        status: "VIGENTE",
         codeOverride: optionalText(input.codeOverride, 60),
         fileKey: input.file.fileKey,
         fileName: input.file.fileName,
