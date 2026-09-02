@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 02-01-PLAN.md (1 de 4 planes de la fase 2)
-last_updated: "2026-09-02T02:12:12.321Z"
-last_activity: "2026-09-02 — Plan 02-01 completado: cliente R2 (aws4fetch) contra el bucket real ibizadata, avisos de arranque para configuración R2 parcial (sin fail-fast), y las cuatro variables declaradas en los tres entornos. document-storage.ts sin tocar todavía."
+stopped_at: Completado 02-02-PLAN.md (2 de 4 planes de la fase 2)
+last_updated: "2026-09-02T02:30:17.479Z"
+last_activity: "2026-09-02 — Plan 02-02 completado: document-storage.ts reescrito con STORAGE_BACKEND conmutable (r2/disco) y sharedBucketKey() para el prefijo prol/. Dos evidencias reales subidas y descargadas contra el bucket ibizadata con R2 activo (bytes idénticos), los tres estados de configuración demostrados, y la autorización de /files/evidence confirmada sin cambios."
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 14
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 2 of 7 (R2 para el tier confidencial)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 02-01 completado: cliente R2 (aws4fetch) contra el bucket real ibizadata, avisos de arranque para configuración R2 parcial (sin fail-fast), y las cuatro variables declaradas en los tres entornos. document-storage.ts sin tocar todavía.
+Last activity: 2026-09-02 — Plan 02-02 completado: document-storage.ts reescrito con STORAGE_BACKEND conmutable (r2/disco) y sharedBucketKey() para el prefijo prol/. Dos evidencias reales subidas y descargadas contra el bucket ibizadata con R2 activo (bytes idénticos), los tres estados de configuración demostrados (disco, R2, y R2_BUCKET con credencial ausente → 503 sin degradar a disco), y la autorización de /files/evidence confirmada sin cambios (403 otra empresa, 200 empresa dueña y revisor). Hallazgo fuera de alcance registrado en deferred-items.md: requireUser() no lanza "Unauthorized" desde d991c31, así que "sin sesión" devuelve 403 en vez de 401 en ocho rutas — pre-existente, no lo causó este plan.
 
 Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 
@@ -53,6 +53,7 @@ Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 | Phase 01 P02 | 22min | 3 tasks | 2 files |
 | Phase 01 P01 | 20min | 3 tasks | 4 files |
 | Phase 02 P01 | 25min | 3 tasks | 9 files |
+| Phase 02 P02 | 45min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 01]: `docker-compose.prod.yml` declara `prol_private` (resuelve a `prol_prol_private`) para quedar coherente con el quadlet que producción ya monta a mano; compose y quadlet se mantienen sincronizados por convención documentada en DEPLOY.md §7b.
 - [Phase 02-01]: `lib/r2.ts` calcado del molde de `cloudflare-stream.ts` (aws4fetch, sin conocimiento de `prol/` ni de política de PROL); configuración R2 parcial se avisa al arrancar (console.warn) y se rechazará al escribir en el plan 02-02, nunca tumba el arranque.
 - [Phase 02-01]: `turbo.json` `globalEnv` ampliado con las cuatro `R2_*` — sin esto, `turbo/no-undeclared-env-vars` rompe la línea base de lint del milestone (81 warnings).
+- [Phase 02-02]: sharedBucketKey() aplica el prefijo prol/ solo dentro de document-storage.ts; fileKey en la base sigue siendo <subdir>/<uuid>.<ext>, sin prefijo.
+- [Phase 02-02]: storePrivateFile rechaza con 503 (sin nombrar variables en la respuesta) cuando R2_BUCKET esta presente y falta otra credencial; el detalle va solo al log.
+- [Phase 02-02]: Hallazgo fuera de alcance: requireUser() ya no lanza 'Unauthorized' desde d991c31; 8 rutas (incluidas /files/*) devuelven 403 en vez de 401 sin sesion. Pre-existente, ajeno a esta fase, registrado en deferred-items.md, no corregido.
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T02:12:12.316Z
-Stopped at: Completado 02-01-PLAN.md (1 de 4 planes de la fase 2)
+Last session: 2026-09-02T02:30:17.477Z
+Stopped at: Completado 02-02-PLAN.md (2 de 4 planes de la fase 2)
 Resume file: None

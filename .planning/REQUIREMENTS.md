@@ -35,9 +35,9 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 
 ### Almacenamiento
 
-- [ ] **R2-01**: Evidencias y plantillas confidenciales viven en R2, sin cambiar el esquema ni el cliente.
+- [x] **R2-01**: Evidencias y plantillas confidenciales viven en R2, sin cambiar el esquema ni el cliente.
 - [ ] **R2-02**: Los archivos anteriores a la migración siguen descargándose sin tocar la base.
-- [ ] **R2-03**: `/files/*` sigue autorizando contra la base: 403 desde otra empresa, 401 sin sesión.
+- [x] **R2-03**: `/files/*` sigue autorizando contra la base: 403 desde otra empresa, 401 sin sesión.
 - [ ] **R2-04**: Quitar una variable de entorno devuelve la app al disco local, sin desplegar código.
 - [ ] **R2-05**: El cliente sube evidencias de más de 25 MB por URL firmada, con progreso visible.
 - [ ] **R2-06**: Una subida firmada que exceda el tope o mienta en su MIME se rechaza al confirmarla.
@@ -68,10 +68,10 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | OPS-02 | Phase 1 | Complete |
 | OPS-03 | Phase 1 | Complete |
 | OPS-04 | Phase 1 | Complete |
-| R2-01 | Phase 2 | In Progress (02-01: cliente R2 listo y probado; falta 02-02 para escribir/leer de verdad) |
+| R2-01 | Phase 2 | Complete (02-02: `document-storage.ts` escribe y lee de R2 con `STORAGE_BACKEND`; dos evidencias reales verificadas en `ibizadata` bajo `prol/evidence/`, sin cambios de esquema ni de cliente) |
 | R2-02 | Phase 2 | Pending |
-| R2-03 | Phase 2 | Pending |
-| R2-04 | Phase 2 | In Progress (02-01: avisos de arranque listos; falta el backend conmutable de 02-02) |
+| R2-03 | Phase 2 | Complete — con salvedad (ver 02-02-SUMMARY.md): 403 desde otra empresa y 200 para la empresa dueña/revisor confirmados sobre una evidencia en R2, exactamente igual que antes del cambio de backend. El "401 sin sesión" de la redacción original NO se observa: un bug pre-existente y ajeno a esta fase (commit `d991c31`) hace que `requireUser()` lance un mensaje que ya no coincide con el `catch` de 8 rutas, así que "sin sesión" devuelve 403. Registrado en `deferred-items.md`; no se corrige aquí porque toca archivos fuera del alcance permitido y del radio de esta tarea. |
+| R2-04 | Phase 2 | In Progress (02-01: avisos de arranque listos; 02-02 demostró el interruptor y el rollback a disco quitando `R2_BUCKET`; falta que 02-03 lo demuestre como parte del criterio 2 completo) |
 | DOC-01 | Phase 3 | Pending |
 | DOC-03 | Phase 3 | Pending |
 | DOC-04 | Phase 3 | Pending |
