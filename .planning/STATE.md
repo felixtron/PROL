@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 03-05-PLAN.md
-last_updated: "2026-09-02T17:22:27.947Z"
-last_activity: "2026-09-02 — Plan 03-05 completado: issueCompanyDocument, startCompanyDocumentDraft, saveCompanyDocumentDraft y publishCompanyDocument sobre un único helper de autorización; getCompanyDocumentForClient/getCompanyDocumentForEdit/listCompanyDocumentsForClient generan el historial de control de cambios (DOC-05) en tiempo de render. Verificado con los diez pasos del ciclo completo contra la base real: emitir congela el cuerpo, editar la plantilla no mueve lo ya emitido, guardar el borrador dos veces no versiona, publicar degrada y promueve, y una v3 BORRADOR abandonada convive con una v4 VIGENTE sin colarse en la consulta del cliente. Sin UI todavía: el plan 03-06 cablea botones y ejercita las acciones por la interfaz de verdad."
+stopped_at: Completado 03-06-PLAN.md
+last_updated: "2026-09-02T18:07:04.164Z"
+last_activity: "2026-09-02 — Plan 03-06 completado: DocumentBodyEditor único (plantilla/borrador por target), importador .docx con vista previa antes de guardar, y panel de empresas con emitir/editar/continuar-borrador/re-emitir cableados. El usuario aprobó el checkpoint de la tarea 3 (\"aprobado\"), incluida la desviación de que Publicar vive en el propio editor. HALLAZGO: la base de datos no contiene ningún rastro del recorrido aprobado — company_documents en 0 filas, P-RFC-4.1-01 sigue en template_version=1 — documentado íntegro en el SUMMARY en vez de redactar el resultado esperado. DOC-01/02/03/06 se dejan Pending por esa razón. Blocker abierto para el plan 03-07, que necesita la base poblada."
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 3 of 6 (Procedimientos nativos)
-Plan: 6 of 8 in current phase
+Plan: 7 of 8 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 03-05 completado: issueCompanyDocument, startCompanyDocumentDraft, saveCompanyDocumentDraft y publishCompanyDocument sobre un único helper de autorización; getCompanyDocumentForClient/getCompanyDocumentForEdit/listCompanyDocumentsForClient generan el historial de control de cambios (DOC-05) en tiempo de render. Verificado con los diez pasos del ciclo completo contra la base real: emitir congela el cuerpo, editar la plantilla no mueve lo ya emitido, guardar el borrador dos veces no versiona, publicar degrada y promueve, y una v3 BORRADOR abandonada convive con una v4 VIGENTE sin colarse en la consulta del cliente. Sin UI todavía: el plan 03-06 cablea botones y ejercita las acciones por la interfaz de verdad.
+Last activity: 2026-09-02 — Plan 03-06 completado: DocumentBodyEditor único (plantilla/borrador por target), importador .docx con vista previa antes de guardar, y panel de empresas con emitir/editar/continuar-borrador/re-emitir cableados. El usuario aprobó el checkpoint de la tarea 3 ("aprobado"), incluida la desviación de que Publicar vive en el propio editor. HALLAZGO: la base de datos no contiene ningún rastro del recorrido aprobado — company_documents en 0 filas, P-RFC-4.1-01 sigue en template_version=1 — documentado íntegro en el SUMMARY en vez de redactar el resultado esperado. DOC-01/02/03/06 se dejan Pending por esa razón. Blocker abierto para el plan 03-07, que necesita la base poblada.
 
 Progress: [███░░░░░░░] 33% (2 de 6 fases)
 
@@ -61,6 +61,7 @@ Progress: [███░░░░░░░] 33% (2 de 6 fases)
 | Phase 03 P03 | ~15min | 2 tasks | 2 files |
 | Phase 03 P04 | ~20min | 3 tasks | 5 files |
 | Phase 03 P05 | ~25min | 3 tasks | 3 files |
+| Phase 03 P06 | ~40min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,8 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-05]: startCompanyDocumentDraft exige row.status === VIGENTE antes de copiar (mas alla del texto literal del plan): evita abrir un borrador copiando de una fila OBSOLETO o de otro BORRADOR.
 - [Phase 03-05]: ISSUED_AT_FORMAT se exporto desde document-identity.ts para que el historial de DOC-05 use el mismo formateador de fecha que DocumentIdentity, sin redefinir uno nuevo.
 - [Phase 03-05]: getCompanyDocumentForClient y getCompanyDocumentForEdit comparten resolveCompanyDocumentAssignment y buildHistoryEntry; la unica diferencia real es el filtro de estatus del historial (sin BORRADOR para el cliente) y la puerta de autorizacion.
+- [Phase 03-06]: Publicar vive dentro de document-body-editor.tsx (reutiliza target.version/confirm del editor), no en un archivo aparte bajo companies/[assignmentId]/; puesto a la vista del usuario en el checkpoint y no objetado.
+- [Phase 03-06]: DOC-01/02/03/06 NO se marcan Complete pese a instrucción de cierre: company_documents sigue en 0 filas y template_version en 1 tras el checkpoint aprobado — la evidencia de base que se pidió capturar no existe, así que se documenta el hallazgo en vez de redactar el resultado esperado.
 
 ### Pending Todos
 
@@ -119,6 +122,7 @@ Decisiones recientes que afectan al trabajo actual:
 - **La fase 4 tiene una incógnita real**: si `<View fixed>` de react-pdf repite la cabecera de tabla entre páginas. Spike de una hora como primera tarea, con fallback ya definido.
 - **Los ejecutores en paralelo se pisan el índice de git.** En la ola 1 de la fase 1, dos agentes sobre el mismo working tree (`branching_strategy: "none"`) se absorbieron mutuamente archivos entre el `add` y el `commit`. El contenido quedó íntegro, la atribución cruzada. **Antes de la fase 2 hay que serializarlos o darle worktree a cada uno**: las fases 2-7 tienen varios planes por ola.
 - **Trampa operativa: `grep` no es seguro para canalizar credenciales por SSH en esta máquina.** Encontrado durante el despliegue de R2 a producción (plan 02-04): un hook local de shell (`rtk`) reescribe la invocación de `grep` incluso en mitad de una tubería, y en vez del `VAR=valor` esperado se agrega la salida formateada del propio `rtk` (líneas `path:línea:contenido`) con el valor real incrustado en una línea que no es `VAR=valor`. Se detectó de inmediato porque el conteo de verificación posterior dio 0 en vez de 4; ningún valor de credencial llegó a salida visible ni a git. **Usar `awk` o una variable de shell capturada para mover valores sensibles**; `grep` sigue siendo seguro para contar después (paso de verificación), no para copiar antes. Documentado en `DEPLOY.md` §7c.
+- Plan 03-07 necesita company_documents poblada (Acme v2 VIGENTE/v1 OBSOLETO, Delta v1 VIGENTE) para demostrar sus propios criterios, pero el checkpoint aprobado del plan 03-06 no dejó esa evidencia en la base: company_documents sigue en 0 filas y P-RFC-4.1-01 sigue en template_version=1. Alguien debe emitir realmente el documento a las dos empresas por la interfaz antes o al inicio de 03-07.
 
 ## Estado de producción (2026-09-01)
 
@@ -132,6 +136,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T17:22:27.944Z
-Stopped at: Completado 03-05-PLAN.md
+Last session: 2026-09-02T18:07:04.162Z
+Stopped at: Completado 03-06-PLAN.md
 Resume file: None
