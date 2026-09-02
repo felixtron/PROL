@@ -34,11 +34,15 @@ export default async function TenantAdminManualsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold text-text-primary">
-            Manuales
+            Manuales Maestros
           </h1>
           <p className="mt-1 text-text-secondary">
             El contenido que se activa para cada empresa cliente: secciones,
             documentos y evidencias requeridas.
+          </p>
+          <p className="mt-1 text-sm text-text-tertiary">
+            Plantillas de la norma, del tenant. La implementación para cada
+            empresa vive en Proyectos.
           </p>
         </div>
         <NewManualForm />

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
+import { resolveDocumentsMenuLabel } from "@/lib/tenant-labels";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
@@ -43,6 +44,7 @@ export default async function ProfessorLayout({
       evaluationsEnabled: true,
       advisoryEnabled: true,
       documentsEnabled: true,
+      documentsMenuLabel: true,
       primaryColor: true,
       accentColor: true,
     },
@@ -60,9 +62,16 @@ export default async function ProfessorLayout({
     // autoría de los manuales vive en el panel del administrador.
     ...(tenant?.documentsEnabled
       ? [
-          { label: "Proyectos", href: "/professor/projects", icon: "Building2" as const },
-          { label: "Evidencias", href: "/professor/evidence", icon: "FileCheck2" as const },
-          { label: "Agenda", href: "/professor/agenda", icon: "CalendarClock" as const },
+          {
+            id: "documents",
+            label: resolveDocumentsMenuLabel(tenant?.documentsMenuLabel),
+            icon: "FolderOpen" as const,
+            children: [
+              { label: "Proyectos", href: "/professor/projects", icon: "Building2" as const },
+              { label: "Evidencias", href: "/professor/evidence", icon: "FileCheck2" as const },
+              { label: "Agenda", href: "/professor/agenda", icon: "CalendarClock" as const },
+            ],
+          },
         ]
       : []),
     { label: "Configuración", href: "/professor/settings", icon: "Settings" },

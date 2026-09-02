@@ -43,7 +43,7 @@ export default async function ManualOverviewPage({
           className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary"
         >
           <ArrowLeft className="h-4 w-4" />
-          Manuales
+          Proyectos
         </Link>
         <h1 className="mt-3 font-heading text-2xl font-bold text-text-primary">
           {manual.title}

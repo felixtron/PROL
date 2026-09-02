@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
+import { resolveDocumentsMenuLabel } from "@/lib/tenant-labels";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { TenantBrand } from "@/components/tenant-brand";
@@ -79,6 +80,7 @@ export default async function DashboardLayout({
           advisoryEnabled: true,
           surveysEnabled: true,
           documentsEnabled: true,
+          documentsMenuLabel: true,
         },
       })
     : null;
@@ -95,19 +97,18 @@ export default async function DashboardLayout({
     ...(showDocuments
       ? [
           {
-            href: "/dashboard/manuals",
-            label: "Manuales",
+            id: "documents",
+            label: resolveDocumentsMenuLabel(tenant?.documentsMenuLabel),
             icon: "FolderOpen" as const,
-          },
-          {
-            href: "/dashboard/documents",
-            label: "Documentos",
-            icon: "FileCheck2" as const,
-          },
-          {
-            href: "/dashboard/agenda",
-            label: "Agenda",
-            icon: "CalendarClock" as const,
+            children: [
+              // Plural deliberado: la ruta lista las N activaciones de la
+              // empresa (listMyManuals()), igual que "Proyectos" en el panel
+              // de staff apunta al mismo modelo. El singular queda para la
+              // ficha de una sola.
+              { href: "/dashboard/manuals", label: "Proyectos", icon: "Building2" as const },
+              { href: "/dashboard/documents", label: "Documentos", icon: "FileCheck2" as const },
+              { href: "/dashboard/agenda", label: "Agenda", icon: "CalendarClock" as const },
+            ],
           },
         ]
       : []),

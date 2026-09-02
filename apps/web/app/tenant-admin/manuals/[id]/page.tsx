@@ -48,7 +48,7 @@ export default async function ManualEditorPage({
             className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
-            Manuales
+            Manuales Maestros
           </Link>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <h1 className="font-heading text-2xl font-bold text-text-primary">

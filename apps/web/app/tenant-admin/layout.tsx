@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@prol/db";
 import { getCurrentUser } from "@/lib/auth";
+import { resolveDocumentsMenuLabel } from "@/lib/tenant-labels";
 import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
@@ -47,6 +48,7 @@ export default async function TenantAdminLayout({
           accentColor: true,
           surveysEnabled: true,
           documentsEnabled: true,
+          documentsMenuLabel: true,
         },
       })
     : null;
@@ -61,10 +63,21 @@ export default async function TenantAdminLayout({
     ...baseNavItems,
     ...(showDocuments
       ? [
-          { label: "Manuales", href: "/tenant-admin/manuals", icon: "FolderOpen" as const },
-          { label: "Proyectos", href: "/tenant-admin/projects", icon: "Building2" as const },
-          { label: "Evidencias", href: "/tenant-admin/evidence", icon: "FileCheck2" as const },
-          { label: "Agenda", href: "/tenant-admin/agenda", icon: "CalendarClock" as const },
+          {
+            id: "documents",
+            label: resolveDocumentsMenuLabel(tenant?.documentsMenuLabel),
+            icon: "FolderOpen" as const,
+            children: [
+              // "Manuales Maestros", no "Manuales": el nombre corto es justo el
+              // que hace que un consultor confunda la plantilla del tenant con
+              // la implementación de una empresa, que es lo que hay en
+              // "Proyectos".
+              { label: "Manuales Maestros", href: "/tenant-admin/manuals", icon: "BookOpen" as const },
+              { label: "Proyectos", href: "/tenant-admin/projects", icon: "Building2" as const },
+              { label: "Evidencias", href: "/tenant-admin/evidence", icon: "FileCheck2" as const },
+              { label: "Agenda", href: "/tenant-admin/agenda", icon: "CalendarClock" as const },
+            ],
+          },
         ]
       : []),
     ...(showSurveys

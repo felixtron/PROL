@@ -12,7 +12,7 @@ import {
   X,
   LayoutDashboard,
 } from "lucide-react";
-import { NAV_ICONS } from "@/components/nav-icons";
+import { NAV_ICONS, flattenNavHrefs, isNavGroup } from "@/components/nav-icons";
 import { resolveActiveHref } from "@/components/nav-active";
 import type { SidebarNavItem } from "@/components/nav-icons";
 
@@ -35,9 +35,13 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Todo lo que no cabe en la barra. Conserva el orden del sidebar.
+  // Todo lo que no cabe en la barra. Conserva el orden del sidebar. Un grupo
+  // no tiene `href` propio, así que siempre pasa el filtro de overflow.
   const overflowItems = useMemo(
-    () => navItems.filter((item) => !PRIMARY_HREFS.includes(item.href)),
+    () =>
+      navItems.filter(
+        (item) => isNavGroup(item) || !PRIMARY_HREFS.includes(item.href),
+      ),
     [navItems],
   );
 
@@ -45,7 +49,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
     () =>
       resolveActiveHref(pathname, [
         ...PRIMARY_HREFS,
-        ...overflowItems.map((i) => i.href),
+        ...flattenNavHrefs(overflowItems),
       ]),
     [pathname, overflowItems],
   );
@@ -102,6 +106,38 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
             </div>
             <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {overflowItems.map((item) => {
+                if (isNavGroup(item)) {
+                  // La hoja ya es un contenedor bajo demanda: un grupo se
+                  // pinta como encabezado de sección con sus hijos debajo,
+                  // sin un acordeón dentro de otro desplegable.
+                  return (
+                    <div key={item.id}>
+                      <p className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+                        {item.label}
+                      </p>
+                      {item.children.map((child) => {
+                        const ChildIcon = NAV_ICONS[child.icon] ?? LayoutDashboard;
+                        const childActive = child.href === activeHref;
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            aria-current={childActive ? "page" : undefined}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                              childActive
+                                ? "bg-primary-50 text-primary-700"
+                                : "text-text-secondary active:bg-surface-secondary"
+                            }`}
+                          >
+                            <ChildIcon className="h-5 w-5 shrink-0" />
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
                 const Icon = NAV_ICONS[item.icon] ?? LayoutDashboard;
                 const active = item.href === activeHref;
                 return (

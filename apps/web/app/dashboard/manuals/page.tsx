@@ -28,11 +28,11 @@ export default async function MyManualsPage() {
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
       <div>
         <h1 className="font-heading text-2xl font-bold text-text-primary">
-          Manuales
+          Proyectos
         </h1>
         <p className="mt-1 text-text-secondary">
           Consulta el manual de implementación de tu sistema de gestión, descarga
-          las plantillas de tu empresa y sube las evidencias que se te piden.
+          las plantillas de tu empresa y atiende los requisitos que se te piden.
         </p>
       </div>
 
