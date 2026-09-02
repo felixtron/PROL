@@ -416,6 +416,85 @@ El script es idempotente y no borra: se puede repetir. `backup.sh` sigue
 respaldando el volumen (`private_<fecha>.tar.gz`) como cinturon y tirantes,
 aunque una vez todo se escriba en R2 ese tarball deje de capturar nada nuevo.
 
+### 7d. Documentos nativos (fase 3)
+
+Los procedimientos se redactan, importan desde Word, emiten por empresa y versionan
+dentro de la plataforma. Requiere columnas nuevas en `manual_documents` y
+`company_documents`, y dos enums.
+
+> **Estado: APLICADO en `panel-prosuite-2` el 2026-09-02.** Imagen `04135ca`
+> (anteriores, ambas siguen tagueadas para rollback: `55c020d` y `64f7476`).
+> Cambio de esquema aplicado con `db push` desde el schema que trae la imagen
+> nueva: 2 `CREATE TYPE` -- `ManualDocumentKind` (FILE, PROCEDIMIENTO, REGISTRO)
+> y `CompanyDocumentStatus` (BORRADOR, VIGENTE, OBSOLETO) -- 3 columnas nuevas en
+> `manual_documents` (kind, content_html, template_version), 7 en
+> `company_documents` (kind, content_html, name_override, status,
+> source_template_version, published_at, published_by con su FK), y las 4
+> columnas de `company_documents` que pasan a nullable (file_key, file_name,
+> file_size, mime_type). Las 14 columnas y los 2 enums se releyeron de la base
+> real de produccion despues del despliegue, con su nulabilidad correcta --
+> comprobado por este mismo agente, no supuesto del preview.
+>
+> Dump previo en `/opt/prol/backup_20260902_1953_pre_fase3.sql` (3.4M).
+> `company_documents` tenia **0 filas** al desplegar (releido tambien despues:
+> sigue en 0), asi que el backfill del invariante fue un **no-op comprobado**,
+> no una correccion: cero pares con mas de una fila VIGENTE, antes y despues.
+>
+> El arreglo del 401 (`5e2352d`) viajo dentro de esta imagen y se confirmo en
+> produccion, no solo en local: `GET /files/evidence/<inexistente>` sin sesion
+> devuelve ahora **401** (antes de este despliegue devolvia 403). Cierra en
+> produccion el hallazgo que la fase 2 dejo abierto sobre R2-03.
+>
+> **`documents_enabled` no se toco en este despliegue**, pero el registro previo
+> de este mismo documento (heredado del cierre de la fase 2) estaba mal: no es
+> "false en los tres tenants". La realidad, releida directo de la base de
+> produccion, es `academia-digital=false`, `mecanica-g3=false`,
+> **`ibiza-online=true`** -- ya estaba en `true` antes de este despliegue, nadie
+> en la fase 3 la encendio, y es una decision del usuario dejarla asi (IBIZA es
+> su propia consultoria). Con `company_documents` en 0 filas en los tres
+> tenants, hoy no hay ningun manual expuesto. Pero la frase "el modulo se quedo
+> apagado, nadie puede ejercitarlo" necesita ese matiz: un administrador de
+> IBIZA puede abrir "Manuales" en produccion ahora mismo y, si construyera uno,
+> ejercitaria de verdad el editor de la fase 3 -- a diferencia de Academia
+> Digital MX y Mecanica G3, donde el modulo sigue sin aparecer en el menu. Ver
+> `STATE.md` para el detalle completo y la correccion del registro.
+>
+> **Verificacion humana pendiente.** Lo automatizable esta confirmado: servicio
+> activo, `/api/health` y `/sign-in` en 200, log de arranque limpio, enums y
+> columnas presentes, cero pares con mas de una fila VIGENTE, y el 401 del
+> arreglo de autenticacion confirmado en vivo. Falta que el propio usuario entre
+> al panel, lo vea normal y baje un certificado o un PDF de resultados -- ese
+> paso todavia no se hizo. Rollback listo mientras tanto (mas abajo).
+
+Y debajo, el orden que importa, para quien vuelva con la fase 4 o la 5:
+
+**El `latest` se mueve DESPUES del `db push`.** Es la unica secuencia valida: si el
+contenedor reinicia antes, arranca contra columnas que todavia no existen.
+
+**Backfill del invariante** -- obligatorio despues de cada `db push` que introduzca
+`company_documents.status`, y barato de repetir porque es idempotente:
+
+```sql
+UPDATE company_documents c SET status = 'OBSOLETO'
+WHERE c.status = 'VIGENTE'
+  AND EXISTS (SELECT 1 FROM company_documents c2
+              WHERE c2.document_id = c.document_id
+                AND c2.company_id  = c.company_id
+                AND c2.version     > c.version);
+```
+
+**Rollback.** Dos niveles, de menor a mayor impacto:
+
+```bash
+# 1) Solo la imagen -- retaggear y reiniciar. Las columnas nuevas se quedan en
+#    la base y no estorban, porque el codigo anterior no las lee.
+ssh panel-prosuite-2 "podman tag localhost/prol-web:55c020d localhost/prol-web:latest && systemctl restart prol-web-1.service"
+
+# 2) Imagen + base -- lo anterior mas restaurar el dump, solo si el db push
+#    dejara la base en un estado inesperado (no fue el caso el 2026-09-02).
+cat /opt/prol/backup_20260902_1953_pre_fase3.sql | ssh panel-prosuite-2 'podman exec -i prol-db-1 psql -U prol -d prol'
+```
+
 ### 8. Verificar
 
 ```bash
