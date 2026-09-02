@@ -9,6 +9,7 @@
 import { cache } from "react";
 import { db } from "@prol/db";
 import {
+  isManualAdmin,
   manualTenantFilter,
   requireAssignmentManageAccess,
   requireAssignmentMemberAccess,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/manual-access";
 import { activityState, manualProgress } from "@/lib/compliance";
 import { requireUser } from "@/lib/auth";
+import { safeDriveUrl } from "@/lib/drive-url";
 
 // ─── Gestión: catálogo de manuales ───────────────────────────────────────────
 
@@ -239,7 +241,7 @@ export const listEvaluationsForRequirement = cache(async (tenantId: string) => {
 // ─── Gestión: panel de una empresa ───────────────────────────────────────────
 
 export const getAssignmentPanel = cache(async (assignmentId: string) => {
-  const { assignment } = await requireAssignmentManageAccess(assignmentId);
+  const { user, assignment } = await requireAssignmentManageAccess(assignmentId);
 
   const [row, activities, documents, progress] = await Promise.all([
     db.manualAssignment.findUnique({
@@ -249,6 +251,7 @@ export const getAssignmentPanel = cache(async (assignmentId: string) => {
         status: true,
         notes: true,
         activatedAt: true,
+        driveUrl: true,
         company: { select: { id: true, name: true, logo: true } },
         consultant: { select: { id: true, name: true, email: true } },
         manual: {
@@ -316,7 +319,18 @@ export const getAssignmentPanel = cache(async (assignmentId: string) => {
 
   return row
     ? {
-        assignment: row,
+        assignment: {
+          ...row,
+          // Revalidado en CADA lectura, no sólo al escribir: esta fila puede haber
+          // sido editada a mano en la base, o ser anterior a la validación de
+          // escritura. Si no pasa, la vista dirá "sin enlace" en vez de pintar un
+          // `<a href>` con una URL que nadie ha comprobado.
+          driveUrl: safeDriveUrl(row.driveUrl),
+        },
+        // Distingue "nunca se puso" de "se puso algo que ya no es confiable": la
+        // pantalla dice cosas distintas, y confundirlas escondería una fila mala.
+        driveUrlIsInvalid: row.driveUrl !== null && safeDriveUrl(row.driveUrl) === null,
+        canEditDriveUrl: isManualAdmin(user),
         activities: activities.map((a) => ({
           ...a,
           state: activityState({ status: a.status, dueAt: a.dueAt }),

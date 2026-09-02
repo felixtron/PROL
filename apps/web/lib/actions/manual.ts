@@ -24,6 +24,7 @@ import {
 } from "@/lib/compliance-dispatch";
 import { sanitizeManualHtml } from "@/lib/sanitize-manual-html";
 import { DEFAULT_REMINDER_DAYS, periodLabel } from "@/lib/compliance";
+import { DRIVE_URL_ERROR, isValidDriveUrl } from "@/lib/drive-url";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -864,6 +865,58 @@ export async function updateManualAssignment(input: {
   revalidatePath(`/tenant-admin/projects/${assignment.id}`);
   revalidatePath(`/professor/projects/${assignment.id}`);
   return { success: true as const };
+}
+
+/**
+ * Enlace a la carpeta de Google Drive de un proyecto.
+ *
+ * La guarda es `requireManualAdmin()` y no `requireAssignmentManageAccess()` a
+ * propósito: esa segunda comparte puerta con `requireManualReviewer()` y deja pasar
+ * a PROFESSOR, que sí debe VER el panel del proyecto pero no escribir este campo
+ * (DRV-01: "editable por el administrador"). Mismo patrón que
+ * `resolveEvidenceDeletion` en `evidence.ts`, que tuvo el mismo problema.
+ *
+ * La URL se valida contra la lista cerrada de hosts de `lib/drive-url.ts`. No es
+ * cosmética: es un enlace que un administrador pega y un cliente sigue después, o
+ * sea un redirector abierto si no se valida. Se valida también al leer
+ * (`getAssignmentPanel`), porque una fila puede no haber pasado por aquí.
+ */
+export async function setProjectDriveUrl(input: {
+  assignmentId: string;
+  driveUrl: string | null;
+}): Promise<
+  | { success: true; driveUrl: string | null }
+  | { success: false; error: string }
+> {
+  const user = await requireManualAdmin();
+
+  const assignment = await db.manualAssignment.findUnique({
+    where: { id: input.assignmentId },
+    select: { id: true, tenantId: true },
+  });
+  if (!assignment) return { success: false, error: "Proyecto no encontrado" };
+  if (user.role !== "SUPER_ADMIN" && user.tenantId !== assignment.tenantId) {
+    return { success: false, error: "No autorizado: tenant no coincide" };
+  }
+
+  const raw = (input.driveUrl ?? "").trim();
+  // Vaciar el campo es una operación legítima (la carpeta se movió, el proyecto se
+  // reorganizó): se guarda `null`, no la cadena vacía, para que la columna tenga
+  // dos estados y no tres.
+  const next = raw === "" ? null : raw;
+  if (next !== null && !isValidDriveUrl(next)) {
+    return { success: false, error: DRIVE_URL_ERROR };
+  }
+
+  await db.manualAssignment.update({
+    where: { id: assignment.id },
+    data: { driveUrl: next },
+  });
+
+  revalidatePath(`/tenant-admin/projects/${assignment.id}`);
+  revalidatePath(`/professor/projects/${assignment.id}`);
+  revalidatePath(`/dashboard/manuals/${assignment.id}`);
+  return { success: true, driveUrl: next };
 }
 
 /** Sube la versión personalizada de un documento para una empresa. */
