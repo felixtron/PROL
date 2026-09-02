@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 03-01-PLAN.md (1 de 8 planes de la fase 3)
-last_updated: "2026-09-02T16:12:43.712Z"
-last_activity: "2026-09-02 — Plan 03-01 completado: esquema del documento nativo (dos enums, columnas nativas, cuatro de archivo relajadas a nullable) vía db push aditivo, guarda 404 en /files/company-document/[id], y la fixture reproducible del módulo documental (segunda empresa Constructora Delta, manual publicado, documento PROCEDIMIENTO, dos activaciones) aplicada a la base local sin tocar las evidencias de form_snapshot de la fase 1."
+stopped_at: Completado 03-02-PLAN.md (2 de 8 planes de la fase 3)
+last_updated: "2026-09-02T16:32:14.082Z"
+last_activity: "2026-09-02 — Plan 03-02 completado: getAssignmentPanel y getSectionForCompany filtran por status VIGENTE (OPS-05) en vez de max(version), uploadCompanyDocument degrada la VIGENTE anterior a OBSOLETO dentro de su transacción con lock, y company-project-panel.tsx renderiza de forma consciente del kind del documento. Verificado contra servidor y base reales con fixture v1 VIGENTE / v2 BORRADOR y control negativo."
 progress:
-  total_phases: 7
+  total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 9
-  percent: 29
+  completed_plans: 10
+  percent: 33
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 
 ## Current Position
 
-Phase: 3 of 7 (Procedimientos nativos)
-Plan: 1 of 8 in current phase
+Phase: 3 of 6 (Procedimientos nativos)
+Plan: 2 of 8 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 03-01 completado: esquema del documento nativo (dos enums, columnas nativas, cuatro de archivo relajadas a nullable) vía db push aditivo, guarda 404 en /files/company-document/[id], y la fixture reproducible del módulo documental (segunda empresa Constructora Delta, manual publicado, documento PROCEDIMIENTO, dos activaciones) aplicada a la base local sin tocar las evidencias de form_snapshot de la fase 1.
+Last activity: 2026-09-02 — Plan 03-02 completado: getAssignmentPanel y getSectionForCompany filtran por status VIGENTE (OPS-05) en vez de max(version), uploadCompanyDocument degrada la VIGENTE anterior a OBSOLETO dentro de su transacción con lock, y company-project-panel.tsx renderiza de forma consciente del kind del documento. Verificado contra servidor y base reales con fixture v1 VIGENTE / v2 BORRADOR y control negativo.
 
-Progress: [███░░░░░░░] 29% (2 de 7 fases)
+Progress: [███░░░░░░░] 33% (2 de 6 fases)
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [███░░░░░░░] 29% (2 de 7 fases)
 | Phase 02 P03 | 35min | 3 tasks | 3 files |
 | Phase 02 P04 | ~15min (tarea 4 de documentación; tareas 1-3 incluyen una pausa de aprobación humana no cronometrable) | 4 tasks | 1 files |
 | Phase 03 P01 | ~45min | 3 tasks | 5 files |
+| Phase 03 P02 | ~20min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,9 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-01]: El upsert de ManualDocument en seedDocumentFixture nunca toca contentHtml ni templateVersion en su rama update, para que re-ejecutar el runner de fixture contra una base viva no pise una edición manual de un consultor real.
 - [Phase 03-01]: Logos de la fixture como SVG data-URI en línea (Company.logo pintado directo como src de <img>, patrón de tenant-brand.tsx) — no archivos en public/ ni la conversión a data-URL de certificate-assets.ts, que es sólo para @react-pdf/renderer.
 - [Phase 03-01]: El backfill de status = OBSOLETO para vigentes duplicados se ejecutó igual con la base en cero filas relevantes (no-op comprobado con doble ejecución), porque el plan 03-08 repite la misma sentencia SQL contra producción.
+- [Phase 03-02]: getAssignmentPanel y getSectionForCompany filtran por status: VIGENTE en vez de max(version); el dedup por documentId se conserva como red de seguridad, no como mecanismo primario.
+- [Phase 03-02]: uploadCompanyDocument degrada la VIGENTE anterior a OBSOLETO con un updateMany dentro de la misma transaccion con lock que calcula la version siguiente, antes del create; el invariante de una sola VIGENTE por (documento, empresa) ahora se sostiene tambien para documentos kind FILE.
+- [Phase 03-02]: company-project-panel.tsx: nombre resuelto con nameOverride ?? name, segmento de fileName condicional a kind === FILE (sin separador huerfano en nativos), boton de subida oculto para kind !== FILE con etiqueta de tipo+version en su lugar; los documentos nativos se siguen listando.
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T16:12:43.712Z
-Stopped at: Completado 03-01-PLAN.md (1 de 8 planes de la fase 3)
+Last session: 2026-09-02T16:32:14.078Z
+Stopped at: Completado 03-02-PLAN.md (2 de 8 planes de la fase 3)
 Resume file: None

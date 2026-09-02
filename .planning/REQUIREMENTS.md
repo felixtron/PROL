@@ -48,7 +48,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 - [x] **OPS-02**: `docker-compose.prod.yml` declara el volumen privado que producción ya monta.
 - [x] **OPS-03**: Incrementar la versión de un documento de empresa toma lock y no puede colisionar.
 - [x] **OPS-04**: `formSnapshot` se lee con un tipo discriminado y versionado, con rama legacy.
-- [ ] **OPS-05**: Toda consulta de "documento vigente" filtra por estatus, no por versión máxima.
+- [x] **OPS-05**: Toda consulta de "documento vigente" filtra por estatus, no por versión máxima.
 
 ## Out of Scope
 
@@ -78,7 +78,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | DOC-05 | Phase 3 | Pending |
 | DOC-06 | Phase 3 | Pending (03-01 puso el enum de estatus; el bucle borrador/publicar llega en 03-05 y 03-06) |
 | DOC-07 | Phase 3 | Pending |
-| OPS-05 | Phase 3 | Pending |
+| OPS-05 | Phase 3 | Complete |
 | PDF-01 | Phase 4 | Pending |
 | PDF-02 | Phase 4 | Pending |
 | PDF-04 | Phase 4 | Pending |
