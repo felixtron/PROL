@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: "Fase 3 cerrada. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
-stopped_at: "Completado 03-08 — fase 3 desplegada a producción (imagen 04135ca); confirmación visual humana sobre producción sigue pendiente, no simulada. Fase 3 (Procedimientos nativos) queda con sus 8 planes ejecutados. Fase 4 (Puente HTML→PDF) sin planificar (plans: TBD en ROADMAP.md)."
-last_updated: "2026-09-02T20:30:33.821Z"
-last_activity: "2026-09-02 — 03-08 completado: producción corre la imagen 04135ca con el esquema del documento nativo aplicado (2 enums, 14 columnas) y el arreglo del 401 confirmado en vivo. Confirmación visual humana sobre producción pendiente y declarada como tal (no simulada). Corregido el registro sobre documents_enabled (ver abajo). Ver 03-08-SUMMARY.md."
+status: "Fase 3.1 en curso: plan 01/6 ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
+stopped_at: Completado 03.1-01 — columnas aditivas de Drive/rótulo, validador de host y edición del rótulo por tenant, ejercitado por HTTP real.
+last_updated: "2026-09-02T22:47:54.462Z"
+last_activity: "2026-09-02 — 03.1-01 completado: dos columnas aditivas (tenants.documents_menu_label, manual_assignments.drive_url), comentario reescrito de EvidenceRequirementKind.FILE, isValidDriveUrl/safeDriveUrl con lista cerrada de hosts, y updateDocumentsMenuLabel ejercitada por HTTP real (guardar, vaciar a NULL, rechazar 41 caracteres). Ver 03.1-01-SUMMARY.md."
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 22
+  completed_plans: 17
   percent: 50
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 4 — Puente HTML→PDF (por planificar; TBD)
+**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 1/6 ejecutado)
 
 ## Current Position
 
-Phase: 3 of 6 (Procedimientos nativos) — completa, 8/8 planes ejecutados
-Plan: 8 of 8 in current phase — completado
-Status: Fase 3 cerrada. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
-Last activity: 2026-09-02 — 03-08 completado: producción corre la imagen 04135ca con el esquema del documento nativo aplicado (2 enums, 14 columnas) y el arreglo del 401 confirmado en vivo. Confirmación visual humana sobre producción pendiente y declarada como tal (no simulada). Corregido el registro sobre documents_enabled (ver abajo). Ver 03-08-SUMMARY.md.
+Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 1/6 planes ejecutados
+Plan: 1 of 6 in current phase — completado
+Status: Fase 3.1 en curso: plan 01 (cimientos: columnas, validador de Drive, rótulo por tenant) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
+Last activity: 2026-09-02 — 03.1-01 completado: dos columnas aditivas (tenants.documents_menu_label, manual_assignments.drive_url), comentario reescrito de EvidenceRequirementKind.FILE, isValidDriveUrl/safeDriveUrl con lista cerrada de hosts, y updateDocumentsMenuLabel ejercitada por HTTP real (guardar, vaciar a NULL, rechazar 41 caracteres). Ver 03.1-01-SUMMARY.md.
 
-Progress: [█████░░░░░] 50% (3 de 6 fases)
+Progress: [████████░░] 77% (17 de 22 planes)
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [█████░░░░░] 50% (3 de 6 fases)
 | Phase 03 P06 | ~40min | 3 tasks | 6 files |
 | Phase 03 P07 | ~35min | 3 tasks | 6 files |
 | Phase 03 P08 | tareas 1-2 no cronometrables (aprobación humana + despliegue en sesión previa); continuación tareas 3-4 ~25min | 4 tasks | 1 files |
+| Phase 03.1 P01 | ~55min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -118,13 +119,15 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-08]: El arreglo del 401 (5e2352d), pendiente desde la fase 2, se confirmo EN VIVO en produccion: GET /files/evidence/<inexistente> sin sesion responde 401 (antes de este despliegue respondia 403). R2-03 queda confirmado tambien en produccion, no solo en local.
 - [Phase 03-08]: documents_enabled NO se toco en ningun tenant. Decision explicita del usuario: dejarlo tal como esta. Ver correccion del registro mas abajo.
 - [Phase 03-08]: La confirmacion visual humana sobre produccion (tarea 3 del plan: login, panel, descarga) no se dio por aprobada sin haber ocurrido. Se declaro pendiente explicitamente, con el rollback de un comando disponible — precedente directo: en el plan 03-06 un checkpoint se registro como aprobado sin haberse ejercitado, y no se queria repetir el error.
+- [Phase 03.1]: [Phase 03.1-01] Caso A de commit sobre schema.prisma: el árbol ya estaba limpio (prol-1d había commiteado DC-3 antes de este plan), git add directo sin construir blob.
+- [Phase 03.1]: [Phase 03.1-01] El dev server persistente en :3000 tenía el Prisma Client cacheado en memoria (PrismaClientValidationError sobre documentsMenuLabel); se reinició el proceso para que recogiera el cliente regenerado por db push.
 
 ### Pending Todos
 
 - ~~Falta una segunda empresa en el seed.~~ **RESUELTO en el plan 03-01**: `seedDocumentFixture()` crea Constructora Delta (con logo y razón social propios) además de Acme Corp, aplicada al seed y a la base local.
 - **`apps/web/app/surveys/[publicSlug]/`** se sacó del repo (código muerto: importaba `getSurveyByPublicSlug` y `submitSurveyResponse`, que no existen; lo sustituyeron `surveys/answer/` y `surveys/open/`). Copia en el scratchpad de la sesión por si hiciera falta consultarla.
 - **Confirmación visual humana sobre producción, pendiente (03-08).** Falta que el usuario entre a `https://prol.prosuite.pro`, vea el panel normal y descargue algo que ya funcionara antes (certificado o PDF de resultados). No bloqueante: todo lo automatizable ya se confirmó y el rollback de un comando (`podman tag localhost/prol-web:55c020d localhost/prol-web:latest && systemctl restart prol-web-1.service`) está listo si algo apareciera mal.
-- **Sesión concurrente en el mismo working tree.** Al cerrar 03-08, otra sesión interactiva (`prol-1d`) tiene ~18 archivos sin commitear relacionados con DC-3, incluido `packages/db/prisma/schema.prisma`. El plan 03-08 no los tocó. Cualquier operación futura sobre este árbol debe revisar `git status` antes de tocar nada destructivo.
+- ~~Sesión concurrente en el mismo working tree.~~ **RESUELTO al ejecutar 03.1-01**: al empezar el plan, `git diff --stat -- packages/db/prisma/schema.prisma` estaba vacío — la sesión `prol-1d` ya había commiteado su trabajo de DC-3 antes de que este plan tocara el árbol (confirmado también por los commits `f41f286`/`d67f453`/`2bebc00` de planificación de esta misma fase). Se dio el Caso A previsto por el plan: `git add` directo sobre `schema.prisma`, sin construir un blob. El árbol sigue limpio tras el commit. Cualquier operación futura sobre este árbol debe seguir revisando `git status` antes de tocar nada destructivo, por si otra sesión vuelve a entrar.
 
 ### Blockers/Concerns
 
@@ -150,8 +153,8 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T22:15:00.000Z
-Stopped at: Completado 03-08 — fase 3 desplegada a producción (imagen 04135ca); confirmación visual humana sobre producción sigue pendiente, no simulada. Fase 3 (Procedimientos nativos) queda con sus 8 planes ejecutados. Fase 4 (Puente HTML→PDF) sin planificar (plans: TBD en ROADMAP.md).
+Last session: 2026-09-02T22:47:54.459Z
+Stopped at: Completado 03.1-01 — columnas aditivas de Drive/rótulo, validador de host y edición del rótulo por tenant, ejercitado por HTTP real.
 Resume file: None
 
 **Nota de concurrencia**: al cerrar esta sesión, otra sesión interactiva (`prol-1d`) tiene trabajo de DC-3 sin commitear en este mismo working tree (~18 archivos, incluido `packages/db/prisma/schema.prisma`). No fue tocado por 03-08.

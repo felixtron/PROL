@@ -19,12 +19,12 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 
 ### Navegación y gestión documental en Drive
 
-- [ ] **NAV-01**: Las funciones del módulo viven bajo un menú desplegable único, cuyo rótulo define cada tenant.
+- [x] **NAV-01**: Las funciones del módulo viven bajo un menú desplegable único, cuyo rótulo define cada tenant.
 - [ ] **NAV-02**: El agrupamiento aparece en los paneles de administrador, consultor y cliente.
 - [ ] **NAV-03**: La interfaz distingue Manuales Maestros (plantillas) de Proyectos (implementaciones por empresa).
-- [ ] **DRV-01**: Cada proyecto guarda el enlace a su carpeta de Google Drive, editable por el administrador.
+- [x] **DRV-01**: Cada proyecto guarda el enlace a su carpeta de Google Drive, editable por el administrador.
 - [ ] **DRV-02**: Abrir Evidencias desde un proyecto lleva al enlace de Drive configurado.
-- [ ] **DRV-03**: Sólo se aceptan URLs de Google Drive, y un proyecto sin enlace lo dice en vez de fallar.
+- [x] **DRV-03**: Sólo se aceptan URLs de Google Drive, y un proyecto sin enlace lo dice en vez de fallar.
 - [ ] **DRV-04**: Un requisito se da por cumplido sin subir archivo a PROL, conservando actividad, periodicidad, aprobación y bitácora.
 
 ### Registros nativos
@@ -99,12 +99,12 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | REG-05 | Phase 5 | Pending |
 | REG-06 | Phase 5 | Pending |
 | PDF-03 | Phase 5 | Pending |
-| NAV-01 | Phase 3.1 | Pending |
+| NAV-01 | Phase 3.1 | Complete |
 | NAV-02 | Phase 3.1 | Pending |
 | NAV-03 | Phase 3.1 | Pending |
-| DRV-01 | Phase 3.1 | Pending |
+| DRV-01 | Phase 3.1 | Complete |
 | DRV-02 | Phase 3.1 | Pending |
-| DRV-03 | Phase 3.1 | Pending |
+| DRV-03 | Phase 3.1 | Complete |
 | DRV-04 | Phase 3.1 | Pending |
 | ~~R2-05~~ | ~~Phase 6~~ | Cancelado 2026-09-02 — las evidencias pesadas van a Drive, no a una URL firmada |
 | ~~R2-06~~ | ~~Phase 6~~ | Cancelado 2026-09-02 — mismo motivo |
