@@ -114,6 +114,12 @@ export const getManualForEdit = cache(async (manualId: string) => {
           code: true,
           name: true,
           description: true,
+          // Añadidos para el catálogo del plan 03-06: arquetipo y versión de
+          // plantilla en la fila. El conteo de secciones/versiones de empresa
+          // de abajo sigue sin filtrar (intocable #6 del plan 03-02) — es lo
+          // único que no se toca de este select.
+          kind: true,
+          templateVersion: true,
           baseFileName: true,
           baseFileSize: true,
           _count: { select: { sections: true, companyDocuments: true } },

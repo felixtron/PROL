@@ -1,20 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import { Download, FileText, Loader2, Plus, Trash2 } from "lucide-react";
+import { Download, FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import type { ManualDocumentKind } from "@prol/db";
 import {
   createManualDocument,
   deleteManualDocument,
   updateManualDocument,
 } from "@/lib/actions/manual";
 import { MAX_FILE_SIZE, TEMPLATE_ACCEPT } from "@/lib/document-files";
+import { DOCUMENT_KIND_LABEL } from "@/lib/documents/document-identity";
 
 export interface ManualDocumentRow {
   id: string;
   code: string;
   name: string;
   description: string | null;
+  kind: ManualDocumentKind;
+  templateVersion: number;
   baseFileName: string | null;
   baseFileSize: number | null;
   _count: { sections: number; companyDocuments: number };
@@ -55,6 +60,10 @@ export function ManualDocuments({
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  // Dos arquetipos, no tres: los registros llenables llegan en la fase 5 y
+  // la acción de abajo ya los rechaza — ofrecerlos aquí prometería una
+  // entrega que no existe todavía.
+  const [kind, setKind] = useState<"FILE" | "PROCEDIMIENTO">("FILE");
   const [isPending, startTransition] = useTransition();
 
   function handleCreate(e: React.FormEvent) {
@@ -66,6 +75,7 @@ export function ManualDocuments({
         code,
         name,
         description,
+        kind,
       });
       if (!result.success) {
         setError(result.error);
@@ -74,6 +84,7 @@ export function ManualDocuments({
       setCode("");
       setName("");
       setDescription("");
+      setKind("FILE");
       setAdding(false);
       router.refresh();
     });
@@ -90,7 +101,7 @@ export function ManualDocuments({
           </p>
         ) : (
           documents.map((doc) => (
-            <DocumentRow key={doc.id} doc={doc} onError={setError} />
+            <DocumentRow key={doc.id} doc={doc} manualId={manualId} onError={setError} />
           ))
         )}
       </div>
@@ -118,6 +129,29 @@ export function ManualDocuments({
               placeholder="Nombre del documento"
               className="min-w-[220px] flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-text-tertiary focus:border-primary-400 focus:outline-none"
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="text-xs font-medium text-text-secondary">Tipo:</span>
+            <label className="inline-flex items-center gap-1.5 text-sm text-text-primary">
+              <input
+                type="radio"
+                name="documentKind"
+                value="FILE"
+                checked={kind === "FILE"}
+                onChange={() => setKind("FILE")}
+              />
+              Archivo
+            </label>
+            <label className="inline-flex items-center gap-1.5 text-sm text-text-primary">
+              <input
+                type="radio"
+                name="documentKind"
+                value="PROCEDIMIENTO"
+                checked={kind === "PROCEDIMIENTO"}
+                onChange={() => setKind("PROCEDIMIENTO")}
+              />
+              Procedimiento
+            </label>
           </div>
           <textarea
             value={description}
@@ -160,9 +194,11 @@ export function ManualDocuments({
 
 function DocumentRow({
   doc,
+  manualId,
   onError,
 }: {
   doc: ManualDocumentRow;
+  manualId: string;
   onError: (message: string | null) => void;
 }) {
   const router = useRouter();
@@ -197,7 +233,9 @@ function DocumentRow({
     <div className="flex flex-wrap items-start gap-3 p-4">
       <div className="min-w-0 flex-1">
         <p className="font-medium text-text-primary">{doc.name}</p>
-        <p className="font-mono text-xs text-text-tertiary">{doc.code}</p>
+        <p className="font-mono text-xs text-text-tertiary">
+          {doc.code} · {DOCUMENT_KIND_LABEL[doc.kind]}
+        </p>
         {doc.description ? (
           <p className="mt-1 text-sm text-text-secondary">{doc.description}</p>
         ) : null}
@@ -212,34 +250,53 @@ function DocumentRow({
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-2">
-        {doc.baseFileName ? (
-          <a
-            href={`/files/manual-document/${doc.id}`}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
-          >
-            <Download className="h-3.5 w-3.5" />
-            {doc.baseFileName}
-          </a>
+        <Link
+          href={`/tenant-admin/manuals/${manualId}/documents/${doc.id}`}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Redactar
+        </Link>
+
+        {doc.kind === "FILE" ? (
+          doc.baseFileName ? (
+            <a
+              href={`/files/manual-document/${doc.id}`}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {doc.baseFileName}
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs text-text-tertiary">
+              <FileText className="h-3.5 w-3.5" />
+              Sin plantilla base
+            </span>
+          )
         ) : (
           <span className="inline-flex items-center gap-1.5 text-xs text-text-tertiary">
             <FileText className="h-3.5 w-3.5" />
-            Sin plantilla base
+            {DOCUMENT_KIND_LABEL[doc.kind]} redactado en la plataforma · v
+            {doc.templateVersion}
           </span>
         )}
-        <label className="cursor-pointer text-xs font-medium text-text-secondary hover:text-text-primary">
-          {doc.baseFileName ? "Reemplazar plantilla" : "Subir plantilla"}
-          <input
-            ref={inputRef}
-            type="file"
-            accept={TEMPLATE_ACCEPT}
-            className="hidden"
-            disabled={isPending}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleUpload(file);
-            }}
-          />
-        </label>
+
+        {doc.kind === "FILE" ? (
+          <label className="cursor-pointer text-xs font-medium text-text-secondary hover:text-text-primary">
+            {doc.baseFileName ? "Reemplazar plantilla" : "Subir plantilla"}
+            <input
+              ref={inputRef}
+              type="file"
+              accept={TEMPLATE_ACCEPT}
+              className="hidden"
+              disabled={isPending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUpload(file);
+              }}
+            />
+          </label>
+        ) : null}
         <button
           type="button"
           aria-label="Eliminar documento"
