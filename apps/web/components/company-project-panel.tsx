@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText, FolderOpen } from "lucide-react";
 import {
   ACTIVITY_STATE_LABEL,
   EVIDENCE_STATUS_CLASS,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/compliance";
 import { CompanyDocumentUpload } from "@/components/company-document-upload";
 import { ActivityDueDate } from "@/components/activity-due-date";
+import { ProjectDriveLink } from "@/components/project-drive-link";
 
 const DATE = new Intl.DateTimeFormat("es-MX", {
   day: "numeric",
@@ -99,6 +100,25 @@ export function CompanyProjectPanel({
           {progress.approvedRequirements}/{progress.totalRequirements} evidencias
           aprobadas
         </p>
+      </section>
+
+      <section className="rounded-xl border border-border bg-surface p-5">
+        <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
+          <FolderOpen className="h-4 w-4 text-text-tertiary" />
+          Carpeta de Drive del proyecto
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          El expediente de archivos de este proyecto vive en Google Drive. PROL
+          lleva el control de qué requisito toca, cuándo vence y quién lo aprobó.
+        </p>
+        <div className="mt-3">
+          <ProjectDriveLink
+            assignmentId={assignment.id}
+            driveUrl={assignment.driveUrl}
+            invalid={data.driveUrlIsInvalid}
+            canEdit={data.canEditDriveUrl}
+          />
+        </div>
       </section>
 
       {/* Plantillas de la empresa */}
