@@ -158,7 +158,7 @@ La 7 ya no existe: su contenido está dentro de la 3.
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
 | 2. R2 para el tier confidencial | 4/4 | Complete    | 2026-09-02 |
-| 3. Procedimientos nativos | 0/8 | Planned     | - |
+| 3. Procedimientos nativos | 1/8 | In Progress|  |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
 | 6. Subida directa a R2 | 0/TBD | Not started | - |

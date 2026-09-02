@@ -9,12 +9,12 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 
 ### Documentos nativos
 
-- [ ] **DOC-01**: El consultor redacta un procedimiento dentro de la plataforma, sin producir ni intercambiar un `.docx`.
+- [x] **DOC-01**: El consultor redacta un procedimiento dentro de la plataforma, sin producir ni intercambiar un `.docx`.
 - [ ] **DOC-02**: Importar un `.docx` conserva sus tablas al convertirlo y sanearlo.
-- [ ] **DOC-03**: Emitir para una empresa congela el cuerpo: editar la plantilla después no altera lo ya emitido.
+- [x] **DOC-03**: Emitir para una empresa congela el cuerpo: editar la plantilla después no altera lo ya emitido.
 - [ ] **DOC-04**: La misma plantilla se ve con el logo, la razón social y el código documental de cada empresa.
 - [ ] **DOC-05**: El historial muestra versión, fecha, autor, descripción del cambio y estatus.
-- [ ] **DOC-06**: Editar un documento vigente abre un borrador; sólo publicar crea una versión nueva.
+- [x] **DOC-06**: Editar un documento vigente abre un borrador; sólo publicar crea una versión nueva.
 - [ ] **DOC-07**: El cliente ve cuándo su versión quedó atrás respecto a la plantilla del consultor.
 
 ### Registros nativos
@@ -72,11 +72,11 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | R2-02 | Phase 2 | Complete (02-03: dos evidencias fabricadas con backend disco se descargan con el mismo `sha256` tras migrar, incluso con el directorio de disco apartado — los bytes sólo pudieron venir del bucket — y la fila de la base (`file_key`) no cambió ni un carácter) |
 | R2-03 | Phase 2 | Complete — las tres mitades observadas. 403 desde otra empresa y 200 para la empresa dueña/revisor sobre una evidencia en R2, idénticos a antes del cambio de backend (02-02). El "401 sin sesión" **no** se observaba: un bug pre-existente y ajeno a esta fase (`d991c31`) dejó muertas las ramas de 401 de 8 rutas, que comparaban contra una cadena que ya nadie lanzaba. Arreglado en `5e2352d` con `UnauthenticatedError`, fuera del alcance de los cuatro planes y por decisión explícita del usuario tras la verificación. Re-verificado con las tres sesiones sobre las 8 rutas: sin sesión 401, otra empresa 403, dueña 200. |
 | R2-04 | Phase 2 | Complete (02-03: quitar `R2_BUCKET` y reiniciar devuelve la app al disco sin desplegar código — par 404/200 con el disco apartado/presente demuestra el origen de los bytes — y la ida y vuelta R2 → disco → R2 se completó cambiando sólo esa variable. **02-04**: el mismo rollback quedó disponible y documentado en producción — imagen anterior `64f7476` sigue tagueada, comando de una variable listo para copiar y pegar — pero no se ejecutó contra producción porque no hizo falta; sigue verificado sólo en local, no en el host real) |
-| DOC-01 | Phase 3 | Pending |
-| DOC-03 | Phase 3 | Pending |
+| DOC-01 | Phase 3 | Complete |
+| DOC-03 | Phase 3 | Complete |
 | DOC-04 | Phase 3 | Pending |
 | DOC-05 | Phase 3 | Pending |
-| DOC-06 | Phase 3 | Pending |
+| DOC-06 | Phase 3 | Complete |
 | DOC-07 | Phase 3 | Pending |
 | OPS-05 | Phase 3 | Pending |
 | PDF-01 | Phase 4 | Pending |
