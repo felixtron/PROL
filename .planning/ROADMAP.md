@@ -78,11 +78,11 @@ Plans:
 **Plans**: 8 plans (olas estrictamente seriales: 1 → 03-01, 2 → 03-02, 3 → 03-03, 4 → 03-04, 5 → 03-05, 6 → 03-06, 7 → 03-07, 8 → 03-08). Todos tocan los mismos módulos centrales sobre el mismo working tree; en la fase 1 dos ejecutores concurrentes se pisaron el índice de git, así que no hay paralelismo aquí a propósito. Los planes 06, 07 y 08 llevan checkpoint humano (`autonomous: false`): la fase se demuestra en pantalla y cierra con un despliegue.
 
 Plans:
-- [ ] 03-01-PLAN.md — Esquema del documento nativo, guarda de `fileKey` nulo y fixtures reproducibles (DOC-01, DOC-03, DOC-06)
-- [ ] 03-02-PLAN.md — OPS-05: "vigente" es un estatus, no la versión más alta (OPS-05)
-- [ ] 03-03-PLAN.md — Conversión `.docx` → HTML saneado (DOC-02)
-- [ ] 03-04-PLAN.md — Identidad del documento y acciones de plantilla (DOC-01, DOC-04, DOC-07)
-- [ ] 03-05-PLAN.md — Emisión, borrador y publicación (DOC-03, DOC-05, DOC-06)
+- [x] 03-01-PLAN.md — Esquema del documento nativo, guarda de `fileKey` nulo y fixtures reproducibles (DOC-01, DOC-03, DOC-06)
+- [x] 03-02-PLAN.md — OPS-05: "vigente" es un estatus, no la versión más alta (OPS-05)
+- [x] 03-03-PLAN.md — Conversión `.docx` → HTML saneado (DOC-02)
+- [x] 03-04-PLAN.md — Identidad del documento y acciones de plantilla (DOC-01, DOC-04, DOC-07)
+- [x] 03-05-PLAN.md — Emisión, borrador y publicación (DOC-03, DOC-05, DOC-06)
 - [ ] 03-06-PLAN.md — UI del consultor: editor, importador y emisión por empresa (DOC-01, DOC-02, DOC-06)
 - [ ] 03-07-PLAN.md — Vista del cliente: identidad, historial y aviso de versión (DOC-04, DOC-05, DOC-07)
 - [ ] 03-08-PLAN.md — Despliegue a producción con el módulo apagado (DOC-01, DOC-02, OPS-05)
