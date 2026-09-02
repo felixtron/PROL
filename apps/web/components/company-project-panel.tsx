@@ -23,6 +23,14 @@ const STATE_CLASS: Record<string, string> = {
   COMPLETED: "bg-emerald-100 text-emerald-700",
 };
 
+// Etiqueta legible del `kind` de CompanyDocument para los arquetipos nativos.
+// "FILE" no aparece aquí: para ese kind se sigue mostrando el enlace de
+// descarga, no esta etiqueta.
+const DOCUMENT_KIND_LABEL: Record<string, string> = {
+  PROCEDIMIENTO: "Procedimiento",
+  REGISTRO: "Registro",
+};
+
 /**
  * Panel del proyecto de una empresa: su avance, sus plantillas personalizadas,
  * y todas sus actividades con la evidencia vigente de cada una.
@@ -114,15 +122,22 @@ export function CompanyProjectPanel({
               return (
                 <div key={doc.id} className="flex flex-wrap items-start gap-3 p-4">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-text-primary">{doc.name}</p>
+                    <p className="font-medium text-text-primary">
+                      {own?.nameOverride ?? doc.name}
+                    </p>
                     <p className="font-mono text-xs text-text-tertiary">
                       {own?.codeOverride ?? doc.code}
                     </p>
                     {own ? (
                       <p className="mt-1 text-xs text-emerald-700">
-                        Versión {own.version} · {own.fileName} ·{" "}
-                        {own.uploadedBy?.name ?? "—"} ·{" "}
-                        {DATE.format(new Date(own.createdAt))}
+                        {[
+                          `Versión ${own.version}`,
+                          own.kind === "FILE" ? own.fileName : null,
+                          own.uploadedBy?.name ?? "—",
+                          DATE.format(new Date(own.createdAt)),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     ) : (
                       <p className="mt-1 text-xs text-text-tertiary">
@@ -133,7 +148,7 @@ export function CompanyProjectPanel({
                     )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
-                    {own ? (
+                    {own && own.kind === "FILE" ? (
                       <a
                         href={`/files/company-document/${own.id}`}
                         className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700"
@@ -142,11 +157,20 @@ export function CompanyProjectPanel({
                         Descargar
                       </a>
                     ) : null}
-                    <CompanyDocumentUpload
-                      assignmentId={assignment.id}
-                      documentId={doc.id}
-                      currentVersion={own?.version ?? null}
-                    />
+                    {own && own.kind !== "FILE" ? (
+                      // El enlace al visor del cliente lo añade el plan 03-07;
+                      // aquí no se inventa una ruta que todavía no existe.
+                      <span className="text-xs font-medium text-text-secondary">
+                        {DOCUMENT_KIND_LABEL[own.kind] ?? own.kind} · v{own.version}
+                      </span>
+                    ) : null}
+                    {!own || own.kind === "FILE" ? (
+                      <CompanyDocumentUpload
+                        assignmentId={assignment.id}
+                        documentId={doc.id}
+                        currentVersion={own?.version ?? null}
+                      />
+                    ) : null}
                   </div>
                 </div>
               );

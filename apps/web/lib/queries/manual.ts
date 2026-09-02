@@ -285,13 +285,20 @@ export const getAssignmentPanel = cache(async (assignmentId: string) => {
       },
     }),
     db.companyDocument.findMany({
-      where: { companyId: assignment.companyId },
+      // "Vigente" es un estatus, no la versión más alta. Desde que existe
+      // BORRADOR las dos cosas dejaron de ser sinónimas, y este panel enlaza a
+      // la descarga: enseñar aquí un borrador sin publicar sería enseñárselo al
+      // consultor como si fuera lo que su cliente tiene adoptado.
+      where: { companyId: assignment.companyId, status: "VIGENTE" },
       orderBy: [{ documentId: "asc" }, { version: "desc" }],
       select: {
         id: true,
         documentId: true,
         version: true,
         codeOverride: true,
+        nameOverride: true,
+        kind: true,
+        status: true,
         fileName: true,
         fileSize: true,
         createdAt: true,
@@ -309,7 +316,9 @@ export const getAssignmentPanel = cache(async (assignmentId: string) => {
           state: activityState({ status: a.status, dueAt: a.dueAt }),
           latestEvidence: a.evidences[0] ?? null,
         })),
-        // Sólo la versión vigente (la mayor) de cada documento.
+        // Red de seguridad: con el invariante sano hay como mucho una VIGENTE
+        // por documento; si alguna vez hubiera dos, se pinta una y no dos
+        // filas contradictorias.
         companyDocuments: documents.filter(
           (d, i, all) => all.findIndex((x) => x.documentId === d.documentId) === i,
         ),
@@ -554,8 +563,14 @@ export const getSectionForCompany = cache(
         },
       }),
       db.companyDocument.findMany({
+        // "Vigente" es un estatus, no la versión más alta. Desde que existe
+        // BORRADOR las dos cosas dejaron de ser sinónimas, y esta es la página
+        // que el cliente ve directamente: enseñarle aquí un borrador sin
+        // publicar sería mostrarle un procedimiento como si ya lo hubiera
+        // adoptado.
         where: {
           companyId: assignment.companyId,
+          status: "VIGENTE",
           document: { sections: { some: { sectionId } } },
         },
         orderBy: [{ documentId: "asc" }, { version: "desc" }],
@@ -564,6 +579,9 @@ export const getSectionForCompany = cache(
           documentId: true,
           version: true,
           codeOverride: true,
+          nameOverride: true,
+          kind: true,
+          status: true,
           fileName: true,
           fileSize: true,
         },
@@ -610,6 +628,9 @@ export const getSectionForCompany = cache(
         latestEvidence: a.evidences[0] ?? null,
         history: a.evidences,
       })),
+      // Red de seguridad: con el invariante sano hay como mucho una VIGENTE
+      // por documento; si alguna vez hubiera dos, se pinta una y no dos
+      // filas contradictorias.
       companyDocuments: companyDocs.filter(
         (d, i, all) => all.findIndex((x) => x.documentId === d.documentId) === i,
       ),
