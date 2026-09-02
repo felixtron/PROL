@@ -307,8 +307,21 @@ Las evidencias y las plantillas por empresa se guardan en un bucket de R2 en vez
 del volumen local, si —y sólo si— las cuatro variables estan presentes. Con
 ninguna, la app usa `PRIVATE_UPLOAD_DIR` y todo sigue como antes.
 
-> **Estado: NO APLICADO en produccion.** El codigo esta desplegado, pero las
-> variables no se han puesto todavia en el env del contenedor. Ver el plan 02-04.
+> **Estado: APLICADO en `panel-prosuite-2` el 2026-09-01.** Imagen `55c020d`
+> (anterior: `64f7476`). Las cuatro variables R2 estan en
+> `/etc/containers/env/prol-web-1.env` (600, root), aplicadas por SSH como
+> parte de este mismo despliegue. El volumen `prol_prol_private` seguia
+> **vacio** al desplegar (0 archivos), asi que la migracion de mas abajo no
+> llego a ejecutarse en produccion: la receta contra el host sigue sin
+> verificar, solo la local (plan 02-03). El modulo documental continua
+> **apagado** (`documents_enabled = false` en los tres tenants), asi que el
+> camino de escritura en produccion todavia no se ha ejercitado por la
+> interfaz — queda demostrado en local (plan 02-02) contra el bucket real, no
+> en produccion.
+>
+> Los alias `panel-prosuite-2` y `propodvps2` resuelven al **mismo host**
+> (`195.26.255.71`, hostname real `propodvps2`). Este despliegue uso
+> `panel-prosuite-2`. Anotado aqui para no tener que volver a averiguarlo.
 
 **El bucket esta COMPARTIDO.** Contiene datos de produccion de otro producto bajo
 los prefijos `empresas/` y `leads/`. PROL escribe **solo** bajo `prol/`, no borra
@@ -335,6 +348,17 @@ EOF
 ssh panel-prosuite-2 'chmod 600 /etc/containers/env/prol-web-1.env && systemctl daemon-reload && systemctl restart prol-web-1.service'
 ```
 
+> **Trampa operativa (encontrada el 2026-09-01):** no uses `grep` para extraer o
+> canalizar credenciales por SSH en esta maquina, ni siquiera dentro de un pipe.
+> Un hook local de shell (`rtk`) reescribe la invocacion de `grep` aunque este en
+> mitad de una tuberia, y en vez del `VAR=valor` esperado se agrega la salida
+> formateada del propio `rtk` (lineas `path:linea:contenido`) con el valor real
+> incrustado en una linea que no es `VAR=valor`. Se detecto de inmediato porque
+> el conteo de verificacion (`grep -c '^R2_' ...`) dio 0 en vez de 4, nunca llego
+> a exponerse en una salida visible ni a git. Usa `awk '/^R2_/'` o una variable
+> de shell capturada para mover valores sensibles; `grep` sirve para contar
+> despues (paso de verificacion), no para copiar antes.
+
 Las **cuatro juntas o ninguna**. Con `R2_BUCKET` y sin alguna de las otras tres el
 contenedor **arranca igual** —una errata en una variable del modulo documental no
 puede dejar sin servicio a cursos, evaluaciones y certificados—, pero deja en el
@@ -354,6 +378,14 @@ Las otras tres pueden quedarse: sin bucket, no se usan. Los archivos que se
 hubieran escrito en R2 mientras estuvo activo **no** estan en el disco local: el
 rollback devuelve la app al disco, no los datos. Por eso la migracion de abajo
 copia en vez de mover.
+
+Este primer nivel se verifico de punta a punta en local (plan 02-03, ida y
+vuelta R2 → disco → R2 sin desplegar codigo), pero **no se ha ejecutado en
+produccion** porque no hizo falta: el despliegue del 2026-09-01 quedo sano a la
+primera. El segundo nivel — retaggear `localhost/prol-web:64f7476` como
+`latest` y reiniciar — tampoco se ejecuto, pero la imagen anterior sigue
+tagueada en el host, asi que el comando esta listo para copiar y pegar si
+hiciera falta.
 
 **Migrar el disco al bucket.** Hoy en produccion es un no-op: el volumen
 `prol_prol_private` esta **vacio** (el modulo se desplego apagado y nunca se
