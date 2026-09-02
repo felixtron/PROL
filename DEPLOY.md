@@ -301,6 +301,89 @@ sigue diciendo la verdad.
 **Flag por tenant.** El modulo no aparece hasta activar `documentsEnabled` en
 `/admin/tenants/<id>`.
 
+### 7c. Cloudflare R2 para los archivos confidenciales
+
+Las evidencias y las plantillas por empresa se guardan en un bucket de R2 en vez
+del volumen local, si —y sólo si— las cuatro variables estan presentes. Con
+ninguna, la app usa `PRIVATE_UPLOAD_DIR` y todo sigue como antes.
+
+> **Estado: NO APLICADO en produccion.** El codigo esta desplegado, pero las
+> variables no se han puesto todavia en el env del contenedor. Ver el plan 02-04.
+
+**El bucket esta COMPARTIDO.** Contiene datos de produccion de otro producto bajo
+los prefijos `empresas/` y `leads/`. PROL escribe **solo** bajo `prol/`, no borra
+nada, y no se activan reglas de ciclo de vida ni versionado sobre el bucket:
+afectarian tambien a los datos ajenos. Si algun dia se quiere versionado para
+PROL, el camino es un bucket dedicado, no una regla sobre este.
+
+**El prefijo no entra en la base.** `fileKey` guarda `<subdir>/<uuid>.<ext>`; el
+`prol/` se antepone al escribir y no sale de `apps/web/lib/document-storage.ts`.
+Si se filtrara, las filas existentes dejarian de resolver y el rollback de abajo
+dejaria de funcionar.
+
+**Aplicar las variables** (por SSH, nunca commiteadas, nunca por
+`docker-compose.prod.yml` — el host no lo usa):
+
+```bash
+# Los valores salen del .env local (gitignored) o del panel de Cloudflare.
+ssh panel-prosuite-2 'cat >> /etc/containers/env/prol-web-1.env' <<'EOF'
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=...
+EOF
+ssh panel-prosuite-2 'chmod 600 /etc/containers/env/prol-web-1.env && systemctl daemon-reload && systemctl restart prol-web-1.service'
+```
+
+Las **cuatro juntas o ninguna**. Con `R2_BUCKET` y sin alguna de las otras tres el
+contenedor **arranca igual** —una errata en una variable del modulo documental no
+puede dejar sin servicio a cursos, evaluaciones y certificados—, pero deja en el
+log el aviso "Configuración de R2 incompleta" nombrando las que faltan y
+**rechaza las subidas de archivos confidenciales** con un 503. Es deliberado:
+degradar a disco en silencio esparciria evidencias por almacenamiento efimero, que
+es el fallo que la fase 1 cerro. Consecuencia practica: **el arranque ya no avisa
+por ti**, asi que despues de cada cambio del env hay que mirar ese grep.
+
+**Rollback (R2-04): quitar `R2_BUCKET` y reiniciar.** Sin desplegar codigo.
+
+```bash
+ssh panel-prosuite-2 "sed -i '/^R2_BUCKET=/d' /etc/containers/env/prol-web-1.env && systemctl restart prol-web-1.service"
+```
+
+Las otras tres pueden quedarse: sin bucket, no se usan. Los archivos que se
+hubieran escrito en R2 mientras estuvo activo **no** estan en el disco local: el
+rollback devuelve la app al disco, no los datos. Por eso la migracion de abajo
+copia en vez de mover.
+
+**Migrar el disco al bucket.** Hoy en produccion es un no-op: el volumen
+`prol_prol_private` esta **vacio** (el modulo se desplego apagado y nunca se
+escribio una evidencia). La receta existe para el dia que no lo este.
+
+```bash
+# En local, con el .env cargado
+node --env-file=.env apps/web/scripts/migrate-private-to-r2.mjs --dry-run
+node --env-file=.env apps/web/scripts/migrate-private-to-r2.mjs
+```
+
+En el host de produccion, con el volumen montado en solo lectura y el script del
+checkout de despliegue (receta **no ejecutada todavia**; la verificada de punta a
+punta es la local):
+
+```bash
+podman run --rm \
+  -v prol_prol_private:/data:ro \
+  -v /opt/prol-deploy-$SHA/apps/web/scripts:/scripts:ro \
+  --env-file /etc/containers/env/prol-web-1.env \
+  -e PRIVATE_UPLOAD_DIR=/data \
+  docker.io/library/node:22-alpine \
+  sh -c 'mkdir -p /tmp/mig && cd /tmp/mig && cp /scripts/migrate-private-to-r2.mjs . \
+         && npm i --no-save aws4fetch && node migrate-private-to-r2.mjs'
+```
+
+El script es idempotente y no borra: se puede repetir. `backup.sh` sigue
+respaldando el volumen (`private_<fecha>.tar.gz`) como cinturon y tirantes,
+aunque una vez todo se escriba en R2 ese tarball deje de capturar nada nuevo.
+
 ### 8. Verificar
 
 ```bash
