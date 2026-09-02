@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
 import { requireTenantAdmin } from "@/lib/auth";
+import {
+  DOCUMENTS_MENU_LABEL_MAX,
+  DOCUMENTS_MENU_LABEL_MIN,
+} from "@/lib/tenant-labels";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -65,5 +69,45 @@ export async function updateTenantBranding(data: {
   revalidatePath("/admin", "layout");
   revalidatePath("/tenant-admin", "layout");
   revalidatePath("/", "layout");
+  return { success: true };
+}
+
+/**
+ * Rótulo del menú del módulo de gestión documental de este tenant.
+ *
+ * Vive aquí y no en el panel de super-admin (decisión (c) del CONTEXT): es marca
+ * del tenant, igual que el nombre y el logo, y el ADMIN de IBIZA ya existe en
+ * producción — no necesita que nadie se lo configure.
+ */
+export async function updateDocumentsMenuLabel(label: string | null) {
+  const admin = await requireTenantAdmin();
+  if (!admin.tenantId) {
+    throw new Error("SUPER_ADMIN debe seleccionar un tenant");
+  }
+
+  const trimmed = (label ?? "").trim();
+  // Vaciarlo es una operación válida: devuelve el menú al neutro de
+  // `tenant-labels.ts`. Por eso se guarda `null` y no la cadena vacía — así la
+  // columna sólo tiene dos estados y `resolveDocumentsMenuLabel` no tiene que
+  // desempatar entre "" y null.
+  const next = trimmed.length > 0 ? trimmed : null;
+  if (
+    next !== null &&
+    (next.length < DOCUMENTS_MENU_LABEL_MIN || next.length > DOCUMENTS_MENU_LABEL_MAX)
+  ) {
+    throw new Error(
+      `El rótulo del menú debe tener ${DOCUMENTS_MENU_LABEL_MIN}-${DOCUMENTS_MENU_LABEL_MAX} caracteres`,
+    );
+  }
+
+  await db.tenant.update({
+    where: { id: admin.tenantId },
+    data: { documentsMenuLabel: next },
+  });
+
+  // El rótulo se pinta en el sidebar de los tres paneles.
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/professor", "layout");
+  revalidatePath("/tenant-admin", "layout");
   return { success: true };
 }

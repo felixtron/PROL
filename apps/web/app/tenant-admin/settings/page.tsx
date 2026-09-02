@@ -4,6 +4,7 @@ import { getConnectAccountStatus } from "@/lib/actions/payment";
 import { getGoogleMeetStatus } from "@/lib/actions/google-integration";
 import { ProfileForm } from "@/components/profile-form";
 import { BrandingForm } from "./branding-form";
+import { DocumentsMenuLabelForm } from "./documents-menu-label-form";
 import { StripeConnectSection } from "./stripe-connect-section";
 import { GoogleMeetSection } from "./google-meet-section";
 import { TenantAdminSignOutButton } from "./sign-out-button";
@@ -23,6 +24,8 @@ export default async function TenantAdminSettingsPage() {
           logo: true,
           primaryColor: true,
           accentColor: true,
+          documentsEnabled: true,
+          documentsMenuLabel: true,
         },
       })
     : null;
@@ -52,6 +55,15 @@ export default async function TenantAdminSettingsPage() {
           />
         </section>
       )}
+
+      {tenant?.documentsEnabled ? (
+        <section>
+          <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
+            Menú de gestión documental
+          </h2>
+          <DocumentsMenuLabelForm initialLabel={tenant.documentsMenuLabel} />
+        </section>
+      ) : null}
 
       <section>
         <h2 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wider text-text-tertiary">
