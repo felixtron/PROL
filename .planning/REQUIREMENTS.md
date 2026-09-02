@@ -20,8 +20,8 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 ### Navegación y gestión documental en Drive
 
 - [x] **NAV-01**: Las funciones del módulo viven bajo un menú desplegable único, cuyo rótulo define cada tenant.
-- [ ] **NAV-02**: El agrupamiento aparece en los paneles de administrador, consultor y cliente.
-- [ ] **NAV-03**: La interfaz distingue Manuales Maestros (plantillas) de Proyectos (implementaciones por empresa).
+- [x] **NAV-02**: El agrupamiento aparece en los paneles de administrador, consultor y cliente.
+- [x] **NAV-03**: La interfaz distingue Manuales Maestros (plantillas) de Proyectos (implementaciones por empresa).
 - [x] **DRV-01**: Cada proyecto guarda el enlace a su carpeta de Google Drive, editable por el administrador.
 - [ ] **DRV-02**: Abrir Evidencias desde un proyecto lleva al enlace de Drive configurado.
 - [x] **DRV-03**: Sólo se aceptan URLs de Google Drive, y un proyecto sin enlace lo dice en vez de fallar.
@@ -99,9 +99,9 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | REG-05 | Phase 5 | Pending |
 | REG-06 | Phase 5 | Pending |
 | PDF-03 | Phase 5 | Pending |
-| NAV-01 | Phase 3.1 | Complete |
-| NAV-02 | Phase 3.1 | Pending |
-| NAV-03 | Phase 3.1 | Pending |
+| NAV-01 | Phase 3.1 | Complete — cerrado en 03.1-02. *Aprobado por el usuario en pantalla* (checkpoint tarea 3): leyó «Ibiza Experts 360» en el sidebar del administrador y confirmó que pulsar el rótulo pliega/despliega el grupo. *Servidor-verificado por HTTP* (mismo `GET /tenant-admin/projects`, sin recompilar entre capturas): con la columna en `NULL` sirvió «Gestión documental»; tras `UPDATE tenants SET documents_menu_label='Ibiza Experts 360'` sirvió ese texto — la columna quedó restaurada a `Ibiza Experts 360` al terminar. Ver `03.1-02-SUMMARY.md`. |
+| NAV-02 | Phase 3.1 | Complete — **evidencia mixta, declarada por partes**, cerrado en 03.1-02. (a) *Aprobado por el usuario en pantalla* (checkpoint tarea 3, respuesta "aprobado" a las tres preguntas del `resume-signal`): panel de administrador (rótulo leído, toggle plegar/desplegar confirmado) y panel de cliente (entrada agrupada bajo «Proyectos»). El panel de consultor **no fue visto por el usuario** — no se le pidió y no lo reportó espontáneamente. (b) *Servidor-verificado por HTTP en la continuación*, para cerrar esa brecha sin apoyarse sólo en inferencia de código: login real de `maria.garcia@academiadigitalmx.com` (PROFESSOR de academia-digital) contra `POST /api/auth/sign-in/email`, `GET /professor/evidence` con la cookie de sesión → el HTML sirvió el grupo «Ibiza Experts 360» con `aria-expanded="true"` y exactamente sus tres hijos (Proyectos, Evidencias, Agenda), **sin** Manuales Maestros. Los mismos tres `GET` (administrador, consultor, cliente) confirmaron el grupo agrupado con el rótulo del tenant en los tres paneles. Ver `03.1-02-SUMMARY.md`. |
+| NAV-03 | Phase 3.1 | Complete — **evidencia mixta, declarada por partes**, cerrado en 03.1-02. (a) *Aprobado por el usuario en pantalla*: confirmó que la entrada del panel del cliente dice «Proyectos», no «Manuales» (tercera respuesta del `resume-signal`). (b) *Servidor-verificado por HTTP en la continuación*, no presenciado por el usuario: «Manuales Maestros» en el menú del administrador — `GET /tenant-admin/projects` autenticado sirvió literalmente ese texto como hijo del grupo (y no lo sirvió el panel de consultor, que no tiene esa entrada). La línea explicativa bajo el h1 de `/tenant-admin/manuals` ("Plantillas de la norma... la implementación vive en Proyectos") quedó verificada por `grep` sobre el archivo fuente en la tarea 2, no releída por HTTP en esta continuación. Ver `03.1-02-SUMMARY.md`. |
 | DRV-01 | Phase 3.1 | Complete |
 | DRV-02 | Phase 3.1 | Pending |
 | DRV-03 | Phase 3.1 | Complete |

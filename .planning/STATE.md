@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: "Fase 3.1 en curso: plan 01/6 ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
-stopped_at: Completado 03.1-01 — columnas aditivas de Drive/rótulo, validador de host y edición del rótulo por tenant, ejercitado por HTTP real.
-last_updated: "2026-09-02T22:47:54.462Z"
-last_activity: "2026-09-02 — 03.1-01 completado: dos columnas aditivas (tenants.documents_menu_label, manual_assignments.drive_url), comentario reescrito de EvidenceRequirementKind.FILE, isValidDriveUrl/safeDriveUrl con lista cerrada de hosts, y updateDocumentsMenuLabel ejercitada por HTTP real (guardar, vaciar a NULL, rechazar 41 caracteres). Ver 03.1-01-SUMMARY.md."
+status: "Fase 3.1 en curso: plan 02/6 ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
+stopped_at: "Completado 03.1-02 — menú agrupado por tenant en los tres paneles, checkpoint ejercitado (admin/cliente por el usuario, consultor cerrado con HTTP real) y NAV-01/02/03 completos."
+last_updated: "2026-09-02T23:35:00.000Z"
+last_activity: "2026-09-02 — 03.1-02 completado: SidebarNavGroup/NavLinkItem compartidos, los tres paneles (administrador 4 hijos, consultor 3, cliente 3) agrupan el módulo bajo el rótulo del tenant, vocabulario corregido (Manuales Maestros vs. Proyectos). Checkpoint ejercitado con las tres respuestas del usuario para admin/cliente; el panel de consultor, no visto por el usuario, se cerró con login+GET real por HTTP. NAV-01/02/03 pasan a Complete con evidencia mixta declarada por partes. Ver 03.1-02-SUMMARY.md."
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 22
-  completed_plans: 17
-  percent: 50
+  completed_plans: 18
+  percent: 82
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 1/6 ejecutado)
+**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 2/6 ejecutado)
 
 ## Current Position
 
-Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 1/6 planes ejecutados
-Plan: 1 of 6 in current phase — completado
-Status: Fase 3.1 en curso: plan 01 (cimientos: columnas, validador de Drive, rótulo por tenant) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
-Last activity: 2026-09-02 — 03.1-01 completado: dos columnas aditivas (tenants.documents_menu_label, manual_assignments.drive_url), comentario reescrito de EvidenceRequirementKind.FILE, isValidDriveUrl/safeDriveUrl con lista cerrada de hosts, y updateDocumentsMenuLabel ejercitada por HTTP real (guardar, vaciar a NULL, rechazar 41 caracteres). Ver 03.1-01-SUMMARY.md.
+Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 2/6 planes ejecutados
+Plan: 2 of 6 in current phase — completado
+Status: Fase 3.1 en curso: plan 02 (menú agrupado por tenant, vocabulario corregido) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
+Last activity: 2026-09-02 — 03.1-02 completado: SidebarNavGroup/NavLinkItem compartidos, los tres paneles agrupan el módulo bajo el rótulo del tenant, vocabulario corregido (Manuales Maestros vs. Proyectos). Checkpoint ejercitado (admin/cliente por el usuario, consultor cerrado con HTTP real). NAV-01/02/03 completos. Ver 03.1-02-SUMMARY.md.
 
-Progress: [████████░░] 77% (17 de 22 planes)
+Progress: [████████░░] 82% (18 de 22 planes)
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [████████░░] 77% (17 de 22 planes)
 | Phase 03 P07 | ~35min | 3 tasks | 6 files |
 | Phase 03 P08 | tareas 1-2 no cronometrables (aprobación humana + despliegue en sesión previa); continuación tareas 3-4 ~25min | 4 tasks | 1 files |
 | Phase 03.1 P01 | ~55min | 3 tasks | 6 files |
+| Phase 03.1 P02 | ~20min (continuación; tareas 1-2 en sesión previa) | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,7 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-08]: La confirmacion visual humana sobre produccion (tarea 3 del plan: login, panel, descarga) no se dio por aprobada sin haber ocurrido. Se declaro pendiente explicitamente, con el rollback de un comando disponible — precedente directo: en el plan 03-06 un checkpoint se registro como aprobado sin haberse ejercitado, y no se queria repetir el error.
 - [Phase 03.1]: [Phase 03.1-01] Caso A de commit sobre schema.prisma: el árbol ya estaba limpio (prol-1d había commiteado DC-3 antes de este plan), git add directo sin construir blob.
 - [Phase 03.1]: [Phase 03.1-01] El dev server persistente en :3000 tenía el Prisma Client cacheado en memoria (PrismaClientValidationError sobre documentsMenuLabel); se reinició el proceso para que recogiera el cliente regenerado por db push.
+- [Phase 03.1-02]: Checkpoint ejercitado (no aprobado en blanco): el usuario confirmo las tres respuestas del resume-signal via Q&A estructurada. El panel de consultor, no visto por el usuario, se cerro con HTTP real (login + GET autenticado) en vez de inferirse del codigo compartido.
 
 ### Pending Todos
 
@@ -153,8 +155,8 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T22:47:54.459Z
-Stopped at: Completado 03.1-01 — columnas aditivas de Drive/rótulo, validador de host y edición del rótulo por tenant, ejercitado por HTTP real.
+Last session: 2026-09-02T23:29:57.154Z
+Stopped at: Completado 03.1-02 - menu agrupado por tenant en los tres paneles, checkpoint ejercitado y cerrado con HTTP real para el panel de consultor.
 Resume file: None
 
 **Nota de concurrencia**: al cerrar esta sesión, otra sesión interactiva (`prol-1d`) tiene trabajo de DC-3 sin commitear en este mismo working tree (~18 archivos, incluido `packages/db/prisma/schema.prisma`). No fue tocado por 03-08.
