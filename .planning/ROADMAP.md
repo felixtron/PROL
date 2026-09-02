@@ -21,7 +21,7 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
 
 - [x] **Phase 1: Higiene y operación** - Cierra la deuda del módulo anterior y el agujero de respaldo (completed 2026-09-01)
 - [x] **Phase 2: R2 para el tier confidencial** - Evidencias y plantillas salen del volumen local (completed 2026-09-02)
-- [ ] **Phase 3: Procedimientos nativos** - El documento de texto vive en la plataforma
+- [x] **Phase 3: Procedimientos nativos** - El documento de texto vive en la plataforma (completed 2026-09-02)
 - [ ] **Phase 4: Puente HTML→PDF** - El artefacto que se lleva el auditor
 - [ ] **Phase 5: Registros nativos** - El formato que el cliente llena en pantalla
 - [ ] **Phase 6: Subida directa a R2** - Se levanta el tope de 25 MB
@@ -85,7 +85,17 @@ Plans:
 - [x] 03-05-PLAN.md — Emisión, borrador y publicación (DOC-03, DOC-05, DOC-06)
 - [x] 03-06-PLAN.md — UI del consultor: editor, importador y emisión por empresa (DOC-01, DOC-02, DOC-06)
 - [x] 03-07-PLAN.md — Vista del cliente: identidad, historial y aviso de versión (DOC-04, DOC-05, DOC-07)
-- [ ] 03-08-PLAN.md — Despliegue a producción con el módulo apagado (DOC-01, DOC-02, OPS-05)
+- [x] 03-08-PLAN.md — Despliegue a producción con el módulo apagado (DOC-01, DOC-02, OPS-05)
+
+> **Cierre del 2026-09-02 (03-08).** Producción corre `04135ca` con el esquema del
+> documento nativo aplicado (2 enums, 14 columnas, backfill no-op comprobado) y el
+> arreglo del 401 (`5e2352d`) confirmado en vivo. Un registro heredado del cierre
+> de la fase 2 decía `documents_enabled = false` en los tres tenants; era falso
+> para IBIZA Consultores, que lo tiene en `true` desde antes de esta fase sin que
+> nadie la encendiera — decisión del usuario dejarlo así, corregido en
+> `STATE.md` y `DEPLOY.md` §7d. La confirmación visual humana del checkpoint de
+> producción (login, panel, descarga) queda **pendiente y declarada como tal**,
+> no simulada; el rollback de un comando está listo. Ver `03-08-SUMMARY.md`.
 
 > **Enmienda del 2026-09-02.** Dos decisiones del usuario al planificar la fase:
 > (a) la importación `.docx` (DOC-02) se adelanta desde la fase 7, que queda absorbida
@@ -158,7 +168,7 @@ La 7 ya no existe: su contenido está dentro de la 3.
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
 | 2. R2 para el tier confidencial | 4/4 | Complete    | 2026-09-02 |
-| 3. Procedimientos nativos | 6/8 | In Progress|  |
+| 3. Procedimientos nativos | 8/8 | Complete    | 2026-09-02 |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
 | 6. Subida directa a R2 | 0/TBD | Not started | - |

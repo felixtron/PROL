@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: "Completado 03-07 — vista del cliente aprobada en pantalla; dev server sigue corriendo en :3000 para 03-08"
-last_updated: "2026-09-02T19:40:54.494Z"
-last_activity: "2026-09-02 — 03-07 completado: la vista del cliente (identidad, historial, aviso de versión atrasada) se aprobó en pantalla por el usuario, entrando como Acme Corp y como Constructora Delta (respondió literalmente 'LOS VI BIEN AVANZA'). El cambio de logo en vivo sin re-emitir —la única parte que el usuario no ejerció— se cerró aparte por HTTP con hashes reales antes/durante/después y el logo restaurado. Ver 03-07-SUMMARY.md. DOC-04/05/07 pasan a Complete en REQUIREMENTS.md. Sólo queda 03-08 (despliegue a producción) para cerrar la fase 3."
+stopped_at: "Completado 03-08 — fase 3 desplegada a producción (imagen 04135ca); confirmación visual humana sobre producción sigue pendiente, documentada como tal, no simulada"
+last_updated: "2026-09-02T20:16:43.251Z"
+last_activity: "2026-09-02 — 03-08 completado: producción corre la imagen 04135ca con el esquema del documento nativo aplicado (2 enums, 14 columnas) y el arreglo del 401 confirmado en vivo. Confirmación visual humana sobre producción pendiente y declarada como tal (no simulada). Corregido el registro sobre documents_enabled (ver abajo). Ver 03-08-SUMMARY.md."
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
-  completed_plans: 15
-  percent: 33
+  completed_plans: 16
+  percent: 50
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 3 — Procedimientos nativos
+**Current focus:** Phase 4 — Puente HTML→PDF (por planificar; TBD)
 
 ## Current Position
 
-Phase: 3 of 6 (Procedimientos nativos)
-Plan: 8 of 8 in current phase
-Status: Ready to execute
-Last activity: 2026-09-02 — 03-07 completado: la vista del cliente (identidad, historial, aviso de versión atrasada) se aprobó en pantalla por el usuario, entrando como Acme Corp y como Constructora Delta (respondió literalmente 'LOS VI BIEN AVANZA'). El cambio de logo en vivo sin re-emitir —la única parte que el usuario no ejerció— se cerró aparte por HTTP con hashes reales antes/durante/después y el logo restaurado. Ver 03-07-SUMMARY.md. DOC-04/05/07 pasan a Complete en REQUIREMENTS.md. Sólo queda 03-08 (despliegue a producción) para cerrar la fase 3.
+Phase: 3 of 6 (Procedimientos nativos) — completa, 8/8 planes ejecutados
+Plan: 8 of 8 in current phase — completado
+Status: Fase 3 cerrada. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
+Last activity: 2026-09-02 — 03-08 completado: producción corre la imagen 04135ca con el esquema del documento nativo aplicado (2 enums, 14 columnas) y el arreglo del 401 confirmado en vivo. Confirmación visual humana sobre producción pendiente y declarada como tal (no simulada). Corregido el registro sobre documents_enabled (ver abajo). Ver 03-08-SUMMARY.md.
 
-Progress: [███░░░░░░░] 33% (2 de 6 fases)
+Progress: [█████░░░░░] 50% (3 de 6 fases)
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [███░░░░░░░] 33% (2 de 6 fases)
 | Phase 03 P05 | ~25min | 3 tasks | 3 files |
 | Phase 03 P06 | ~40min | 3 tasks | 6 files |
 | Phase 03 P07 | ~35min | 3 tasks | 6 files |
+| Phase 03 P08 | tareas 1-2 no cronometrables (aprobación humana + despliegue en sesión previa); continuación tareas 3-4 ~25min | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -113,11 +114,17 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-07]: El checkpoint de la tarea 3 sí se ejerció (LOS VI BIEN AVANZA): el usuario entró como Acme y como Constructora Delta y comparó identidad, tabla de control de cambios y aviso de plantilla desactualizada en pantalla. Sólo el cambio de logo en vivo, que el usuario no pidió, quedó sin presenciar.
 - [Phase 03-07]: DOC-04 cierra con evidencia mixta y declarada por partes en REQUIREMENTS.md: render por-empresa (logo/razon social/codigo) aprobado por el usuario en pantalla; el mecanismo de logo-en-vivo-sin-re-emitir se cerro aparte, server-verified por HTTP (login real + tres GET sucesivos a /dashboard/documents/[id]), con md5 del content_html identico en los tres (2148bb78b88c5f17e178401ac625893d) y el logo de Acme restaurado a su valor original al terminar.
 - [Phase 03-07]: El scroll horizontal de la tabla del procedimiento en viewport estrecho no se reclama como verificado: se confirmo que el mecanismo CSS existe (manual-content.css), pero nadie lo vio scrollear de verdad.
+- [Phase 03-08]: Usuario aprobo el despliegue con "Desplegar igual, fijando el SHA" (equivalente a la opcion desplegar-ahora del checkpoint), tras revisar alcance, riesgo, rollback y verificacion. Produccion corre desde el 2026-09-02 la imagen 04135ca, con el esquema del documento nativo aplicado (2 enums, 14 columnas) y el backfill del invariante confirmado como no-op genuino (company_documents en 0 filas antes y despues).
+- [Phase 03-08]: El arreglo del 401 (5e2352d), pendiente desde la fase 2, se confirmo EN VIVO en produccion: GET /files/evidence/<inexistente> sin sesion responde 401 (antes de este despliegue respondia 403). R2-03 queda confirmado tambien en produccion, no solo en local.
+- [Phase 03-08]: documents_enabled NO se toco en ningun tenant. Decision explicita del usuario: dejarlo tal como esta. Ver correccion del registro mas abajo.
+- [Phase 03-08]: La confirmacion visual humana sobre produccion (tarea 3 del plan: login, panel, descarga) no se dio por aprobada sin haber ocurrido. Se declaro pendiente explicitamente, con el rollback de un comando disponible — precedente directo: en el plan 03-06 un checkpoint se registro como aprobado sin haberse ejercitado, y no se queria repetir el error.
 
 ### Pending Todos
 
 - ~~Falta una segunda empresa en el seed.~~ **RESUELTO en el plan 03-01**: `seedDocumentFixture()` crea Constructora Delta (con logo y razón social propios) además de Acme Corp, aplicada al seed y a la base local.
 - **`apps/web/app/surveys/[publicSlug]/`** se sacó del repo (código muerto: importaba `getSurveyByPublicSlug` y `submitSurveyResponse`, que no existen; lo sustituyeron `surveys/answer/` y `surveys/open/`). Copia en el scratchpad de la sesión por si hiciera falta consultarla.
+- **Confirmación visual humana sobre producción, pendiente (03-08).** Falta que el usuario entre a `https://prol.prosuite.pro`, vea el panel normal y descargue algo que ya funcionara antes (certificado o PDF de resultados). No bloqueante: todo lo automatizable ya se confirmó y el rollback de un comando (`podman tag localhost/prol-web:55c020d localhost/prol-web:latest && systemctl restart prol-web-1.service`) está listo si algo apareciera mal.
+- **Sesión concurrente en el mismo working tree.** Al cerrar 03-08, otra sesión interactiva (`prol-1d`) tiene ~18 archivos sin commitear relacionados con DC-3, incluido `packages/db/prisma/schema.prisma`. El plan 03-08 no los tocó. Cualquier operación futura sobre este árbol debe revisar `git status` antes de tocar nada destructivo.
 
 ### Blockers/Concerns
 
@@ -130,18 +137,21 @@ Decisiones recientes que afectan al trabajo actual:
 - **Trampa operativa: `grep` no es seguro para canalizar credenciales por SSH en esta máquina.** Encontrado durante el despliegue de R2 a producción (plan 02-04): un hook local de shell (`rtk`) reescribe la invocación de `grep` incluso en mitad de una tubería, y en vez del `VAR=valor` esperado se agrega la salida formateada del propio `rtk` (líneas `path:línea:contenido`) con el valor real incrustado en una línea que no es `VAR=valor`. Se detectó de inmediato porque el conteo de verificación posterior dio 0 en vez de 4; ningún valor de credencial llegó a salida visible ni a git. **Usar `awk` o una variable de shell capturada para mover valores sensibles**; `grep` sigue siendo seguro para contar después (paso de verificación), no para copiar antes. Documentado en `DEPLOY.md` §7c.
 - ~~Plan 03-07 necesita company_documents poblada (Acme v2 VIGENTE/v1 OBSOLETO, Delta v1 VIGENTE) para demostrar sus propios criterios, pero el checkpoint aprobado del plan 03-06 no dejó esa evidencia en la base: company_documents sigue en 0 filas y P-RFC-4.1-01 sigue en template_version=1. Alguien debe emitir realmente el documento a las dos empresas por la interfaz antes o al inicio de 03-07.~~ **RESUELTO 2026-09-02 (03-06b)**: el usuario confirmó llanamente que aprobó el checkpoint sin ejercitarlo. Se cerró la brecha invocando las cinco server actions reales (`updateManualDocumentBody`, `issueCompanyDocument`, `startCompanyDocumentDraft`, `saveCompanyDocumentDraft`, `publishCompanyDocument`) por HTTP directo contra el servidor de desarrollo — header `Next-Action` + cookie de sesión real de `admin@prol.prosuite.pro`, no un script que imite su forma. Los ocho pasos del recorrido (editar, sin-cambios, editar de nuevo, importar un `.docx` real con tabla de celda combinada, emitir a Acme y Constructora Delta, editar la plantilla sin mover lo ya congelado, borrador único e idempotente con dos guardados, publicar con degradación) pasaron contra la base real, verificados paso a paso, con el invariante de una sola VIGENTE reconfirmado en tres puntos de control. Base actual: `P-RFC-4.1-01.template_version=5`, Acme en `v2 VIGENTE`/`v1 OBSOLETO`, Constructora Delta en `v1 VIGENTE` — datos reales, dejados en la base a propósito para que 03-07 los use. DOC-01/02/03/06 pasan a `Complete` en `REQUIREMENTS.md`. Ver `03-06-SUMMARY.md` §"Cierre de la brecha (03-06b)" para la traza completa con valores reales. Fixture de regresión de la fase 1 reconfirmado intacto (2 companies, 2 evidences con form_snapshot, `prol-db` sin reinicios).
 
-## Estado de producción (2026-09-01)
+## Estado de producción (actualizado 2026-09-02, plan 03-08)
 
-- Desplegado `55c020d` en `panel-prosuite-2` (anterior: `64f7476`). Los alias `panel-prosuite-2` y `propodvps2` resuelven al **mismo host** (`195.26.255.71`, hostname real `propodvps2`). Rollback de imagen: `podman tag localhost/prol-web:64f7476 localhost/prol-web:latest && systemctl restart prol-web-1.service` (no ejecutado, no hizo falta; imágenes `64f7476`, `5323a42`, `7c287e8` siguen tagueadas).
-- **Backend de almacenamiento confidencial: R2 activo.** Las cuatro variables (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`) están en `/etc/containers/env/prol-web-1.env` (600, root), aplicadas por SSH — nunca sus valores. Verificado: 4 variables dentro del contenedor, 0 apariciones de "Configuración de R2 incompleta" en `journalctl`, `/api/health` y `/sign-in` en 200. Rollback de una variable (quitar `R2_BUCKET` y reiniciar) verificado de punta a punta en local (plan 02-03), no ejecutado en producción.
-- El módulo de gestión documental está **en producción y apagado**: `documents_enabled = false` en Academia Digital MX, IBIZA Consultores y Mecanica G3. Con el módulo apagado, el camino de escritura a R2 no se ha ejercitado por la interfaz en producción — sólo en local (planes 02-02/02-03) contra el bucket real.
-- Volumen `prol_prol_private` montado en `/app/private-uploads`, y confirmado **vacío (0 archivos)** justo antes de este despliegue: la receta de migración disco → R2 de `DEPLOY.md` §7c sigue sin ejecutarse contra el host porque es un no-op genuino, no uno asumido.
-- **Desfase repo ↔ producción RESUELTO**: `55c020d` ya incluye el tipado de `formSnapshot` (`b697b3b`, `ab975e2`) que `64f7476` no traía.
-- Esquema: `prisma migrate diff` en preview contra la base real de producción devolvió una migración vacía (0 sentencias) — la fase 2 no toca Prisma, confirmado, no asumido. No se corrió ningún `db push`.
-- Respaldo: cron diario a las 03:00 UTC. Cadencia db+privado diaria, uploads semanal (domingos), poda por cantidad. Estado estable ≈ 12 GB sobre 116 GB libres.
+- **Desplegado `04135ca` en `panel-prosuite-2`** (anteriores, ambas siguen tagueadas para rollback de dos niveles: `55c020d` y `64f7476`). Los alias `panel-prosuite-2` y `propodvps2` resuelven al **mismo host** (`195.26.255.71`, hostname real `propodvps2`). Rollback de imagen: `podman tag localhost/prol-web:55c020d localhost/prol-web:latest && systemctl restart prol-web-1.service` (no ejecutado, no hizo falta).
+- **Esquema del documento nativo APLICADO en producción.** `db push` con el schema que trae la imagen `04135ca`, ejecutado **antes** de mover `latest`: 2 `CREATE TYPE` (`ManualDocumentKind`, `CompanyDocumentStatus`) y 14 columnas (3 en `manual_documents`, 10 nuevas + 4 relajadas a nullable en `company_documents`). Releído directo de la base real de producción, no asumido del preview. Dump previo en `/opt/prol/backup_20260902_1953_pre_fase3.sql` (3.4M). `company_documents` tenía 0 filas antes del push y sigue en 0 después: el backfill del invariante fue un **no-op genuino**, comprobado, no supuesto — cero pares con más de una fila `VIGENTE`.
+- **El arreglo del 401 (`5e2352d`), pendiente desde la fase 2, está EN VIVO en producción**: `GET https://prol.prosuite.pro/files/evidence/<inexistente>` sin sesión responde `401` (antes de este despliegue respondía `403`). R2-03 queda confirmado también en producción, no sólo en local (ver `REQUIREMENTS.md`).
+- **`documents_enabled` — REGISTRO CORREGIDO.** El párrafo anterior de esta sección decía "false en Academia Digital MX, IBIZA Consultores y Mecanica G3", heredado del cierre de la fase 2. Es **falso para IBIZA** y lo era ya antes de la fase 3: releído directo de la base de producción el 2026-09-02, es `academia-digital=false`, `mecanica-g3=false`, **`ibiza-online=true`**. Nadie de la fase 3 encendió esa bandera; el usuario decidió explícitamente dejarla así (IBIZA es su propia consultoría, sin manuales creados: `company_documents` en 0 filas en los tres tenants, así que hoy no hay ningún contenido expuesto). Consecuencia asumida: un administrador de IBIZA puede abrir "Manuales" en producción y, si construyera uno, ejercitar de verdad el editor de la fase 3 — para Academia Digital MX y Mecanica G3 el módulo sigue exactamente igual de apagado que antes. Ver `DEPLOY.md` §7d y `03-08-SUMMARY.md`.
+- **Backend de almacenamiento confidencial: R2 sigue activo**, sin cambios en este despliegue. Las cuatro variables (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`) siguen en `/etc/containers/env/prol-web-1.env` (600, root). Log de arranque tras el reinicio del 2026-09-02 sin "Configuración de R2 incompleta".
+- Volumen `prol_prol_private` sigue montado en `/app/private-uploads`; su estado de ocupación no se re-verificó en este plan (no era su alcance).
+- **Confirmación visual humana sobre producción: PENDIENTE.** Lo automatizable (servicio activo, `/api/health` y `/sign-in` en 200, esquema y enums correctos, invariante sano, 401 en vivo) está confirmado por este agente contra la base y los endpoints reales. Falta que el propio usuario entre al panel, lo vea normal y descargue un certificado o PDF de resultados. No se declara aprobado sin haber ocurrido — precedente: el plan 03-06 registró un checkpoint como aprobado sin ejercitarlo, y el error sólo se descubrió después.
+- Respaldo: cron diario a las 03:00 UTC, sin cambios en este plan. Cadencia db+privado diaria, uploads semanal (domingos), poda por cantidad.
 
 ## Session Continuity
 
-Last session: 2026-09-02T19:37:10.392Z
-Stopped at: Completado 03-07 — vista del cliente aprobada en pantalla; dev server sigue corriendo en :3000 para 03-08
+Last session: 2026-09-02T22:15:00.000Z
+Stopped at: Completado 03-08 — fase 3 desplegada a producción (imagen 04135ca); confirmación visual humana sobre producción sigue pendiente, no simulada. Fase 3 (Procedimientos nativos) queda con sus 8 planes ejecutados. Fase 4 (Puente HTML→PDF) sin planificar (plans: TBD en ROADMAP.md).
 Resume file: None
+
+**Nota de concurrencia**: al cerrar esta sesión, otra sesión interactiva (`prol-1d`) tiene trabajo de DC-3 sin commitear en este mismo working tree (~18 archivos, incluido `packages/db/prisma/schema.prisma`). No fue tocado por 03-08.
