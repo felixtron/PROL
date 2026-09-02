@@ -4,8 +4,21 @@ Hallazgos fuera del alcance del plan que los descubrió. No se corrigen aquí:
 scope boundary del executor (sólo se auto-arregla lo causado por la tarea
 actual; lo demás se registra y se deja para quien decida priorizarlo).
 
-## [Plan 02-02] `requireUser()` ya no lanza `"Unauthorized"` — las rutas que
+## ✅ RESUELTO en `5e2352d` — [Plan 02-02] `requireUser()` ya no lanza `"Unauthorized"` — las rutas que
 comparan ese string nunca devuelven 401 a una petición sin sesión
+
+> **Cerrado el 2026-09-01, fuera del alcance de los cuatro planes.** El verificador
+> de la fase lo confirmó de forma independiente y dejó el criterio 3 en *parcial*;
+> el usuario decidió arreglarlo en vez de aceptar la salvedad. La solución no fue
+> reescribir la comparación de cadenas —que volvería a romperse la próxima vez que
+> alguien traduzca el mensaje— sino darle al error una identidad propia:
+> `UnauthenticatedError` en `apps/web/lib/auth.ts`, y `instanceof` en las ocho
+> rutas. `/api/upload/document-template` además separaba mal autenticación de
+> autorización (las dos daban 403) y ahora las distingue.
+>
+> Verificado con las tres sesiones sobre las ocho rutas: sin sesión **401**, otra
+> empresa **403**, empresa dueña **200**. El resto de este registro se conserva
+> como está por su análisis de causa raíz.
 
 **Encontrado durante:** Tarea 3 del plan 02-02, al demostrar el criterio 3
 ("sin sesión → 401"). La petición sin sesión a `/files/evidence/[id]` devolvió
