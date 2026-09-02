@@ -60,7 +60,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md — Cliente R2 (`lib/r2.ts`), fail-fast de arranque y variables de entorno (R2-01, R2-04)
 - [x] 02-02-PLAN.md — Backend conmutable en `document-storage.ts` y prefijo del bucket compartido (R2-01, R2-03)
-- [ ] 02-03-PLAN.md — Migración disco → R2, criterio de equivalencia y rollback (R2-02, R2-04)
+- [x] 02-03-PLAN.md — Migración disco → R2, criterio de equivalencia y rollback (R2-02, R2-04)
 - [ ] 02-04-PLAN.md — Despliegue a producción, con checkpoint de aprobación (R2-01, R2-04)
 
 ### Phase 3: Procedimientos nativos
@@ -141,7 +141,7 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
-| 2. R2 para el tier confidencial | 2/4 | In Progress | - |
+| 2. R2 para el tier confidencial | 3/4 | In Progress | - |
 | 3. Procedimientos nativos | 0/TBD | Not started | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |

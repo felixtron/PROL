@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 02-02-PLAN.md (2 de 4 planes de la fase 2)
-last_updated: "2026-09-02T02:30:17.479Z"
-last_activity: "2026-09-02 — Plan 02-02 completado: document-storage.ts reescrito con STORAGE_BACKEND conmutable (r2/disco) y sharedBucketKey() para el prefijo prol/. Dos evidencias reales subidas y descargadas contra el bucket ibizadata con R2 activo (bytes idénticos), los tres estados de configuración demostrados, y la autorización de /files/evidence confirmada sin cambios."
+stopped_at: Completado 02-03-PLAN.md (3 de 4 planes de la fase 2)
+last_updated: "2026-09-02T02:49:16.213Z"
+last_activity: "2026-09-02 — Plan 02-03 completado: script de migración disco → R2 (apps/web/scripts/migrate-private-to-r2.mjs) idempotente, sin borrado y sin tocar la base, y sección 7c de DEPLOY.md. Criterio 2 demostrado: dos evidencias fabricadas con backend disco se descargan igual tras migrar y con el disco apartado (bytes sólo del bucket), DB sin tocar. Criterio 4 demostrado: quitar R2_BUCKET y reiniciar devuelve la app al disco (par 404/200), y la ida y vuelta R2→disco→R2 no requirió desplegar código. Matriz de cinco estados de configuración verificada, incluida la parcial (arranca, lee de disco, rechaza escritura con 503)."
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 14
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 2 of 7 (R2 para el tier confidencial)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 02-02 completado: document-storage.ts reescrito con STORAGE_BACKEND conmutable (r2/disco) y sharedBucketKey() para el prefijo prol/. Dos evidencias reales subidas y descargadas contra el bucket ibizadata con R2 activo (bytes idénticos), los tres estados de configuración demostrados (disco, R2, y R2_BUCKET con credencial ausente → 503 sin degradar a disco), y la autorización de /files/evidence confirmada sin cambios (403 otra empresa, 200 empresa dueña y revisor). Hallazgo fuera de alcance registrado en deferred-items.md: requireUser() no lanza "Unauthorized" desde d991c31, así que "sin sesión" devuelve 403 en vez de 401 en ocho rutas — pre-existente, no lo causó este plan.
+Last activity: 2026-09-02 — Plan 02-03 completado: script de migración disco → R2 (apps/web/scripts/migrate-private-to-r2.mjs) idempotente, sin borrado y sin tocar la base, y sección 7c de DEPLOY.md. Criterio 2 demostrado: dos evidencias fabricadas con backend disco se descargan igual tras migrar y con el disco apartado (bytes sólo del bucket), DB sin tocar. Criterio 4 demostrado: quitar R2_BUCKET y reiniciar devuelve la app al disco (par 404/200), y la ida y vuelta R2→disco→R2 no requirió desplegar código. Matriz de cinco estados de configuración verificada, incluida la parcial (arranca, lee de disco, rechaza escritura con 503).
 
 Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 
@@ -54,6 +54,7 @@ Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 | Phase 01 P01 | 20min | 3 tasks | 4 files |
 | Phase 02 P01 | 25min | 3 tasks | 9 files |
 | Phase 02 P02 | 45min | 3 tasks | 1 files |
+| Phase 02 P03 | 35min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,10 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 02-02]: sharedBucketKey() aplica el prefijo prol/ solo dentro de document-storage.ts; fileKey en la base sigue siendo <subdir>/<uuid>.<ext>, sin prefijo.
 - [Phase 02-02]: storePrivateFile rechaza con 503 (sin nombrar variables en la respuesta) cuando R2_BUCKET esta presente y falta otra credencial; el detalle va solo al log.
 - [Phase 02-02]: Hallazgo fuera de alcance: requireUser() ya no lanza 'Unauthorized' desde d991c31; 8 rutas (incluidas /files/*) devuelven 403 en vez de 401 sin sesion. Pre-existente, ajeno a esta fase, registrado en deferred-items.md, no corregido.
+- [Phase 02-03]: Migracion disco -> R2 escrita como script .mjs standalone (no importa document-storage.ts), duplicando a proposito el prefijo prol/ y la config de AwsClient; idempotente via HEAD previo, sin ninguna operacion de borrado.
+- [Phase 02-03]: Demostrado en local (produccion no tiene datos): una fileKey subida con backend disco se descarga igual tras migrar, con el disco apartado -- los bytes solo pueden venir del bucket -- y la base no cambia ni una fila.
+- [Phase 02-03]: Demostrado el rollback completo R2 -> disco -> R2 solo cambiando R2_BUCKET y reiniciando el proceso, sin desplegar codigo; par 404/200 confirma el origen de los bytes en cada estado.
+- [Phase 02-03]: eslint.config.js de apps/web gana un override para scripts/**/*.mjs (global process) para que el script de migracion no rompa la linea base de lint (81 warnings) via no-undef.
 
 ### Pending Todos
 
@@ -100,6 +105,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T02:30:17.477Z
-Stopped at: Completado 02-02-PLAN.md (2 de 4 planes de la fase 2)
+Last session: 2026-09-02T02:49:16.209Z
+Stopped at: Completado 02-03-PLAN.md (3 de 4 planes de la fase 2)
 Resume file: None
