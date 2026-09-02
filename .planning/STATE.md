@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: executing
+status: planning
 stopped_at: Completado 02-04-PLAN.md (4 de 4 planes de la fase 2) — Fase 2 completa
-last_updated: "2026-09-02T03:35:00.000Z"
-last_activity: "2026-09-02 — Plan 02-04 completado: usuario aprobó el despliegue, imagen 55c020d desplegada a producción por la ruta canónica de quadlets con las cuatro variables R2 aplicadas por SSH, verificación humana de que el panel y las descargas públicas siguen sanos, y DEPLOY.md §7c actualizada al estado real (APLICADO, migración en el host sigue como no-op por volumen vacío, módulo documental apagado). Fase 2 completa: R2-01 y R2-04 confirmados también en producción, no sólo en local."
+last_updated: "2026-09-02T04:25:16.505Z"
+last_activity: "2026-09-02 — Fase 2 completa y desplegada a producción. Plan 02-04: el usuario aprobó el despliegue con alcance/riesgo/rollback/verificación por delante, imagen 55c020d desplegada por SSH (ruta canónica de quadlets) con las cuatro variables R2 aplicadas al env del contenedor, confirmación humana de que el panel y las descargas de PDF siguen normales, y DEPLOY.md §7c reescrita con el estado real (APLICADO, migración en el host sigue sin ejecutarse por volumen vacío, módulo documental apagado por diseño)."
 progress:
   total_phases: 7
   completed_phases: 2
