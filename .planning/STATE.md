@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 03-04-PLAN.md (4 de 8 planes de la fase 3)
-last_updated: "2026-09-02T17:03:19.420Z"
-last_activity: "2026-09-02 — Plan 03-04 completado: DocumentIdentity (puro, patrón renderCertificate) con logo en vivo y razón social DC-3, resuelta por dos caminos (emisión existente / vista previa de plantilla) que no pueden divergir. updateManualDocumentBody sanea antes de comparar y escribir, sube templateVersion sólo en cambio real, deja el primer cuerpo en v1 y convierte FILE en PROCEDIMIENTO al recibir cuerpo — verificado con seis pasos contra la base real, incluido el paso del <script> descartado. getManualDocumentForEdit trae documento+manual+secciones+estado de emisión de cada empresa con una sola consulta. createManualDocument acepta kind y cierra REGISTRO. Sin UI todavía: los planes 03-05/06/07 consumen estos contratos."
+stopped_at: Completado 03-05-PLAN.md
+last_updated: "2026-09-02T17:22:27.947Z"
+last_activity: "2026-09-02 — Plan 03-05 completado: issueCompanyDocument, startCompanyDocumentDraft, saveCompanyDocumentDraft y publishCompanyDocument sobre un único helper de autorización; getCompanyDocumentForClient/getCompanyDocumentForEdit/listCompanyDocumentsForClient generan el historial de control de cambios (DOC-05) en tiempo de render. Verificado con los diez pasos del ciclo completo contra la base real: emitir congela el cuerpo, editar la plantilla no mueve lo ya emitido, guardar el borrador dos veces no versiona, publicar degrada y promueve, y una v3 BORRADOR abandonada convive con una v4 VIGENTE sin colarse en la consulta del cliente. Sin UI todavía: el plan 03-06 cablea botones y ejercita las acciones por la interfaz de verdad."
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 3 of 6 (Procedimientos nativos)
-Plan: 5 of 8 in current phase
+Plan: 6 of 8 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 03-04 completado: DocumentIdentity (puro, patrón renderCertificate) con logo en vivo y razón social DC-3, resuelta por dos caminos (emisión existente / vista previa de plantilla) que no pueden divergir. updateManualDocumentBody sanea antes de comparar y escribir, sube templateVersion sólo en cambio real, deja el primer cuerpo en v1 y convierte FILE en PROCEDIMIENTO al recibir cuerpo — verificado con seis pasos contra la base real, incluido el paso del <script> descartado. getManualDocumentForEdit trae documento+manual+secciones+estado de emisión de cada empresa con una sola consulta. createManualDocument acepta kind y cierra REGISTRO. Sin UI todavía: los planes 03-05/06/07 consumen estos contratos.
+Last activity: 2026-09-02 — Plan 03-05 completado: issueCompanyDocument, startCompanyDocumentDraft, saveCompanyDocumentDraft y publishCompanyDocument sobre un único helper de autorización; getCompanyDocumentForClient/getCompanyDocumentForEdit/listCompanyDocumentsForClient generan el historial de control de cambios (DOC-05) en tiempo de render. Verificado con los diez pasos del ciclo completo contra la base real: emitir congela el cuerpo, editar la plantilla no mueve lo ya emitido, guardar el borrador dos veces no versiona, publicar degrada y promueve, y una v3 BORRADOR abandonada convive con una v4 VIGENTE sin colarse en la consulta del cliente. Sin UI todavía: el plan 03-06 cablea botones y ejercita las acciones por la interfaz de verdad.
 
 Progress: [███░░░░░░░] 33% (2 de 6 fases)
 
@@ -60,6 +60,7 @@ Progress: [███░░░░░░░] 33% (2 de 6 fases)
 | Phase 03 P02 | ~20min | 3 tasks | 3 files |
 | Phase 03 P03 | ~15min | 2 tasks | 2 files |
 | Phase 03 P04 | ~20min | 3 tasks | 5 files |
+| Phase 03 P05 | ~25min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-04]: isTemplateOutdated se extrajo como función exportada de document-identity.ts (no una expresión booleana repetida) para que el aviso de plantilla desactualizada al consultor (getManualDocumentForEdit) y al cliente (DocumentIdentity) no puedan divergir.
 - [Phase 03-04]: CompanyDocument.current.updatedAt en getManualDocumentForEdit se resuelve como CompanyDocument.createdAt: el modelo no tiene columna updatedAt propia y añadirla es un cambio de esquema fuera de alcance de este plan; el bucle BORRADOR real (edición en sitio) es del plan 03-05.
 - [Phase 03-04]: updateManualDocumentBody verificado con seis pasos contra la base real (script desechable que reutiliza el sanitizeManualHtml real por ruta relativa, no una copia): mismo cuerpo y cuerpo+<script> descartado dejan templateVersion quieta, dos cambios reales la suben a 2 y 3, el primer cuerpo de un FILE la deja en 1 y convierte el kind.
+- [Phase 03-05]: startCompanyDocumentDraft exige row.status === VIGENTE antes de copiar (mas alla del texto literal del plan): evita abrir un borrador copiando de una fila OBSOLETO o de otro BORRADOR.
+- [Phase 03-05]: ISSUED_AT_FORMAT se exporto desde document-identity.ts para que el historial de DOC-05 use el mismo formateador de fecha que DocumentIdentity, sin redefinir uno nuevo.
+- [Phase 03-05]: getCompanyDocumentForClient y getCompanyDocumentForEdit comparten resolveCompanyDocumentAssignment y buildHistoryEntry; la unica diferencia real es el filtro de estatus del historial (sin BORRADOR para el cliente) y la puerta de autorizacion.
 
 ### Pending Todos
 
@@ -128,6 +132,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T17:03:19.420Z
-Stopped at: Completado 03-04-PLAN.md (4 de 8 planes de la fase 3)
+Last session: 2026-09-02T17:22:27.944Z
+Stopped at: Completado 03-05-PLAN.md
 Resume file: None
