@@ -38,12 +38,19 @@ export async function GET(
       : user.companyId === doc.companyId;
     if (!allowed) return new NextResponse("No autorizado", { status: 403 });
 
+    // Una versión nativa no tiene archivo: su cuerpo vive en `contentHtml` y se
+    // lee por la vista del documento, no por aquí. 404 y no 500 — pedir el
+    // archivo de algo que no lo tiene es un "no existe", no un fallo del
+    // servidor. Mismo guard que /files/evidence/[id], donde `fileKey` es nullable
+    // desde el diseño original.
+    if (!doc.fileKey) return new NextResponse("No encontrado", { status: 404 });
+
     const buffer = await readPrivateFile(doc.fileKey);
     if (!buffer) return new NextResponse("No encontrado", { status: 404 });
 
     return privateFileResponse(buffer, {
-      fileName: doc.fileName,
-      mimeType: doc.mimeType,
+      fileName: doc.fileName ?? "documento",
+      mimeType: doc.mimeType ?? "application/octet-stream",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error";

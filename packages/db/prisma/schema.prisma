@@ -379,6 +379,26 @@ enum ManualItemKind {
   SELF_CHECK
 }
 
+/// Arquetipo del documento. Ternario y no `FILE|NATIVE` + `formSchema != null`
+/// porque con dos valores cada lector tendría que preguntar después cuál de los
+/// dos arquetipos nativos es: un estado ternario codificado como booleano más
+/// campo opcional. La UX ramifica en tres y el precedente del repo es enum
+/// explícito (`ManualItemKind`, `EvaluationKind`).
+enum ManualDocumentKind {
+  FILE
+  PROCEDIMIENTO
+  REGISTRO
+}
+
+/// Ciclo de vida de la versión de una empresa. Antes de esta fase "vigente" y
+/// "versión más alta" eran sinónimos exactos; con `BORRADOR` en juego dejan de
+/// serlo, y por eso el estatus pasa a ser explícito (OPS-05).
+enum CompanyDocumentStatus {
+  BORRADOR
+  VIGENTE
+  OBSOLETO
+}
+
 /// Cómo se satisface un requisito de evidencia.
 ///   FILE            — se sube un archivo (Word, Excel, PDF, imagen, audio, video).
 ///   RISK_MATRIX     — se llena la matriz de riesgos y oportunidades en la plataforma.
@@ -622,6 +642,7 @@ model User {
   manualAssignmentsConsulted  ManualAssignment[]           @relation("ManualAssignmentConsultant")
   manualItemChecks            ManualItemCheck[]            @relation("ManualItemCheckedBy")
   companyDocumentsUploaded    CompanyDocument[]            @relation("CompanyDocumentUploader")
+  companyDocumentsPublished   CompanyDocument[]            @relation("CompanyDocumentPublisher")
   evidencesUploaded           Evidence[]                   @relation("EvidenceUploader")
   evidencesReviewed           Evidence[]                   @relation("EvidenceReviewer")
   evidenceDeletionsRequested  Evidence[]                   @relation("EvidenceDeletionRequester")
@@ -2508,6 +2529,20 @@ model ManualDocument {
   uploadedById String? @map("uploaded_by")
   uploadedBy   User?   @relation("ManualDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
 
+  kind ManualDocumentKind @default(FILE)
+
+  /// Cuerpo del procedimiento en HTML **ya saneado** por `sanitizeManualHtml`.
+  /// Nulo mientras el documento sea `FILE`. Sanear al escribir y no al leer es
+  /// el invariante que hace seguro el único `dangerouslySetInnerHTML` del
+  /// proyecto (`components/manual-content.tsx`).
+  contentHtml String? @db.Text @map("content_html")
+
+  /// Sube SÓLO cuando `contentHtml` cambia de verdad, no en cada guardado. Es el
+  /// número que el cliente ve ("basada en plantilla v3") y el que dispara la
+  /// insignia de DOC-07: si subiera con cada pulsación de guardar, el aviso de
+  /// "hay una versión más reciente" se dispararía por cambios que no existen.
+  templateVersion Int @default(1) @map("template_version")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -2666,10 +2701,38 @@ model CompanyDocument {
   /// Código documental propio de la empresa cuando difiere del base.
   codeOverride String? @map("code_override")
 
-  fileKey  String @map("file_key")
-  fileName String @map("file_name")
-  fileSize Int    @map("file_size")
-  mimeType String @map("mime_type")
+  /// Denormalizado desde `ManualDocument`, igual que `Evidence.kind` ya lo está.
+  /// Un documento puede convertirse de `FILE` a `PROCEDIMIENTO` tras importar el
+  /// Word, y la v1 que se subió con `fileKey` no debe intentar renderizarse como
+  /// nativa: cada fila recuerda qué era cuando se emitió.
+  kind ManualDocumentKind @default(FILE)
+
+  /// Snapshot del cuerpo en el momento de emitir. Editar la plantilla después no
+  /// toca esto: es lo que hace que DOC-03 sea cierto.
+  contentHtml String? @db.Text @map("content_html")
+
+  /// Nombre propio de la empresa cuando difiere del base. Simétrico al
+  /// `codeOverride` que ya existía.
+  nameOverride String? @map("name_override")
+
+  status CompanyDocumentStatus @default(VIGENTE)
+
+  /// `ManualDocument.templateVersion` del que salió este snapshot. Comparado con
+  /// el actual de la plantilla produce la insignia de DOC-07.
+  sourceTemplateVersion Int? @map("source_template_version")
+
+  publishedAt   DateTime? @map("published_at")
+  publishedById String?   @map("published_by")
+  publishedBy   User?     @relation("CompanyDocumentPublisher", fields: [publishedById], references: [id], onDelete: SetNull)
+
+  /// Nulos cuando la versión es nativa: el cuerpo vive en `contentHtml` y no hay
+  /// archivo que descargar. Mismo diseño que `Evidence`, donde estos cuatro
+  /// campos ya son nulos desde el principio para las capturas hechas en la
+  /// plataforma (`schema.prisma`, modelo `Evidence`).
+  fileKey  String? @map("file_key")
+  fileName String? @map("file_name")
+  fileSize Int?    @map("file_size")
+  mimeType String? @map("mime_type")
 
   notes String? @db.Text
 
