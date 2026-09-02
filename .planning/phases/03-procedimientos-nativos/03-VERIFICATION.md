@@ -1,7 +1,7 @@
 ---
 phase: 03-procedimientos-nativos
 verified: 2026-09-02T20:24:20Z
-status: human_needed
+status: passed
 score: 6/7 success criteria fully verified against code + live database; 1/7 verified for its code/infra content but with an open human-verification item and a disclosed factual caveat
 human_verification:
   - test: "Pase visual humano sobre PRODUCCIÓN (https://prol.prosuite.pro): iniciar sesión, ver que el panel se ve y usa con normalidad, descargar un certificado o PDF de resultados."
@@ -135,3 +135,29 @@ No se encontró ninguna repetición del incidente de integridad de 03-06 (checkp
 
 *Verified: 2026-09-02T20:24:20Z*
 *Verifier: Claude (gsd-verifier)*
+
+
+## Resolución de los dos puntos humanos — 2026-09-02
+
+Ambos cerrados por el usuario tras leer el informe. Se registran aquí porque el
+`status` pasa a `passed` por esta resolución y no por evidencia nueva de código.
+
+**1. Pasada visual por producción — CONFIRMADA.** El usuario entró a
+`prol.prosuite.pro`, el panel carga con normalidad y la descarga de un archivo que
+ya funcionaba antes sigue funcionando. Era el único punto que ninguna comprobación
+automática podía sustituir.
+
+**2. `documents_enabled = true` en `ibiza-online` — RATIFICADO, se queda encendido.**
+La pregunta se hizo dos veces a propósito, y la segunda no era la misma que la
+primera: antes del despliegue el flag encendido no significaba nada porque no había
+editor detrás; ahora sí lo hay. Con eso sobre la mesa, el usuario confirma que es la
+intención — IBIZA es su propia consultora y estrenar allí el editor de procedimientos
+es el uso previsto, no un descuido.
+
+**Cómo queda el criterio 7, literalmente.** Su redacción dice "con el módulo apagado".
+Eso es cierto para Academia Digital MX y Mecanica G3, y **falso para IBIZA
+Consultores por decisión explícita**. Los tres tenants tienen 0 manuales, así que hoy
+no hay contenido expuesto; lo que existe es la posibilidad de que un admin de IBIZA
+estrene el editor sin aviso previo. Se deja escrito así, con el matiz, en vez de
+declarar el criterio cumplido a secas: el error de origen fue que `STATE.md` afirmaba
+desde el cierre de la fase 2 que los tres estaban apagados, y no era verdad.

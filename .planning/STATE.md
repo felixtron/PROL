@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: executing
-stopped_at: "Completado 03-08 — fase 3 desplegada a producción (imagen 04135ca); confirmación visual humana sobre producción sigue pendiente, documentada como tal, no simulada"
-last_updated: "2026-09-02T20:16:43.251Z"
+status: "Fase 3 cerrada. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
+stopped_at: "Completado 03-08 — fase 3 desplegada a producción (imagen 04135ca); confirmación visual humana sobre producción sigue pendiente, no simulada. Fase 3 (Procedimientos nativos) queda con sus 8 planes ejecutados. Fase 4 (Puente HTML→PDF) sin planificar (plans: TBD en ROADMAP.md)."
+last_updated: "2026-09-02T20:30:33.821Z"
 last_activity: "2026-09-02 — 03-08 completado: producción corre la imagen 04135ca con el esquema del documento nativo aplicado (2 enums, 14 columnas) y el arreglo del 401 confirmado en vivo. Confirmación visual humana sobre producción pendiente y declarada como tal (no simulada). Corregido el registro sobre documents_enabled (ver abajo). Ver 03-08-SUMMARY.md."
 progress:
   total_phases: 6
