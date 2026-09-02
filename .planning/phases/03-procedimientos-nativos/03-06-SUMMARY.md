@@ -41,8 +41,10 @@ key-decisions:
   - "Publicar se cableó dentro de document-body-editor.tsx junto a 'Guardar borrador', no en un archivo aparte bajo companies/[assignmentId]/ como sugería la lectura literal del plan — puesto a la vista del usuario en el checkpoint y no objetado."
   - "La evidencia de base de datos pedida para cerrar la tarea 3 no aparece: se documenta tal cual, sin reescribir el resultado esperado (ver 'Hallazgo central de esta ejecución')."
   - "DOC-01, DOC-02, DOC-03 y DOC-06 NO se marcan Complete en REQUIREMENTS.md pese a la instrucción de cierre recibida, porque la evidencia de base que se pidió capturar contradice la premisa de esa instrucción."
+  - "[03-06b] El usuario confirmó llanamente que aprobó el checkpoint sin ejercitarlo. La brecha se cerró invocando las cinco server actions reales por HTTP directo (Next-Action + cookie de sesión real), no repitiendo el checkpoint humano ni fabricando filas con un script que imite su forma — ver 'Cierre de la brecha (03-06b)'."
+  - "[03-06b] DOC-01, DOC-02, DOC-03 y DOC-06 pasan a Complete en REQUIREMENTS.md: los ocho pasos del recorrido (editar, sin-cambios, editar de nuevo, importar .docx con tabla combinada, emitir a dos empresas, editar plantilla sin mover lo congelado, borrador único e idempotente, publicar con degradación) se verificaron contra la base real, con el invariante de una sola VIGENTE reverificado en tres puntos de control."
 
-requirements-completed: []
+requirements-completed: [DOC-01, DOC-02, DOC-03, DOC-06]
 
 # Metrics
 duration: ~40min (incluye tareas 1-2 y el cierre de la tarea 3; la espera de aprobación humana no es cronometrable)
@@ -133,6 +135,93 @@ Con `company_documents` en 0 filas, el invariante se sostiene trivialmente (no h
 - `companies`: **2** filas (Acme Corp, Constructora Delta) — correcto.
 - `evidences` con `form_snapshot` no nulo: **2** filas — correcto, banco de pruebas de la fase 1 sin tocar.
 
+## Cierre de la brecha (03-06b): recorrido real por HTTP contra las server actions
+
+**Contexto.** El checkpoint de la tarea 3 se aprobó ("aprobado") sin haberse ejercitado — el propio usuario lo confirmó llanamente después de que este SUMMARY documentara que la base no mostraba rastro alguno del recorrido. Esta sección registra la sesión de continuación (03-06b) que cierra esa brecha: **no** repitiendo el checkpoint humano (el usuario no clicó nada), sino invocando las cinco server actions reales — las mismas que invocaría el navegador — directamente por HTTP, con sesión real, sobre el servidor de desarrollo ya corriendo. Es una verificación de extremo a extremo distinta a un recorrido por navegador, y esa distinción se deja explícita aquí porque importará a quien lea esto después.
+
+**Método.** Las cinco acciones (`updateManualDocumentBody`, `issueCompanyDocument`, `startCompanyDocumentDraft`, `saveCompanyDocumentDraft`, `publishCompanyDocument`, todas en `lib/actions/manual-document.ts`) se invocaron con `POST` a la URL de la página que las registra, cabecera `Next-Action: <id>`, `Content-Type: text/plain;charset=UTF-8`, `Origin: http://localhost:3000`, cuerpo = array JSON de argumentos, y la cookie `better-auth.session_token` obtenida de `POST /api/auth/sign-in/email` con `admin@prol.prosuite.pro` (ADMIN, tenant Academia Digital MX, `documentsEnabled=true`). Los IDs de acción del groundwork inicial (leídos de `.next/server/server-reference-manifest.json`) dieron **404 "Server action not found"** (`x-nextjs-action-not-found: 1`) contra el proceso `next dev` real — ese manifest no correspondía al proceso vivo (Turbopack, dev). Los IDs correctos se encontraron en el manifest específico de la ruta, `.next/dev/server/app/tenant-admin/manuals/[id]/documents/[documentId]/page/server-reference-manifest.json`, que sí refleja el servidor en ejecución. Se documenta como hallazgo operativo para quien repita esto: el manifest global de `.next/server/` no es fiable en modo dev con Turbopack; hay que leer el manifest por ruta.
+
+**Recorrido paso a paso (valores reales, no esperados):**
+
+1. **Guardar (primera llamada real).** Se reconstruyó el argumento a partir de una lectura por `psql -Atc` del `content_html` ya guardado; esa lectura añadió un salto de línea final que el valor en base no tenía (artefacto de cómo se capturó el dato, no del sanitizador). Resultado real: `{"success":true,"changed":true,"templateVersion":2,"kind":"PROCEDIMIENTO"}`. No fue la edición deliberada buscada, pero es una invocación real y se documenta tal cual — ver "Hallazgo metodológico" abajo.
+2. **Reenviar el mismo contenido** (ahora sí, capturado literal tras el paso 1): `{"success":true,"changed":false,"templateVersion":2,"kind":"PROCEDIMIENTO"}`. `template_version` en la base: **2**, sin moverse. Política de "sin cambios" confirmada contra la acción real.
+3. **Edición deliberada** (un párrafo real añadido bajo "Alcance"): `{"success":true,"changed":true,"templateVersion":3,"kind":"PROCEDIMIENTO"}`. Verificado: `content_html LIKE '%Verificación 03-06b%'` → `t`.
+4. **Importar el `.docx` de prueba** vía `POST /api/upload/document-body` (multipart real, archivo genuino en el scratchpad). La respuesta trajo una tabla con una celda combinada real (`colspan="2"`, fila "1 — Emisión inicial (celda combinada)"). Ese HTML se guardó con `updateManualDocumentBody`: `{"success":true,"changed":true,"templateVersion":4,"kind":"PROCEDIMIENTO"}`. Confirmado por consulta directa: `content_html` en `manual_documents` contiene la tabla completa con `colspan="2"`.
+5. **Emitir a las dos empresas** (`issueCompanyDocument`, una llamada real por empresa): Acme → `{"success":true,"companyDocumentId":"cmtkf6glu0002rj61d2chg6g3","version":1}`; Constructora Delta → `{"success":true,"companyDocumentId":"cmtkf6gq40005rj61ri9wx2k9","version":1}`. Consulta real:
+   ```
+   acme-corp           | v1 | VIGENTE | sourceTemplateVersion=4 | matches_current_template=t
+   constructora-delta  | v1 | VIGENTE | sourceTemplateVersion=4 | matches_current_template=t
+   ```
+6. **Editar la plantilla otra vez** (párrafo real añadido): `{"success":true,"changed":true,"templateVersion":5,"kind":"PROCEDIMIENTO"}`. Releídas las dos filas de empresa:
+   ```
+   acme-corp           | v1 | VIGENTE | sourceTemplateVersion=4 | matches_current_template=f | md5=fe1dd6d29b4a0c7140c96e70cc6f961e
+   constructora-delta  | v1 | VIGENTE | sourceTemplateVersion=4 | matches_current_template=f | md5=fe1dd6d29b4a0c7140c96e70cc6f961e
+   ```
+   `matches_current_template=f` es lo correcto (la plantilla ya cambió); los dos `md5` son idénticos entre sí **y** a los del paso 5 — ninguna de las dos filas cambió un byte tras la edición. **DOC-03 verificado contra la acción real, no contra una réplica de su forma.**
+7. **Bucle de borrador en Acme.** `startCompanyDocumentDraft` sobre la fila `v1 VIGENTE` de Acme → `{"success":true,"draftId":"cmtkf762g0008rj61t0gwreno","version":2}`. Repetida la misma llamada: **misma respuesta exacta** (idempotente, no crea `v3`). `saveCompanyDocumentDraft` invocada dos veces con contenido distinto cada vez → `{"success":true}` ambas veces. Consulta tras las dos:
+   ```
+   cmtkf6glu0002rj61d2chg6g3 | v1 | VIGENTE
+   cmtkf762g0008rj61t0gwreno | v2 | BORRADOR
+   ```
+   Sigue existiendo **una sola** fila `BORRADOR`, y su `content_html` contiene tanto "guardado #1" como "guardado #2" — las dos ediciones se acumularon en sitio, sin crear versión nueva.
+8. **Publicar.** `publishCompanyDocument` sobre el borrador de Acme → `{"success":true,"version":2}`. Estado final real de `company_documents`:
+   ```
+   acme-corp           | cmtkf6glu0002rj61d2chg6g3 | v1 | OBSOLETO | sourceTemplateVersion=4
+   acme-corp           | cmtkf762g0008rj61t0gwreno | v2 | VIGENTE  | sourceTemplateVersion=4
+   constructora-delta  | cmtkf6gq40005rj61ri9wx2k9 | v1 | VIGENTE  | sourceTemplateVersion=4
+   ```
+   Constructora Delta: misma fila, mismo estatus, sin tocar.
+
+**Invariante ("como mucho una VIGENTE por documento+empresa").** Reverificado después del paso 5, del paso 6 y del paso 8 con `GROUP BY document_id, company_id HAVING COUNT(*) FILTER (WHERE status='VIGENTE') > 1` (equivalente): **cero infracciones en los tres puntos de control**, no sólo al final.
+
+### Lo que este recorrido SÍ establece
+
+- Las cinco server actions y `POST /api/upload/document-body` funcionan de extremo a extremo invocadas de verdad — misma ruta HTTP, misma cookie de sesión, mismo header `Next-Action` que usaría el navegador ejecutando el código ya escrito de `document-body-editor.tsx` / `document-companies-panel.tsx` — no una réplica de su forma.
+- Los ocho criterios de negocio de DOC-01/02/03/06 (la versión sube con un cambio real, se queda igual sin cambios, la tabla con celda combinada sobrevive el saneado, el cuerpo se congela al emitir y no se mueve cuando la plantilla cambia después, el borrador es único e idempotente, guardar dos veces no versiona, publicar promueve y degrada en el orden correcto, la empresa que no se toca no se mueve) se sostienen contra la base real.
+- El invariante de una sola `VIGENTE` por (documento, empresa) se sostuvo en cada punto de control, no sólo trivialmente por ausencia de filas como en el cierre original.
+
+### Lo que este recorrido NO establece
+
+- **No es una verificación de la interfaz visual.** No se hizo clic en ningún botón, no se vio ningún `confirm()`, no se comprobó que el mensaje en pantalla ("Guardado. La plantilla pasa a la versión N") aparezca de verdad — sólo que la acción de servidor que ese botón invoca produce el resultado correcto cuando se invoca exactamente como la invocaría el navegador.
+- No se ejercitó el importador de `.docx` en su forma de interfaz (vista previa antes de guardar, aviso de imágenes descartadas en pantalla) — sólo la llamada real a `/api/upload/document-body` y el guardado real subsecuente.
+- **DOC-04, DOC-05 y DOC-07 siguen sin interfaz de cliente** — eso sigue siendo alcance de 03-07. Este recorrido generó los datos reales que 03-07 necesita para demostrar esos tres criterios cuando se construya, pero no construyó ni tocó esa vista.
+- Ninguna de las cinco acciones toma `FormData`, así que el caso de invocación multipart de la guía no aplicó a ellas (sólo a la subida del `.docx`, que sí es multipart real).
+
+### Hallazgo metodológico (no un bug de producto)
+
+Al reconstruir el argumento de la primera llamada a partir de una lectura por `psql -Atc` del `content_html` guardado, el texto capturado traía un salto de línea final que el valor real en base no tenía. La primera llamada, pensada como "reenviar exactamente lo mismo" para probar la ruta antes de arriesgar una edición real, en realidad sí contaba como cambio y subió `template_version` de 1 a 2 antes de la edición deliberada del paso 3. Se documenta en vez de descartarse: confirma que la comparación de `updateManualDocumentBody` es sensible a bytes, no a "se ve igual" — coherente con su propio comentario en el código ("comparar el saneado con el guardado, no el crudo con el guardado"). No es un bug de la acción: es mi primer intento de reproducir "sin cambios" el que no lo era. El paso 2 sí lo hizo bien y confirmó la política.
+
+### Gates re-verificados tras el recorrido
+
+```
+pnpm exec turbo run check-types   → 8/8 cacheados, limpio
+pnpm exec turbo run lint          → ✖ 81 problems (0 errors, 81 warnings), exit 1 (mismo resultado que en el cierre original)
+pnpm exec turbo run build         → verde, cacheado, mismas rutas
+```
+Ningún archivo de código de producción cambió en esta sesión — todo el recorrido fue HTTP contra el servidor de desarrollo ya corriendo — por eso los tres gates salen de caché con el mismo resultado que en el cierre original de este plan.
+
+### Fixture de regresión de la fase 1 (reconfirmado tras el recorrido)
+
+```
+companies:                                    2 filas
+evidences con form_snapshot no nulo:          2 filas
+prol-db StartedAt / RestartCount:             2026-09-01T18:55:26Z / 0
+```
+Idénticos a los que documentó el cierre original de este plan — este recorrido sólo agregó tres filas a `company_documents` y subió `template_version` de 1 a 5; no tocó nada del banco de regresión de la fase 1.
+
+### Estado final real de la base (2026-09-02, tras 03-06b) — se deja tal cual, no se revierte
+
+```
+manual_documents: P-RFC-4.1-01, template_version=5
+
+company_documents:
+  acme-corp           | v1 | OBSOLETO | sourceTemplateVersion=4
+  acme-corp           | v2 | VIGENTE  | sourceTemplateVersion=4  (contenido del borrador publicado)
+  constructora-delta  | v1 | VIGENTE  | sourceTemplateVersion=4  (idéntico byte a byte al v1 obsoleto de Acme)
+```
+
+Estas filas son la evidencia de este cierre y los datos que 03-07 necesita para demostrar sus propios criterios — se dejan en la base a propósito, no se limpian.
+
 ## Verificación cruzada
 
 ```
@@ -183,9 +272,9 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - **El código de la UI del consultor está completo, revisado y aprobado por el usuario.** Nada de la tarea 3 requiere reabrir tareas 1 o 2.
-- **Bloqueo real para el plan 03-07**: ese plan pinta la vista del cliente (identidad, historial, aviso de versión atrasada) y, según el propio plan 03-06, esperaba heredar una base con Acme en `v2 VIGENTE`/`v1 OBSOLETO` y Delta en `v1 VIGENTE`. Esa base **no existe**: `company_documents` sigue vacía y `P-RFC-4.1-01` sigue en `template_version = 1`. El plan 03-07 no podrá demostrar sus criterios (identidad por empresa, historial con las cinco columnas, aviso de versión atrasada) sin datos emitidos primero. **Antes de plan 03-07, alguien tiene que emitir realmente el documento a las dos empresas por la interfaz** — ya sea repitiendo el recorrido A-D de este checkpoint, ya sea como primer paso explícito del propio 03-07.
-- Registrado como blocker en `STATE.md` (ver más abajo) para que no se pierda entre planes.
-- El servidor de desarrollo (`pnpm --filter @prol/web dev`, puerto 3000) se deja **corriendo** para el plan 03-07, tal como pide esta continuación.
+- ~~**Bloqueo real para el plan 03-07**: ese plan pinta la vista del cliente (identidad, historial, aviso de versión atrasada) y, según el propio plan 03-06, esperaba heredar una base con Acme en `v2 VIGENTE`/`v1 OBSOLETO` y Delta en `v1 VIGENTE`. Esa base **no existe**: `company_documents` sigue vacía y `P-RFC-4.1-01` sigue en `template_version = 1`.~~ **RESUELTO en 03-06b**: la base ya tiene exactamente esa forma — Acme en `v2 VIGENTE`/`v1 OBSOLETO`, Constructora Delta en `v1 VIGENTE`, `P-RFC-4.1-01` en `template_version=5` con una tabla importada de un `.docx` real —, generada invocando las cinco server actions reales por HTTP (no por navegador, no por script que imite su forma; ver "Cierre de la brecha (03-06b)" arriba). 03-07 puede construir su vista del cliente sobre datos reales.
+- Registrado como blocker en `STATE.md` y resuelto ahí mismo (ver más abajo).
+- El servidor de desarrollo (`pnpm --filter @prol/web dev`, puerto 3000) se deja **corriendo** para el plan 03-07, tal como pide esta continuación y la de 03-06b.
 
 ---
 *Phase: 03-procedimientos-nativos*
@@ -194,3 +283,7 @@ None - no external service configuration required.
 ## Self-Check: PASSED
 
 Los cinco archivos de UI de las tareas 1-2 existen en disco con las líneas reportadas; los dos commits de tarea (`39d82b4`, `11c8b35`) están en el historial de git. `check-types` limpio, `lint` en 81 advertencias (0 errores, exit 1 esperado), `build` verde, confirmados en esta sesión. La consulta a `company_documents` se repitió tres veces con métodos distintos (consulta con join, `count(*)`, verificación de esquema con `\d`) y las tres coinciden en 0 filas — no es un error de sintaxis de la consulta. `companies` en 2 filas y `evidences.form_snapshot` no nulo en 2 filas, confirmados contra la base real.
+
+## Self-Check (03-06b): PASSED
+
+Cada uno de los ocho pasos del recorrido HTTP se verificó con una consulta SQL directa contra `prol-db` inmediatamente después de la llamada, no al final del recorrido — los valores citados en "Cierre de la brecha (03-06b)" son las respuestas JSON reales de las server actions y las filas reales de `company_documents`/`manual_documents` en el momento de cada paso, no un resumen post-hoc. Reconfirmado al cierre de esta sesión: `company_documents` tiene exactamente 3 filas con la forma descrita, `manual_documents.template_version=5` para `P-RFC-4.1-01`, el invariante de una sola `VIGENTE` por (documento, empresa) no tiene infracciones, y el banco de regresión de la fase 1 (`companies`=2, `evidences.form_snapshot` no nulo=2, `prol-db` sin reinicios) sigue intacto. `check-types`, `lint` (81 advertencias, 0 errores) y `build` se re-ejecutaron tras el recorrido y salieron idénticos al cierre original — coherente con que ningún archivo de código de producción cambió en esta sesión. El servidor de desarrollo sigue corriendo en el puerto 3000.

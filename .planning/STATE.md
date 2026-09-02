@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 03-06-PLAN.md
-last_updated: "2026-09-02T18:07:04.164Z"
-last_activity: "2026-09-02 — Plan 03-06 completado: DocumentBodyEditor único (plantilla/borrador por target), importador .docx con vista previa antes de guardar, y panel de empresas con emitir/editar/continuar-borrador/re-emitir cableados. El usuario aprobó el checkpoint de la tarea 3 (\"aprobado\"), incluida la desviación de que Publicar vive en el propio editor. HALLAZGO: la base de datos no contiene ningún rastro del recorrido aprobado — company_documents en 0 filas, P-RFC-4.1-01 sigue en template_version=1 — documentado íntegro en el SUMMARY en vez de redactar el resultado esperado. DOC-01/02/03/06 se dejan Pending por esa razón. Blocker abierto para el plan 03-07, que necesita la base poblada."
+stopped_at: Cerrada la brecha de verificación de 03-06 (03-06b)
+last_updated: "2026-09-02T18:20:00.000Z"
+last_activity: "2026-09-02 — 03-06b: cerrada por HTTP la brecha de verificación que dejó el checkpoint de 03-06 (aprobado sin ejercitarse, confirmado por el usuario). Se invocaron las cinco server actions reales (updateManualDocumentBody, issueCompanyDocument, startCompanyDocumentDraft, saveCompanyDocumentDraft, publishCompanyDocument) por HTTP directo con sesión real, no un script que imite su forma. Los ocho pasos del recorrido pasaron contra la base real: template_version 1→5 (edición real + importación de un .docx con tabla de celda combinada), Acme y Constructora Delta emitidas en v1 VIGENTE con snapshot idéntico y congelado, la plantilla editada de nuevo sin mover ese snapshot, borrador único e idempotente en Acme con dos guardados acumulados sin versionar, publicación con degradación correcta (v2 VIGENTE/v1 OBSOLETO) y Constructora Delta intacta. Invariante de una sola VIGENTE reverificado en tres puntos de control, cero infracciones. DOC-01/02/03/06 pasan a Complete en REQUIREMENTS.md. Fixture de regresión de fase 1 reconfirmado intacto (2 companies, 2 evidences con form_snapshot, prol-db sin reinicios). check-types/lint/build re-verificados, idénticos al cierre original. Blocker de 03-07 resuelto: la base ya tiene los datos reales que ese plan necesita."
 progress:
   total_phases: 6
   completed_phases: 2
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 Phase: 3 of 6 (Procedimientos nativos)
 Plan: 7 of 8 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 03-06 completado: DocumentBodyEditor único (plantilla/borrador por target), importador .docx con vista previa antes de guardar, y panel de empresas con emitir/editar/continuar-borrador/re-emitir cableados. El usuario aprobó el checkpoint de la tarea 3 ("aprobado"), incluida la desviación de que Publicar vive en el propio editor. HALLAZGO: la base de datos no contiene ningún rastro del recorrido aprobado — company_documents en 0 filas, P-RFC-4.1-01 sigue en template_version=1 — documentado íntegro en el SUMMARY en vez de redactar el resultado esperado. DOC-01/02/03/06 se dejan Pending por esa razón. Blocker abierto para el plan 03-07, que necesita la base poblada.
+Last activity: 2026-09-02 — 03-06b cerró por HTTP la brecha de verificación de 03-06 (checkpoint aprobado sin ejercitarse). Las cinco server actions reales se invocaron por HTTP directo con sesión real; los ocho pasos del recorrido pasaron contra la base real y DOC-01/02/03/06 pasan a Complete. Ver `03-06-SUMMARY.md` §"Cierre de la brecha (03-06b)" y el blocker resuelto abajo. Base lista para que 03-07 construya la vista del cliente sobre datos reales (Acme v2 VIGENTE/v1 OBSOLETO, Constructora Delta v1 VIGENTE).
 
 Progress: [███░░░░░░░] 33% (2 de 6 fases)
 
@@ -107,6 +107,8 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-05]: getCompanyDocumentForClient y getCompanyDocumentForEdit comparten resolveCompanyDocumentAssignment y buildHistoryEntry; la unica diferencia real es el filtro de estatus del historial (sin BORRADOR para el cliente) y la puerta de autorizacion.
 - [Phase 03-06]: Publicar vive dentro de document-body-editor.tsx (reutiliza target.version/confirm del editor), no en un archivo aparte bajo companies/[assignmentId]/; puesto a la vista del usuario en el checkpoint y no objetado.
 - [Phase 03-06]: DOC-01/02/03/06 NO se marcan Complete pese a instrucción de cierre: company_documents sigue en 0 filas y template_version en 1 tras el checkpoint aprobado — la evidencia de base que se pidió capturar no existe, así que se documenta el hallazgo en vez de redactar el resultado esperado.
+- [Phase 03-06b]: El usuario confirmó que aprobó el checkpoint de 03-06 sin ejercitarlo. La brecha se cerró ejercitando las cinco server actions reales por HTTP directo (Next-Action + cookie de sesión real), no repitiendo el checkpoint humano ni fabricando filas con un script que imite la forma de las transacciones. Los ocho pasos del recorrido pasaron contra la base real; DOC-01/02/03/06 pasan a Complete. Ver `03-06-SUMMARY.md`.
+- [Phase 03-06b]: El manifest global `.next/server/server-reference-manifest.json` no es fiable para invocar server actions contra un `next dev` con Turbopack en ejecución — sus IDs no coincidían con el proceso vivo (404 "Server action not found"). El manifest correcto es el específico de cada ruta, bajo `.next/dev/server/app/.../page/server-reference-manifest.json`.
 
 ### Pending Todos
 
@@ -122,7 +124,7 @@ Decisiones recientes que afectan al trabajo actual:
 - **La fase 4 tiene una incógnita real**: si `<View fixed>` de react-pdf repite la cabecera de tabla entre páginas. Spike de una hora como primera tarea, con fallback ya definido.
 - **Los ejecutores en paralelo se pisan el índice de git.** En la ola 1 de la fase 1, dos agentes sobre el mismo working tree (`branching_strategy: "none"`) se absorbieron mutuamente archivos entre el `add` y el `commit`. El contenido quedó íntegro, la atribución cruzada. **Antes de la fase 2 hay que serializarlos o darle worktree a cada uno**: las fases 2-7 tienen varios planes por ola.
 - **Trampa operativa: `grep` no es seguro para canalizar credenciales por SSH en esta máquina.** Encontrado durante el despliegue de R2 a producción (plan 02-04): un hook local de shell (`rtk`) reescribe la invocación de `grep` incluso en mitad de una tubería, y en vez del `VAR=valor` esperado se agrega la salida formateada del propio `rtk` (líneas `path:línea:contenido`) con el valor real incrustado en una línea que no es `VAR=valor`. Se detectó de inmediato porque el conteo de verificación posterior dio 0 en vez de 4; ningún valor de credencial llegó a salida visible ni a git. **Usar `awk` o una variable de shell capturada para mover valores sensibles**; `grep` sigue siendo seguro para contar después (paso de verificación), no para copiar antes. Documentado en `DEPLOY.md` §7c.
-- Plan 03-07 necesita company_documents poblada (Acme v2 VIGENTE/v1 OBSOLETO, Delta v1 VIGENTE) para demostrar sus propios criterios, pero el checkpoint aprobado del plan 03-06 no dejó esa evidencia en la base: company_documents sigue en 0 filas y P-RFC-4.1-01 sigue en template_version=1. Alguien debe emitir realmente el documento a las dos empresas por la interfaz antes o al inicio de 03-07.
+- ~~Plan 03-07 necesita company_documents poblada (Acme v2 VIGENTE/v1 OBSOLETO, Delta v1 VIGENTE) para demostrar sus propios criterios, pero el checkpoint aprobado del plan 03-06 no dejó esa evidencia en la base: company_documents sigue en 0 filas y P-RFC-4.1-01 sigue en template_version=1. Alguien debe emitir realmente el documento a las dos empresas por la interfaz antes o al inicio de 03-07.~~ **RESUELTO 2026-09-02 (03-06b)**: el usuario confirmó llanamente que aprobó el checkpoint sin ejercitarlo. Se cerró la brecha invocando las cinco server actions reales (`updateManualDocumentBody`, `issueCompanyDocument`, `startCompanyDocumentDraft`, `saveCompanyDocumentDraft`, `publishCompanyDocument`) por HTTP directo contra el servidor de desarrollo — header `Next-Action` + cookie de sesión real de `admin@prol.prosuite.pro`, no un script que imite su forma. Los ocho pasos del recorrido (editar, sin-cambios, editar de nuevo, importar un `.docx` real con tabla de celda combinada, emitir a Acme y Constructora Delta, editar la plantilla sin mover lo ya congelado, borrador único e idempotente con dos guardados, publicar con degradación) pasaron contra la base real, verificados paso a paso, con el invariante de una sola VIGENTE reconfirmado en tres puntos de control. Base actual: `P-RFC-4.1-01.template_version=5`, Acme en `v2 VIGENTE`/`v1 OBSOLETO`, Constructora Delta en `v1 VIGENTE` — datos reales, dejados en la base a propósito para que 03-07 los use. DOC-01/02/03/06 pasan a `Complete` en `REQUIREMENTS.md`. Ver `03-06-SUMMARY.md` §"Cierre de la brecha (03-06b)" para la traza completa con valores reales. Fixture de regresión de la fase 1 reconfirmado intacto (2 companies, 2 evidences con form_snapshot, `prol-db` sin reinicios).
 
 ## Estado de producción (2026-09-01)
 
@@ -136,6 +138,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T18:07:04.162Z
-Stopped at: Completado 03-06-PLAN.md
+Last session: 2026-09-02T18:20:00.000Z
+Stopped at: Cerrada la brecha de verificación de 03-06 (03-06b) — dev server sigue corriendo en :3000 para 03-07
 Resume file: None
