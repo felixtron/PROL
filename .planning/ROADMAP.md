@@ -75,10 +75,17 @@ Plans:
   5. La página de sección sigue mostrando el documento vigente, no el borrador de versión más alta.
   6. Un `.docx` real de la consultora con tablas se importa, las tablas sobreviven a la conversión, y el contenido pasa por el sanitizador antes de llegar a la base.
   7. El código de la fase queda desplegado en producción con el módulo apagado, arrastrando el arreglo de autenticación pendiente.
-**Plans**: TBD
+**Plans**: 8 plans (olas estrictamente seriales: 1 → 03-01, 2 → 03-02, 3 → 03-03, 4 → 03-04, 5 → 03-05, 6 → 03-06, 7 → 03-07, 8 → 03-08). Todos tocan los mismos módulos centrales sobre el mismo working tree; en la fase 1 dos ejecutores concurrentes se pisaron el índice de git, así que no hay paralelismo aquí a propósito. Los planes 06, 07 y 08 llevan checkpoint humano (`autonomous: false`): la fase se demuestra en pantalla y cierra con un despliegue.
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — Esquema del documento nativo, guarda de `fileKey` nulo y fixtures reproducibles (DOC-01, DOC-03, DOC-06)
+- [ ] 03-02-PLAN.md — OPS-05: "vigente" es un estatus, no la versión más alta (OPS-05)
+- [ ] 03-03-PLAN.md — Conversión `.docx` → HTML saneado (DOC-02)
+- [ ] 03-04-PLAN.md — Identidad del documento y acciones de plantilla (DOC-01, DOC-04, DOC-07)
+- [ ] 03-05-PLAN.md — Emisión, borrador y publicación (DOC-03, DOC-05, DOC-06)
+- [ ] 03-06-PLAN.md — UI del consultor: editor, importador y emisión por empresa (DOC-01, DOC-02, DOC-06)
+- [ ] 03-07-PLAN.md — Vista del cliente: identidad, historial y aviso de versión (DOC-04, DOC-05, DOC-07)
+- [ ] 03-08-PLAN.md — Despliegue a producción con el módulo apagado (DOC-01, DOC-02, OPS-05)
 
 > **Enmienda del 2026-09-02.** Dos decisiones del usuario al planificar la fase:
 > (a) la importación `.docx` (DOC-02) se adelanta desde la fase 7, que queda absorbida
@@ -151,7 +158,7 @@ La 7 ya no existe: su contenido está dentro de la 3.
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
 | 2. R2 para el tier confidencial | 4/4 | Complete    | 2026-09-02 |
-| 3. Procedimientos nativos | 0/TBD | Not started | - |
+| 3. Procedimientos nativos | 0/8 | Planned     | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
 | 6. Subida directa a R2 | 0/TBD | Not started | - |
