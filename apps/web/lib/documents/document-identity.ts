@@ -44,8 +44,10 @@ export const DOCUMENT_STATUS_CLASS: Record<CompanyDocumentStatus, string> = {
 };
 
 /** Formateador creado una vez a nivel de módulo, no por llamada (mismo patrón
- * que `DATE` en `components/company-project-panel.tsx`). */
-const ISSUED_AT_FORMAT = new Intl.DateTimeFormat("es-MX", {
+ * que `DATE` en `components/company-project-panel.tsx`). Exportado para que
+ * el historial de control de cambios (DOC-05, `lib/queries/manual-document.ts`)
+ * formatee sus fechas con el mismo formateador — no se redefine ninguno. */
+export const ISSUED_AT_FORMAT = new Intl.DateTimeFormat("es-MX", {
   day: "numeric",
   month: "long",
   year: "numeric",
