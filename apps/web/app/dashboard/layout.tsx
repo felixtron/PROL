@@ -100,6 +100,11 @@ export default async function DashboardLayout({
             icon: "FolderOpen" as const,
           },
           {
+            href: "/dashboard/documents",
+            label: "Documentos",
+            icon: "FileCheck2" as const,
+          },
+          {
             href: "/dashboard/agenda",
             label: "Agenda",
             icon: "CalendarClock" as const,

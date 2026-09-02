@@ -103,7 +103,9 @@ export default async function ManualSectionPage({
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-text-primary">{doc.name}</p>
+                      <p className="font-medium text-text-primary">
+                        {own?.nameOverride ?? doc.name}
+                      </p>
                       <p className="font-mono text-xs text-text-tertiary">
                         {own?.codeOverride ?? doc.code}
                       </p>
@@ -121,13 +123,28 @@ export default async function ManualSectionPage({
                     <div className="shrink-0 text-right">
                       {own ? (
                         <>
-                          <a
-                            href={`/files/company-document/${own.id}`}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            Descargar
-                          </a>
+                          {own.kind === "FILE" ? (
+                            <a
+                              href={`/files/company-document/${own.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              Descargar
+                            </a>
+                          ) : (
+                            // Un procedimiento nativo no se descarga en esta
+                            // fase (el PDF es la fase 4): ofrecer
+                            // "Descargar" aquí daría 404, porque
+                            // /files/company-document sólo sirve filas con
+                            // fileKey.
+                            <Link
+                              href={`/dashboard/documents/${own.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              Ver documento
+                            </Link>
+                          )}
                           <p className="mt-1 text-xs text-text-tertiary">
                             Versión {own.version} de tu empresa
                           </p>
