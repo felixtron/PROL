@@ -8,6 +8,8 @@
 
 import { z } from "zod";
 
+import { missingR2Env } from "@/lib/r2";
+
 // Variables que deben existir para que la app sea funcional en cualquier
 // despliegue real. No incluye llaves de servicios opcionales (IA, Stripe,
 // Cloudflare Stream, Resend) — esas están gateadas por feature flags o
@@ -35,6 +37,42 @@ export function assertCriticalServerEnv(): void {
   if (process.env.NEXT_PHASE === "phase-production-build") return;
 
   validated = true;
+
+  // Coherencia del almacenamiento confidencial. No entra en `CriticalEnvSchema`
+  // a propósito: el comentario de arriba dice que las llaves de servicios
+  // opcionales se validan en su propio módulo si se usan. Aquí sólo se AVISA —
+  // nada de esto puede impedir que la aplicación arranque.
+  //
+  // La asimetría es deliberada: `R2_BUCKET` es el interruptor. Sin ella la app
+  // usa disco y las otras tres sobran — ése es el rollback de R2-04, un solo
+  // cambio de variable. Con ella, las cuatro son obligatorias para que el backend
+  // sea R2, y quien lo hace cumplir es `storePrivateFile`, que rechaza la
+  // escritura antes que degradar a disco en silencio (plan 02-02).
+  if (process.env.R2_BUCKET) {
+    const missing = missingR2Env();
+    if (missing.length > 0) {
+      // Sin guarda de `NODE_ENV`: una configuración parcial de R2 no es nunca
+      // intencional. En desarrollo y en CI no hay ninguna variable R2 puesta, así
+      // que este camino ni se toca allí.
+      console.warn(
+        `[env] Configuración de R2 incompleta: R2_BUCKET está definida pero faltan ${missing.join(", ")}. ` +
+          `La aplicación arranca en modo disco y RECHAZARÁ las subidas de archivos ` +
+          `confidenciales hasta que se completen. Quita R2_BUCKET si el disco es lo que quieres.`,
+      );
+    }
+  } else if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.PRIVATE_UPLOAD_DIR
+  ) {
+    // Ni bucket ni volumen: los archivos confidenciales van a un directorio que
+    // desaparece al recrear el contenedor. Espeja el aviso de
+    // `warnedAboutPrivateDir` en `lib/upload-paths.ts`; aquí no hace falta su
+    // propio flag anti-repetición porque `validated` ya protege toda la función.
+    console.warn(
+      `[env] Sin R2_BUCKET ni PRIVATE_UPLOAD_DIR: las evidencias van a un ` +
+        `directorio no persistente`,
+    );
+  }
 
   const result = CriticalEnvSchema.safeParse(process.env);
   if (result.success) return;
