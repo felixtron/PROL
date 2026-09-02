@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { UnauthenticatedError } from "@/lib/auth";
 import { requireManualReviewer } from "@/lib/manual-access";
 import { TEMPLATE_EXT_BY_MIME } from "@/lib/document-files";
 import { storePrivateFile } from "@/lib/document-storage";
@@ -27,7 +28,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result.file);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error al subir";
-    if (message === "Unauthorized" || message.startsWith("No autorizado")) {
+    // Sin sesión y sin permisos son cosas distintas: la primera se arregla
+    // entrando, la segunda no. Antes las dos salían 403 porque la rama de
+    // autenticación comparaba contra una cadena que ya no se lanzaba.
+    if (err instanceof UnauthenticatedError) {
+      return NextResponse.json({ error: message }, { status: 401 });
+    }
+    if (message.startsWith("No autorizado")) {
       return NextResponse.json({ error: message }, { status: 403 });
     }
     console.error("Template upload error:", err);

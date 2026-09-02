@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireUser, UnauthenticatedError } from "@/lib/auth";
 import { EVIDENCE_EXT_BY_MIME } from "@/lib/document-files";
 import { storePrivateFile } from "@/lib/document-storage";
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json(result.file);
   } catch (err) {
-    if (err instanceof Error && err.message === "Unauthorized") {
+    if (err instanceof UnauthenticatedError) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
     console.error("Evidence upload error:", err);

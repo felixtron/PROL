@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import crypto from "node:crypto";
-import { requireUser } from "@/lib/auth";
+import { requireUser, UnauthenticatedError } from "@/lib/auth";
 import { resolveUploadDir } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       sizeBytes: file.size,
     });
   } catch (err) {
-    if (err instanceof Error && err.message === "Unauthorized") {
+    if (err instanceof UnauthenticatedError) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
     console.error("Assignment upload error:", err);

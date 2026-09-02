@@ -189,9 +189,26 @@ export const getCurrentUser = cache(async () => {
   return user;
 });
 
+/**
+ * Falta de sesión, distinguible de una falta de permisos.
+ *
+ * El mensaje es visible para el usuario y por eso va en español; la identidad
+ * del error no puede depender de él. Las rutas comprueban `instanceof`, nunca
+ * `message`: antes comparaban contra la cadena literal `"Unauthorized"`, y
+ * cuando el mensaje se tradujo (`d991c31`) esas ramas de 401 quedaron muertas
+ * sin que nada fallara — quien pedía sin sesión recibía 403. Reescribir este
+ * texto vuelve a ser inofensivo, que es justo lo que se buscaba.
+ */
+export class UnauthenticatedError extends Error {
+  constructor() {
+    super("Sesión expirada. Inicia sesión de nuevo.");
+    this.name = "UnauthenticatedError";
+  }
+}
+
 export const requireUser = cache(async () => {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Sesión expirada. Inicia sesión de nuevo.");
+  if (!user) throw new UnauthenticatedError();
   return user;
 });
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, UnauthenticatedError } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
@@ -44,7 +44,7 @@ export async function GET(
 
     return NextResponse.json({ submission });
   } catch (err) {
-    if (err instanceof Error && err.message === "Unauthorized") {
+    if (err instanceof UnauthenticatedError) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
     return NextResponse.json({ error: "Error" }, { status: 500 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, UnauthenticatedError } from "@/lib/auth";
 import { assertDocumentsEnabled, isManualReviewer } from "@/lib/manual-access";
 import { privateFileResponse, readPrivateFile } from "@/lib/document-storage";
 
@@ -47,7 +47,7 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error";
-    if (message === "Unauthorized") {
+    if (err instanceof UnauthenticatedError) {
       return new NextResponse("No autenticado", { status: 401 });
     }
     return new NextResponse(message, { status: 403 });
