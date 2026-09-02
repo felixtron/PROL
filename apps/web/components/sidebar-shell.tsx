@@ -3,12 +3,18 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, LayoutDashboard } from "lucide-react";
-import { NAV_ICONS } from "./nav-icons";
+import { Menu, X } from "lucide-react";
+import { flattenNavHrefs, isNavGroup } from "./nav-icons";
 import { resolveActiveHref } from "./nav-active";
-import type { SidebarIcon, SidebarNavItem } from "./nav-icons";
+import { NavGroup, NavLinkItem } from "./nav-group";
+import type {
+  SidebarIcon,
+  SidebarNavGroup,
+  SidebarNavItem,
+  SidebarNavLink,
+} from "./nav-icons";
 
-export type { SidebarIcon, SidebarNavItem };
+export type { SidebarIcon, SidebarNavItem, SidebarNavGroup, SidebarNavLink };
 
 interface SidebarShellProps {
   navItems: SidebarNavItem[];
@@ -31,11 +37,7 @@ export function SidebarShell({
   const [open, setOpen] = useState(false);
 
   const activeHref = useMemo(
-    () =>
-      resolveActiveHref(
-        pathname,
-        navItems.map((i) => i.href),
-      ),
+    () => resolveActiveHref(pathname, flattenNavHrefs(navItems)),
     [pathname, navItems],
   );
 
@@ -65,25 +67,17 @@ export function SidebarShell({
           mismo en vez de estirar el aside: sin él, un flex item no encoge por
           debajo de su contenido y el `overflow-y-auto` nunca se activa. */}
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
-        {navItems.map((item) => {
-          const Icon = NAV_ICONS[item.icon] ?? LayoutDashboard;
-          const active = item.href === activeHref;
-          return (
-            <Link
+        {navItems.map((item) =>
+          isNavGroup(item) ? (
+            <NavGroup key={item.id} group={item} activeHref={activeHref} />
+          ) : (
+            <NavLinkItem
               key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-text-secondary hover:bg-primary-50 hover:text-primary-700"
-              }`}
-            >
-              <Icon className="h-5 w-5 shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
+              item={item}
+              active={item.href === activeHref}
+            />
+          ),
+        )}
       </nav>
     </>
   );
