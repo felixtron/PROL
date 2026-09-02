@@ -91,7 +91,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | PDF-03 | Phase 5 | Pending |
 | R2-05 | Phase 6 | Pending |
 | R2-06 | Phase 6 | Pending |
-| DOC-02 | Phase 3 | Pending (movido desde la fase 7, absorbida el 2026-09-02) |
+| DOC-02 | Phase 3 | Pending (conversión + ruta listas desde el plan 03-03; falta cablearlo en el editor del plan 03-06) |
 
 **Coverage:**
 - v1.1 requirements: 28 total

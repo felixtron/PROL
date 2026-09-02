@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completado 03-02-PLAN.md (2 de 8 planes de la fase 3)
-last_updated: "2026-09-02T16:32:14.082Z"
-last_activity: "2026-09-02 — Plan 03-02 completado: getAssignmentPanel y getSectionForCompany filtran por status VIGENTE (OPS-05) en vez de max(version), uploadCompanyDocument degrada la VIGENTE anterior a OBSOLETO dentro de su transacción con lock, y company-project-panel.tsx renderiza de forma consciente del kind del documento. Verificado contra servidor y base reales con fixture v1 VIGENTE / v2 BORRADOR y control negativo."
+stopped_at: Completado 03-03-PLAN.md (3 de 8 planes de la fase 3)
+last_updated: "2026-09-02T16:50:05.549Z"
+last_activity: "2026-09-02 — Plan 03-03 completado: convertDocxToManualHtml (mammoth + styleMap Heading/Título 1-3 a h2-h4, sin h1) y POST /api/upload/document-body (requireManualAdmin, no escribe en la base) importan un .docx con tablas a HTML ya saneado por sanitizeManualHtml. Verificado con un .docx OOXML fabricado (ninguno de los reales de la máquina era de la consultora): tabla+colspan+thead sobreviven, 401/403/200 en las tres sesiones, 400/422/413 en los tres casos de borde, base de datos sin cambios. DOC-02 avanza pero no se marca completo: falta cablearlo en el editor del plan 03-06."
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 10
+  completed_plans: 11
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 3 of 6 (Procedimientos nativos)
-Plan: 2 of 8 in current phase
+Plan: 4 of 8 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — Plan 03-02 completado: getAssignmentPanel y getSectionForCompany filtran por status VIGENTE (OPS-05) en vez de max(version), uploadCompanyDocument degrada la VIGENTE anterior a OBSOLETO dentro de su transacción con lock, y company-project-panel.tsx renderiza de forma consciente del kind del documento. Verificado contra servidor y base reales con fixture v1 VIGENTE / v2 BORRADOR y control negativo.
+Last activity: 2026-09-02 — Plan 03-03 completado: convertDocxToManualHtml (mammoth + styleMap Heading/Título 1-3 a h2-h4, sin h1) y POST /api/upload/document-body (requireManualAdmin, no escribe en la base) importan un .docx con tablas a HTML ya saneado por sanitizeManualHtml. Verificado con un .docx OOXML fabricado (ninguno de los reales de la máquina era de la consultora): tabla+colspan+thead sobreviven, 401/403/200 en las tres sesiones, 400/422/413 en los tres casos de borde, base de datos sin cambios. DOC-02 avanza pero no se marca completo: falta cablearlo en el editor del plan 03-06.
 
 Progress: [███░░░░░░░] 33% (2 de 6 fases)
 
@@ -58,6 +58,7 @@ Progress: [███░░░░░░░] 33% (2 de 6 fases)
 | Phase 02 P04 | ~15min (tarea 4 de documentación; tareas 1-3 incluyen una pausa de aprobación humana no cronometrable) | 4 tasks | 1 files |
 | Phase 03 P01 | ~45min | 3 tasks | 5 files |
 | Phase 03 P02 | ~20min | 3 tasks | 3 files |
+| Phase 03 P03 | ~15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-02]: getAssignmentPanel y getSectionForCompany filtran por status: VIGENTE en vez de max(version); el dedup por documentId se conserva como red de seguridad, no como mecanismo primario.
 - [Phase 03-02]: uploadCompanyDocument degrada la VIGENTE anterior a OBSOLETO con un updateMany dentro de la misma transaccion con lock que calcula la version siguiente, antes del create; el invariante de una sola VIGENTE por (documento, empresa) ahora se sostiene tambien para documentos kind FILE.
 - [Phase 03-02]: company-project-panel.tsx: nombre resuelto con nameOverride ?? name, segmento de fileName condicional a kind === FILE (sin separador huerfano en nativos), boton de subida oculto para kind !== FILE con etiqueta de tipo+version en su lugar; los documentos nativos se siguen listando.
+- [Phase 03-03]: convertDocxToManualHtml usa Promise.resolve({ src: "" }) en convertImage, no {}: ImageAttributes.src es obligatorio en los tipos de mammoth (^1.12.0); el <img> resultante se limpia igual por regex antes de sanear.
+- [Phase 03-03]: El .docx de prueba del criterio 6 se fabricó como OOXML genuino (script desechable, no commiteado): ningún .docx real disponible en la máquina pertenece a la consultora de PROL.
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T16:32:14.078Z
-Stopped at: Completado 03-02-PLAN.md (2 de 8 planes de la fase 3)
+Last session: 2026-09-02T16:50:05.545Z
+Stopped at: Completado 03-03-PLAN.md (3 de 8 planes de la fase 3)
 Resume file: None
