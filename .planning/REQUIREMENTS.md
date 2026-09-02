@@ -68,10 +68,10 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | OPS-02 | Phase 1 | Complete |
 | OPS-03 | Phase 1 | Complete |
 | OPS-04 | Phase 1 | Complete |
-| R2-01 | Phase 2 | Pending |
+| R2-01 | Phase 2 | In Progress (02-01: cliente R2 listo y probado; falta 02-02 para escribir/leer de verdad) |
 | R2-02 | Phase 2 | Pending |
 | R2-03 | Phase 2 | Pending |
-| R2-04 | Phase 2 | Pending |
+| R2-04 | Phase 2 | In Progress (02-01: avisos de arranque listos; falta el backend conmutable de 02-02) |
 | DOC-01 | Phase 3 | Pending |
 | DOC-03 | Phase 3 | Pending |
 | DOC-04 | Phase 3 | Pending |

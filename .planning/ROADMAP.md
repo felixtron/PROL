@@ -141,7 +141,7 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
-| 2. R2 para el tier confidencial | 0/4 | Planned     | - |
+| 2. R2 para el tier confidencial | 1/4 | In Progress | - |
 | 3. Procedimientos nativos | 0/TBD | Not started | - |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |

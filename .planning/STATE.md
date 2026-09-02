@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Completados 01-01-PLAN.md y 01-02-PLAN.md
-last_updated: "2026-09-01T22:54:56.087Z"
-last_activity: "2026-09-01 — Planes 01-01 y 01-02 completados: respaldo del volumen privado + compose coherente; lock de fila en uploadCompanyDocument y helper de data-URL unificado"
+stopped_at: Completado 02-01-PLAN.md (1 de 4 planes de la fase 2)
+last_updated: "2026-09-02T02:12:12.321Z"
+last_activity: "2026-09-02 — Plan 02-01 completado: cliente R2 (aws4fetch) contra el bucket real ibizadata, avisos de arranque para configuración R2 parcial (sin fail-fast), y las cuatro variables declaradas en los tres entornos. document-storage.ts sin tocar todavía."
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 50
+  total_plans: 8
+  completed_plans: 5
+  percent: 14
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 2 of 7 (R2 para el tier confidencial)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-09-01 — Fase 1 completa y verificada (8/8 must-haves). Módulo desplegado a producción apagado; respaldo automático restaurado tras 3 meses y medio parado.
+Plan: 1 of 4 in current phase
+Status: Ready to execute
+Last activity: 2026-09-02 — Plan 02-01 completado: cliente R2 (aws4fetch) contra el bucket real ibizadata, avisos de arranque para configuración R2 parcial (sin fail-fast), y las cuatro variables declaradas en los tres entornos. document-storage.ts sin tocar todavía.
 
 Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 14% (1 de 7 fases)
 *Updated after each plan completion*
 | Phase 01 P02 | 22min | 3 tasks | 2 files |
 | Phase 01 P01 | 20min | 3 tasks | 4 files |
+| Phase 02 P01 | 25min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 01]: Eliminada la copia local de loadAsDataUrl en la ruta PDF de resultados de evaluación; se usa el helper único loadUploadAsDataUrl de certificate-assets.ts.
 - [Phase 01]: El volumen privado (evidencias y plantillas confidenciales) se replica off-site por rclone igual que uploads y db; la migración docker → podman de backup.sh sigue diferida hasta el diagnóstico por SSH.
 - [Phase 01]: `docker-compose.prod.yml` declara `prol_private` (resuelve a `prol_prol_private`) para quedar coherente con el quadlet que producción ya monta a mano; compose y quadlet se mantienen sincronizados por convención documentada en DEPLOY.md §7b.
+- [Phase 02-01]: `lib/r2.ts` calcado del molde de `cloudflare-stream.ts` (aws4fetch, sin conocimiento de `prol/` ni de política de PROL); configuración R2 parcial se avisa al arrancar (console.warn) y se rechazará al escribir en el plan 02-02, nunca tumba el arranque.
+- [Phase 02-01]: `turbo.json` `globalEnv` ampliado con las cuatro `R2_*` — sin esto, `turbo/no-undeclared-env-vars` rompe la línea base de lint del milestone (81 warnings).
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-01T21:22:00.000Z
-Stopped at: Completados 01-01-PLAN.md y 01-02-PLAN.md
+Last session: 2026-09-02T02:12:12.316Z
+Stopped at: Completado 02-01-PLAN.md (1 de 4 planes de la fase 2)
 Resume file: None
