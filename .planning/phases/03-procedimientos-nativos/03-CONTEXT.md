@@ -142,6 +142,37 @@ importación `.docx`— tiene que pasar por él ANTES de la base.** El código n
 puede ser la excepción al invariante. `manual-content.tsx` sigue siendo el único
 `dangerouslySetInnerHTML` del proyecto.
 
+### Enmienda del 2026-09-02: tres preguntas que dejó abiertas la investigación
+
+Resueltas para que el planificador no las improvise ni las deje a criterio del
+ejecutor. Ninguna cambia el alcance.
+
+**a) `ManualDocument.templateVersion` sube sólo cuando el contenido cambia de
+verdad**, no en cada guardado. Es un número que el cliente ve ("basada en plantilla
+v3") y que alimenta la insignia de DOC-07; si subiera con cada pulsación de guardar,
+la insignia de "hay una versión más reciente" se dispararía por cambios que no
+existen y dejaría de significar nada.
+
+**b) "Emitir" crea la fila directamente en `VIGENTE`**, sin pasar por `BORRADOR`.
+El bucle de borrador existe para que editar no genere basura de versiones; emitir
+no es editar, es adoptar una plantilla ya terminada. Un borrador vacío recién
+emitido sería un estado que nadie pidió y que además rompería el criterio 5 desde
+el primer minuto.
+
+**c) El panel del consultor sí lista los documentos nativos**, con el botón de
+subida oculto para los `kind` distintos de `FILE`. Esconderlos sería peor: el
+consultor perdería la vista de qué tiene emitida cada empresa justo cuando esta
+fase existe para dársela.
+
+### Enmienda del 2026-09-02: un hueco que el contexto no vio
+
+La investigación encontró algo que este documento no recogía y que el modelo exige:
+**`uploadCompanyDocument` tiene que degradar a `OBSOLETO` la fila `VIGENTE` anterior**
+dentro de la transacción que ya tiene. Sin eso, el invariante "como mucho una
+`VIGENTE` por (documento, empresa)" se rompe para los documentos de tipo `FILE`
+—los que se siguen subiendo como archivo— incluso después de arreglar las dos
+consultas de OPS-05. No es opcional: es parte del criterio 5.
+
 ### Convenciones del repo que aplican aquí
 
 - Server actions en `lib/actions/*`; capa de consulta RSC en `lib/queries/*` con
