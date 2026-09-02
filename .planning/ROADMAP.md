@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Formación y cumplimiento** — LMS, evaluaciones, DC-3, encuestas, talleres y el módulo de gestión documental con evidencias (commit `2ea59dc`)
-- 🚧 **v1.1 Documentos nativos y R2** — Fases 1-7 (en curso)
+- 🚧 **v1.1 Documentos nativos y R2** — Fases 1-6 (en curso; la 7 se absorbió en la 3)
 
 ## Overview
 
@@ -25,7 +25,7 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
 - [ ] **Phase 4: Puente HTML→PDF** - El artefacto que se lleva el auditor
 - [ ] **Phase 5: Registros nativos** - El formato que el cliente llena en pantalla
 - [ ] **Phase 6: Subida directa a R2** - Se levanta el tope de 25 MB
-- [ ] **Phase 7: Importación .docx** - Cargar el catálogo existente sin retipear
+- ~~**Phase 7: Importación .docx**~~ - Absorbida por la fase 3 el 2026-09-02
 
 ## Phase Details
 
@@ -64,19 +64,29 @@ Plans:
 - [x] 02-04-PLAN.md — Despliegue a producción, con checkpoint de aprobación (R2-01, R2-04)
 
 ### Phase 3: Procedimientos nativos
-**Goal**: Un procedimiento se redacta en la plataforma, se emite a cada empresa con su marca, y se versiona con historial — sin que exista un `.docx` de por medio.
+**Goal**: Un procedimiento se redacta o se importa en la plataforma, se emite a cada empresa con su marca, y se versiona con historial — sin que exista un `.docx` de por medio a partir de la carga inicial.
 **Depends on**: Phase 1
-**Requirements**: DOC-01, DOC-03, DOC-04, DOC-05, DOC-06, DOC-07, OPS-05
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06, DOC-07, OPS-05
 **Success Criteria** (what must be TRUE):
   1. Un procedimiento redactado en la plataforma se emite a dos empresas y cada una lo ve con su logo, su razón social y su código.
   2. Editar la plantilla después no altera lo emitido, y ambas empresas ven que existe una versión más reciente.
   3. Guardar dos veces un borrador deja una sola versión; publicar crea la siguiente y degrada la anterior.
   4. El historial muestra versión, fecha, autor, descripción del cambio y estatus.
   5. La página de sección sigue mostrando el documento vigente, no el borrador de versión más alta.
+  6. Un `.docx` real de la consultora con tablas se importa, las tablas sobreviven a la conversión, y el contenido pasa por el sanitizador antes de llegar a la base.
+  7. El código de la fase queda desplegado en producción con el módulo apagado, arrastrando el arreglo de autenticación pendiente.
 **Plans**: TBD
 
 Plans:
 - [ ] 03-01: TBD
+
+> **Enmienda del 2026-09-02.** Dos decisiones del usuario al planificar la fase:
+> (a) la importación `.docx` (DOC-02) se adelanta desde la fase 7, que queda absorbida
+> — `mammoth` ya está instalado y `convertToHtml` preserva tablas, y sin ella el
+> consultor tendría que escribir HTML a mano para los ~60 documentos del catálogo
+> hasta que llegara aquella fase; (b) la fase cierra con un despliegue a producción
+> con checkpoint, como hizo la 2, que además lleva al VPS el arreglo del 401
+> (`5e2352d`) que hoy sigue sin desplegar.
 
 ### Phase 4: Puente HTML→PDF
 **Goal**: Cualquier documento nativo se exporta como PDF apto para auditoría, con encabezado ISO, pie numerado y tablas con bordes.
@@ -120,23 +130,22 @@ Plans:
 Plans:
 - [ ] 06-01: TBD
 
-### Phase 7: Importación .docx
-**Goal**: La consultora carga su catálogo de procedimientos ya maquetados sin retipear nada.
-**Depends on**: Phase 3
-**Requirements**: DOC-02
-**Success Criteria** (what must be TRUE):
-  1. Un `.docx` real de la consultora con tablas se importa y las tablas sobreviven a la conversión y al saneado.
-  2. El contenido importado pasa por el sanitizador antes de llegar a la base.
-**Plans**: TBD
+### ~~Phase 7: Importación .docx~~ — ABSORBIDA POR LA FASE 3 (2026-09-02)
 
-Plans:
-- [ ] 07-01: TBD
+**Goal original**: La consultora carga su catálogo de procedimientos ya maquetados sin retipear nada.
+**Requirements**: DOC-02 → ahora en la fase 3.
+
+Se disolvió a petición del usuario al planificar la fase 3. El motivo no fue de
+coste sino de secuencia: dejarla al final significaba que, entre la fase 3 y ésta,
+la única vía para cargar el catálogo era escribir HTML a mano. Sus dos criterios
+de éxito viven ahora como el criterio 6 de la fase 3, sin rebajarse.
 
 ## Progress
 
 **Execution Order:**
-Las fases se ejecutan en orden numérico: 1 → 2 → 3 → 4 → 5 → 6 → 7.
-Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden adelantarse o aplazarse sin bloquear nada.
+Las fases se ejecutan en orden numérico: 1 → 2 → 3 → 4 → 5 → 6.
+La fase 6 sólo depende de la 2, así que puede adelantarse o aplazarse sin bloquear nada.
+La 7 ya no existe: su contenido está dentro de la 3.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -146,4 +155,4 @@ Las fases 6 y 7 sólo dependen de la 2 y la 3 respectivamente, así que pueden a
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
 | 6. Subida directa a R2 | 0/TBD | Not started | - |
-| 7. Importación .docx | 0/TBD | Not started | - |
+| ~~7. Importación .docx~~ | — | Absorbida por la 3 | 2026-09-02 |
