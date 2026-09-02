@@ -122,14 +122,29 @@ export interface DocumentIdentityInput {
   latestTemplateVersion: number;
 }
 
+/**
+ * `sourceTemplateVersion` nulo (una versión antigua subida como archivo, de
+ * antes de esta fase) **no** avisa de nada: no se sabe de qué plantilla
+ * salió, y un aviso inventado es peor que ninguno.
+ *
+ * Extraída aparte —y no repetida como una expresión suelta en cada lugar que
+ * la necesita— para que el aviso del consultor (`getManualDocumentForEdit`,
+ * plan 03-04) y el del cliente (`DocumentIdentity.isOutdated`) usen
+ * exactamente la misma fórmula y no puedan divergir (DOC-07).
+ */
+export function isTemplateOutdated(
+  sourceTemplateVersion: number | null,
+  latestTemplateVersion: number,
+): boolean {
+  return sourceTemplateVersion !== null && latestTemplateVersion > sourceTemplateVersion;
+}
+
 export function buildDocumentIdentity(input: DocumentIdentityInput): DocumentIdentity {
   const companyName =
     clean(input.company.dc3LegalName) ?? clean(input.company.name) ?? input.company.name;
   const code = input.codeOverride ?? input.code;
   const name = input.nameOverride ?? input.name;
-  const isOutdated =
-    input.sourceTemplateVersion !== null &&
-    input.latestTemplateVersion > input.sourceTemplateVersion;
+  const isOutdated = isTemplateOutdated(input.sourceTemplateVersion, input.latestTemplateVersion);
 
   return {
     companyName,

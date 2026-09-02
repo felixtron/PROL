@@ -5,6 +5,7 @@ import {
   db,
   type EvidencePeriodicity,
   type EvidenceRequirementKind,
+  type ManualDocumentKind,
   type ManualItemKind,
 } from "@prol/db";
 import {
@@ -481,8 +482,16 @@ export async function createManualDocument(input: {
   /** Si viene, se enlaza además a esta sección. */
   sectionId?: string;
   file?: { fileKey: string; fileName: string; fileSize: number; mimeType: string };
+  /** `"FILE"` por defecto. `"REGISTRO"` llega en la fase 5: se rechaza aquí
+   * para que la UI de esa entrega no se cuele por accidente en ésta. */
+  kind?: ManualDocumentKind;
 }) {
   const { user, manual } = await requireManualManageAccess(input.manualId);
+
+  if (input.kind === "REGISTRO") {
+    return { success: false as const, error: "Los registros llegan en una entrega posterior" };
+  }
+  const kind: ManualDocumentKind = input.kind === "PROCEDIMIENTO" ? "PROCEDIMIENTO" : "FILE";
 
   const code = text(input.code, "El código documental", 60);
   const existing = await db.manualDocument.findUnique({
@@ -499,6 +508,7 @@ export async function createManualDocument(input: {
       code,
       name: text(input.name, "El nombre"),
       description: optionalText(input.description),
+      kind,
       baseFileKey: input.file?.fileKey ?? null,
       baseFileName: input.file?.fileName ?? null,
       baseFileSize: input.file?.fileSize ?? null,
