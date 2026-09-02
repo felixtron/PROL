@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth";
  *
  * La constancia es un documento laboral entre el trabajador y su patrón,
  * así que el círculo es deliberadamente estrecho: el propio trabajador,
- * el líder de proyecto de su empresa (que es quien responde por los datos
+ * el administrador de cursos de su empresa (que es quien responde por los datos
  * del patrón) y la administración del tenant. El profesor del curso NO
  * entra: puede ver quién aprobó, pero el CURP de un alumno y el RFC de su
  * patrón no son asunto suyo.

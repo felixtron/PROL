@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CheckCircle, Loader2, Save } from "lucide-react";
-import { isValidRfc, normalizeRfc } from "@/lib/dc3/validation";
+import {
+  DC3_NOT_APPLICABLE,
+  DC3_WORKERS_REP_NOTE,
+  isValidRfc,
+  normalizeRfc,
+} from "@/lib/dc3/validation";
 import { updateCompanyDc3Data } from "@/lib/actions/dc3";
 import { Dc3ResponsibilityNotice } from "@/components/dc3-notice";
 
@@ -21,20 +26,24 @@ export interface EmployerDc3Data {
 }
 
 /**
- * Bloque de la empresa (el azul del formato oficial), a cargo del líder
- * de proyecto.
+ * Bloque de la empresa (el azul del formato oficial), a cargo del
+ * administrador de cursos de la empresa.
  *
  * Los datos se guardan en la empresa, no en cada constancia: se capturan
  * una vez y sirven para todos los DC-3 de sus miembros. Siguen siendo
  * editables después —una razón social cambia— y cada constancia ya
  * emitida conserva su propia copia congelada.
+ *
+ * NO tiene modo de sólo lectura, y es a propósito: el RFC del patrón y el
+ * nombre de su representante legal son datos fiscales de la empresa, no
+ * del trabajador. Quien no los captura tampoco los consulta. Es
+ * responsabilidad de quien monta la pantalla no renderizar este
+ * componente para un trabajador raso.
  */
 export function Dc3EmployerForm({
   company,
-  canEdit,
 }: {
   company: EmployerDc3Data;
-  canEdit: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -81,31 +90,6 @@ export function Dc3EmployerForm({
     });
   }
 
-  if (!canEdit) {
-    return (
-      <div className="rounded-xl border border-border bg-surface p-5">
-        <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary-500" />
-          <h2 className="font-heading text-base font-semibold text-text-primary">
-            Datos del patrón (DC-3)
-          </h2>
-        </div>
-        <p className="mt-1 text-xs text-text-tertiary">
-          Los captura el líder de proyecto de tu empresa.
-        </p>
-        <dl className="mt-4 space-y-2 text-sm">
-          <Row label="Razón social" value={company.dc3LegalName ?? company.name} />
-          <Row label="RFC" value={company.dc3Rfc} mono />
-          <Row label="Representante legal" value={company.dc3LegalRepName} />
-          <Row
-            label="Representante de los trabajadores"
-            value={company.dc3WorkersRepName}
-          />
-        </dl>
-      </div>
-    );
-  }
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -118,8 +102,8 @@ export function Dc3EmployerForm({
         </h2>
       </div>
       <p className="mt-1 text-xs text-text-tertiary">
-        Los completas como líder de proyecto. Se reutilizan en las constancias
-        DC-3 de todos los miembros de la empresa.
+        Los completas como administrador de cursos de la empresa y se
+        reutilizan en las constancias DC-3 de todos sus miembros.
         {company.dc3ConfirmedAt && (
           <>
             {" "}
@@ -235,7 +219,8 @@ export function Dc3EmployerForm({
             className={INPUT}
           />
           <p className="mt-1 text-xs text-text-tertiary">
-            Sólo para empresas con más de 50 trabajadores (nota 5 del formato).
+            {DC3_WORKERS_REP_NOTE} Si lo dejas vacío, la constancia se imprime
+            con &ldquo;{DC3_NOT_APPLICABLE}&rdquo; en esa firma.
           </p>
         </div>
       </div>
@@ -268,26 +253,5 @@ export function Dc3EmployerForm({
         Confirmar datos del patrón
       </button>
     </form>
-  );
-}
-
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string | null;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-border pb-2 last:border-0">
-      <dt className="text-xs text-text-tertiary">{label}</dt>
-      <dd
-        className={`text-right text-sm text-text-primary ${mono ? "font-mono" : ""}`}
-      >
-        {value || <span className="text-text-tertiary">Sin capturar</span>}
-      </dd>
-    </div>
   );
 }

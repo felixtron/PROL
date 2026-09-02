@@ -20,6 +20,8 @@ export interface Dc3EditionRow {
   endDate: Date;
   durationHours: number | null;
   instructorName: string | null;
+  /** Empresa que registró estas fechas, o null si las registró el tenant. */
+  company: { id: string; name: string } | null;
   _count: { enrollments: number };
 }
 
@@ -158,6 +160,14 @@ function EditionRow({
             {edition.instructorName && ` · ${edition.instructorName}`}
             {` · ${edition._count.enrollments} alumno(s)`}
           </p>
+          {/* Las que registró una empresa las administra ella. Se marcan
+              para que un cambio desde aquí sea una decisión y no un
+              descuido: son las fechas que imprime en SUS constancias. */}
+          {edition.company && (
+            <p className="mt-0.5 text-[11px] text-text-tertiary">
+              Registrada por {edition.company.name}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <button

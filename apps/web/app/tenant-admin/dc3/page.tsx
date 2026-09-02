@@ -101,6 +101,9 @@ function CourseRow({ course }: { course: CourseSummary }) {
   // Lo mismo que exige el emisor, resumido para el listado: si falta
   // cualquiera de estos, ningún alumno del curso podrá imprimir.
   const missing: string[] = [];
+  // El nombre oficial no tiene sustituto: sin él la constancia imprimiría
+  // el título interno del curso.
+  if (!course.dc3CourseName) missing.push("nombre oficial del curso");
   if (!course.dc3ThematicAreaCode) missing.push("área temática");
   if (!course.dc3DurationHours) missing.push("duración");
   if (!course.dc3TrainingAgent) missing.push("agente capacitador");
@@ -126,6 +129,11 @@ function CourseRow({ course }: { course: CourseSummary }) {
           <p className="truncate text-sm font-medium text-text-primary">
             {course.dc3CourseName || course.title}
           </p>
+          {course.dc3Enabled && !course.dc3CourseName && (
+            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+              Título interno
+            </span>
+          )}
         </div>
         <p className="mt-0.5 pl-6 text-xs text-text-tertiary">
           {course.dc3Enabled ? (

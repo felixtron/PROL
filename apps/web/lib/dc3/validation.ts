@@ -56,15 +56,15 @@ export function isValidRfc(value: string): boolean {
 }
 
 /**
- * Leyenda que se muestra al trabajador y al líder de proyecto antes de
- * confirmar sus datos. Es literal y vive en un solo sitio para que no se
- * reescriba distinta en cada formulario.
+ * Leyenda que se muestra al trabajador y al administrador de cursos de la
+ * empresa antes de confirmar sus datos. Es literal y vive en un solo
+ * sitio para que no se reescriba distinta en cada formulario.
  */
 export const DC3_RESPONSIBILITY_NOTICE =
   "Los datos capturados serán utilizados para la emisión del formato DC-3. " +
-  "Es responsabilidad del usuario y del líder de proyecto verificar que sean " +
-  "correctos antes de imprimir, ya que después de la emisión cualquier " +
-  "corrección deberá ser solicitada al administrador.";
+  "Es responsabilidad del usuario y del administrador de cursos de la " +
+  "empresa verificar que sean correctos antes de imprimir, ya que después " +
+  "de la emisión cualquier corrección deberá ser solicitada al administrador.";
 
 /**
  * Advertencia posterior a la impresión. Se muestra una vez emitida la
@@ -72,5 +72,37 @@ export const DC3_RESPONSIBILITY_NOTICE =
  */
 export const DC3_POST_PRINT_NOTICE =
   "Esta constancia ya fue emitida. Los datos impresos son responsabilidad " +
-  "del usuario y del líder de proyecto; cualquier corrección posterior " +
-  "requiere gestión administrativa con el administrador de la plataforma.";
+  "del usuario y del administrador de cursos de la empresa; cualquier " +
+  "corrección posterior requiere gestión administrativa con el " +
+  "administrador de la plataforma.";
+
+/**
+ * Instrucción de entrada para el administrador de cursos de una empresa.
+ *
+ * Es lo primero que ve al abrir el módulo, y no un texto de ayuda
+ * escondido, porque su parte del formato —patrón y fechas de ejecución—
+ * bloquea la emisión de TODOS los participantes de su empresa, no sólo la
+ * suya. Sin este aviso, la persona que puede desatascarlas es justo la
+ * que no sabe que le toca.
+ */
+export const DC3_COMPANY_ADMIN_NOTICE =
+  "Como responsable de la administración de cursos de tu empresa, debes " +
+  "capturar correctamente los datos del patrón y las fechas de ejecución " +
+  "del curso para poder emitir las constancias DC-3 de todos los " +
+  "participantes.";
+
+/**
+ * Nota del campo "representante de los trabajadores" (nota 5 del formato
+ * oficial). Se muestra junto al campo, no como pie de página: es la
+ * respuesta a "¿esto lo tengo que llenar?" en el momento en que se
+ * pregunta.
+ */
+export const DC3_WORKERS_REP_NOTE =
+  "Solo aplica para empresas con más de 50 trabajadores.";
+
+/**
+ * Lo que se imprime en el formato cuando un campo opcional se dejó vacío
+ * a propósito. Un hueco en blanco se lee como un olvido; "No aplica" dice
+ * que la decisión fue deliberada.
+ */
+export const DC3_NOT_APPLICABLE = "No aplica";

@@ -3,16 +3,16 @@ import { Building2, FileText } from "lucide-react";
 import { getMyDc3Panel } from "@/lib/queries/dc3";
 import { Dc3WorkerForm } from "./worker-form";
 import { Dc3CourseRow } from "./course-row";
-import { Dc3EmployerForm } from "@/components/dc3-employer-form";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Panel DC-3 del trabajador.
  *
- * Reúne las tres manos que llenan el formato: sus propios datos (que
- * edita aquí), los del patrón (que sólo edita si además es el líder de
- * proyecto de su empresa) y el estado de cada curso.
+ * Muestra su mano del formato —sus propios datos, que edita aquí— y el
+ * estado de cada curso. Las otras dos manos (patrón y fechas de
+ * ejecución) viven en el panel del administrador de cursos de su
+ * empresa, al que sólo se enlaza si el usuario lo es.
  */
 export default async function Dc3Page() {
   const { profile, rows } = await getMyDc3Panel();
@@ -46,7 +46,10 @@ export default async function Dc3Page() {
     );
   }
 
-  const isLeader = profile.company.leaderId === profile.id;
+  // "Administrador de cursos de la empresa" = el líder registrado de esa
+  // empresa. Es quien captura el patrón y las fechas de ejecución; para
+  // todos los demás este panel es sólo el bloque del trabajador.
+  const isCompanyAdmin = profile.company.leaderId === profile.id;
   const applicable = rows.filter((r) => r.readiness.applicable);
   const notApplicable = rows.filter((r) => !r.readiness.applicable);
 
@@ -103,7 +106,28 @@ export default async function Dc3Page() {
         {/* Formularios de captura */}
         <div className="space-y-5 lg:order-2">
           <Dc3WorkerForm profile={profile} />
-          <Dc3EmployerForm company={profile.company} canEdit={isLeader} />
+
+          {/* Los datos del patrón NO se muestran al trabajador raso: son
+              datos fiscales de su empresa, no suyos. Quien los administra
+              los edita en su propio panel, que además es donde captura
+              las fechas de ejecución. */}
+          {isCompanyAdmin && (
+            <Link
+              href="/dashboard/dc3/empresa"
+              className="flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 p-5 hover:bg-primary-100"
+            >
+              <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+              <span className="min-w-0">
+                <span className="block font-heading text-sm font-semibold text-text-primary">
+                  Administración de cursos de {profile.company.name}
+                </span>
+                <span className="mt-0.5 block text-xs text-text-secondary">
+                  Captura los datos del patrón y las fechas de ejecución para
+                  desbloquear las constancias de todos los participantes.
+                </span>
+              </span>
+            </Link>
+          )}
         </div>
       </div>
     </div>

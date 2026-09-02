@@ -1458,6 +1458,18 @@ model Dc3CourseEdition {
   courseId String @map("course_id")
   course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  /// Empresa que capturó estas fechas, o null si las capturó la
+  /// administración del tenant.
+  ///
+  /// Existe porque quien conoce las fechas reales en que su gente tomó el
+  /// curso es el administrador de cursos de la empresa, no el tenant —
+  /// pero una misma plantilla la imparten varias empresas en fechas
+  /// distintas. Sin este ámbito, la empresa A editaría el periodo que se
+  /// imprime en las constancias de la empresa B. Las ediciones del tenant
+  /// (companyId = null) siguen sirviendo a todas.
+  companyId String?  @map("company_id")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   /// Etiqueta operativa, p. ej. "Generación marzo 2026 — Monterrey".
   name String
 
@@ -1476,6 +1488,7 @@ model Dc3CourseEdition {
 
   @@index([tenantId])
   @@index([courseId])
+  @@index([companyId])
   @@map("dc3_course_editions")
 }
 
@@ -1509,9 +1522,19 @@ model Dc3Certificate {
   jobPosition     String? @map("job_position")
 
   // ── Snapshot: datos de la empresa ───────────────────────────────
+  //
+  // Los tres nombres del bloque de firmas se congelan como TEXTO. El
+  // patrón y el representante de los trabajadores firman de su puño sobre
+  // el documento impreso: el PDF sale con la línea vacía a propósito.
+  // Mejora prevista (no implementada): permitir cargar una firma
+  // escaneada por empresa y estamparla aquí. Cuando llegue, tendrá que
+  // congelarse en el snapshot igual que estos nombres, porque una firma
+  // sustituida después no puede reescribir un documento ya entregado.
   employerName   String  @map("employer_name")
   employerRfc    String  @map("employer_rfc")
   legalRepName   String  @map("legal_rep_name")
+  /// Nota 5 del formato: sólo firma en empresas de más de 50
+  /// trabajadores. Null se imprime como "No aplica".
   workersRepName String? @map("workers_rep_name")
 
   // ── Snapshot: datos del programa ────────────────────────────────
@@ -1614,9 +1637,11 @@ model Company {
   leader   User?   @relation("CompanyLeader", fields: [leaderId], references: [id], onDelete: SetNull)
 
   // ── DC-3: datos del patrón ────────────────────────────────────────
-  // Bloque azul del formato oficial. Los captura y confirma el líder de
-  // proyecto de la empresa, y se reutilizan en todos los DC-3 de sus
-  // miembros. Se guardan aquí (y no en cada constancia) precisamente
+  // Bloque azul del formato oficial. Los captura y confirma el
+  // administrador de cursos de la empresa (el líder registrado en
+  // `leaderId`), y se reutilizan en todos los DC-3 de sus miembros. Un
+  // trabajador raso ni los ve ni los edita: son datos fiscales del
+  // patrón, no suyos. Se guardan aquí (y no en cada constancia) precisamente
   // para no volver a pedirlos; cada DC-3 emitido conserva su propia
   // copia congelada, así que corregirlos aquí no reescribe los ya
   // impresos.
@@ -1649,6 +1674,7 @@ model Company {
   surveyCampaigns         SurveyCampaign[]          @relation("SurveyCampaignCompany")
   surveyResponsesReceived SurveyResponse[]          @relation("SurveyRespondentCompany")
   dc3Certificates         Dc3Certificate[]
+  dc3CourseEditions       Dc3CourseEdition[]
   manualAssignments       ManualAssignment[]
   companyDocuments        CompanyDocument[]
   riskAssessments         RiskAssessment[]

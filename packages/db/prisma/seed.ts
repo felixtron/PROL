@@ -15,6 +15,13 @@ function daysAgo(days: number): Date {
   return d;
 }
 
+/**
+ * Agente capacitador por defecto. El mismo nombre que usa
+ * `seed-training-agent.ts`, que es el script idempotente para entornos
+ * con datos reales — aquí sólo se crea porque el seed arranca de cero.
+ */
+const TRAINING_AGENT_NAME = "Ibiza Consultores";
+
 /** Random integer between min and max (inclusive). */
 function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -1050,6 +1057,60 @@ async function main() {
   });
 
   console.log(`   ✅ Company: ${acmeCorp.name} (2 members, 1 course assigned, 1 pending invite)\n`);
+
+  // ── 11b. DC-3 (STPS) ───────────────────────────────────────────────────
+  // Sin agente capacitador ningún curso puede emitir DC-3, así que el
+  // seed deja uno listo. Ibiza Consultores es el agente con el que opera
+  // la plataforma; su registro STPS y su RFC se capturan desde el panel
+  // (aquí van vacíos a propósito: no se inventan datos que la STPS
+  // verifica).
+  console.log("📋 Configuring DC-3 (STPS)…");
+
+  const ibizaAgent = await prisma.trainingAgent.create({
+    data: {
+      tenantId: tenant.id,
+      name: TRAINING_AGENT_NAME,
+      isActive: true,
+    },
+  });
+
+  // El curso de marketing emite DC-3. El nombre oficial es distinto del
+  // título interno a propósito: es exactamente lo que el módulo tiene que
+  // imprimir en lugar del nombre de uso doméstico.
+  await prisma.course.update({
+    where: { id: marketingCourse.id },
+    data: {
+      dc3Enabled: true,
+      dc3CourseName: "Marketing digital aplicado a la operación comercial",
+      dc3ThematicAreaCode: "4000",
+      dc3DurationHours: 40,
+      dc3DeliveryMode: "ONLINE",
+      dc3InstructorName: professor.name,
+      dc3TrainingAgentId: ibizaAgent.id,
+    },
+  });
+
+  // Un administrador de cursos de la empresa (el líder registrado): es
+  // quien captura el patrón y las fechas de ejecución. Sin él, el módulo
+  // no se puede recorrer entero en desarrollo.
+  await prisma.company.update({
+    where: { id: acmeCorp.id },
+    data: {
+      leaderId: student2.id,
+      dc3LegalName: "Acme Corporativo, S.A. de C.V.",
+      dc3Rfc: "ACO120315J24",
+      dc3LegalRepName: "María Elena Torres Vega",
+      // Se deja vacío a propósito: Acme tiene menos de 51 trabajadores,
+      // así que la constancia debe imprimir "No aplica" en esa firma.
+      dc3WorkersRepName: null,
+      dc3ConfirmedAt: new Date(),
+      dc3ConfirmedById: student2.id,
+    },
+  });
+
+  console.log(
+    `   ✅ DC-3: agente "${ibizaAgent.name}", 1 curso habilitado, patrón de ${acmeCorp.name} confirmado\n`,
+  );
 
   // ── 12. Document fixture (Phase 3) ──────────────────────────────────────
   console.log("📄 Creating document module fixture…");

@@ -20,9 +20,10 @@ import { Dc3NotReadyError, issueDc3ForEnrollment } from "@/lib/dc3/issuer";
 
 /**
  * Acciones del módulo DC-3, agrupadas por el rol que las ejecuta:
- * trabajador, líder de proyecto y administrador. La separación no es
- * decorativa — cada bloque tiene su propio gate, porque el formato
- * oficial reparte la responsabilidad de los datos exactamente así.
+ * trabajador, administrador de cursos de la empresa y administración de
+ * la plataforma. La separación no es decorativa — cada bloque tiene su
+ * propio gate, porque el formato oficial reparte la responsabilidad de
+ * los datos exactamente así.
  */
 
 const text = (formData: FormData, key: string): string | undefined => {
@@ -104,14 +105,15 @@ export async function updateMyDc3Data(formData: FormData) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 2. Líder de proyecto — datos del patrón
+// 2. Administrador de cursos de la empresa — datos del patrón
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Resuelve quién puede tocar los datos DC-3 de una empresa: su líder de
- * proyecto o la administración del tenant. Se comprueba contra la empresa
- * concreta, no contra el rol a secas, para que un líder no pueda editar
- * el patrón de otra empresa pasando otro id.
+ * Resuelve quién puede tocar los datos DC-3 de una empresa: su
+ * administrador de cursos (el líder registrado) o la administración del
+ * tenant. Se comprueba contra la empresa concreta, no contra el rol a
+ * secas, para que un administrador no pueda editar el patrón de otra
+ * empresa pasando otro id.
  */
 async function requireCompanyDc3Editor(companyId: string) {
   const user = await requireUser();
@@ -185,7 +187,7 @@ export async function updateCompanyDc3Data(
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 3. Administrador — agentes capacitadores
+// 3. Administración de la plataforma — agentes capacitadores
 // ─────────────────────────────────────────────────────────────────────
 
 function readAgentFields(formData: FormData) {
@@ -276,7 +278,7 @@ export async function updateTrainingAgent(
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 4. Administrador — configuración DC-3 del curso
+// 4. Administración de la plataforma — configuración DC-3 del curso
 // ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -290,7 +292,7 @@ async function requireCourseDc3Admin(courseId: string) {
 
   const course = await db.course.findUnique({
     where: { id: courseId },
-    select: { id: true, tenantId: true, title: true },
+    select: { id: true, tenantId: true, title: true, dc3TrainingAgentId: true },
   });
   if (!course) throw new Error("Curso no encontrado");
   if (admin.role !== "SUPER_ADMIN" && course.tenantId !== admin.tenantId) {
@@ -317,6 +319,17 @@ export async function updateCourseDc3Config(
   assertLength(courseName, 200, "El nombre del curso en el DC-3");
   assertLength(instructor, 120, "El nombre del instructor");
 
+  // Habilitar el DC-3 sin nombre oficial dejaría el curso listo para
+  // imprimir su título interno ("tesis diploma", "Copy v2 — piloto") en
+  // un documento que el patrón entrega a la STPS. Se exige aquí, y no
+  // sólo al emitir, para que el error se vea al configurarlo y no meses
+  // después con el trabajador esperando su constancia.
+  if (enabled && !courseName) {
+    throw new Error(
+      "Para habilitar el DC-3 hay que capturar el nombre oficial del curso tal y como debe imprimirse en la constancia"
+    );
+  }
+
   if (thematic && !isDc3ThematicAreaCode(thematic)) {
     throw new Error("El área temática debe elegirse del catálogo oficial");
   }
@@ -338,12 +351,22 @@ export async function updateCourseDc3Config(
 
   // El agente capacitador tiene que existir y ser del mismo tenant: es el
   // dato que la STPS usa para saber quién impartió la formación.
+  //
+  // Un agente dado de baja no puede asignarse a un curso NUEVO —para eso
+  // sirve el interruptor—, pero sí sigue en los cursos que ya lo tenían:
+  // dar de baja a una consultora no puede romper la emisión de las
+  // formaciones que esa consultora sí impartió.
   if (agentId) {
     const agent = await db.trainingAgent.findFirst({
       where: { id: agentId, tenantId: course.tenantId },
-      select: { id: true },
+      select: { id: true, name: true, isActive: true },
     });
     if (!agent) throw new Error("Agente capacitador no válido");
+    if (!agent.isActive && agentId !== course.dc3TrainingAgentId) {
+      throw new Error(
+        `El agente capacitador "${agent.name}" está inactivo y no puede asignarse a cursos nuevos. Actívalo antes de usarlo.`
+      );
+    }
   }
 
   await db.course.update({
@@ -366,7 +389,7 @@ export async function updateCourseDc3Config(
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 5. Administrador — ediciones (fechas reales de impartición)
+// 5. Fechas reales de ejecución (ediciones)
 // ─────────────────────────────────────────────────────────────────────
 
 function readEditionDates(formData: FormData) {
@@ -409,16 +432,87 @@ function readEditionOverrides(formData: FormData) {
   return { name, instructorName: instructorName || null, durationHours };
 }
 
+/**
+ * Empresa que administra este usuario, o null.
+ *
+ * "Administrador de cursos de la empresa" es el líder registrado en
+ * `Company.leaderId`: la persona que la administración del tenant designó
+ * para responder por los datos de ese patrón. No es un rol global —un
+ * mismo usuario es trabajador raso en todo lo demás—, por eso se resuelve
+ * contra la empresa concreta y no contra `user.role`.
+ */
+async function ledCompany(userId: string) {
+  return db.company.findUnique({
+    where: { leaderId: userId },
+    select: { id: true, tenantId: true, name: true },
+  });
+}
+
+/**
+ * Ámbito desde el que se capturan las fechas de ejecución de un curso.
+ *
+ *   companyId = null  → administración del tenant. Sus ediciones sirven a
+ *                       todas las empresas.
+ *   companyId = "…"   → administrador de cursos de esa empresa. Sólo ve y
+ *                       toca las suyas.
+ *
+ * El ámbito no es cosmético: las fechas acaban impresas en la constancia
+ * de cada trabajador, y dos empresas que toman el mismo curso lo toman en
+ * semanas distintas. Sin esta separación, la empresa A reescribiría el
+ * periodo que declara la empresa B.
+ */
+async function requireDc3EditionScope(courseId: string) {
+  const user = await requireUser();
+
+  const course = await db.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, tenantId: true },
+  });
+  if (!course) throw new Error("Curso no encontrado");
+
+  const isTenantAdmin =
+    user.role === "SUPER_ADMIN" ||
+    (user.role === "ADMIN" && user.tenantId === course.tenantId);
+  if (isTenantAdmin) {
+    return { user, course, companyId: null as string | null, isTenantAdmin };
+  }
+
+  const company = await ledCompany(user.id);
+  if (!company || company.tenantId !== course.tenantId) {
+    throw new Error("No autorizado");
+  }
+
+  return { user, course, companyId: company.id, isTenantAdmin };
+}
+
 export async function createDc3Edition(courseId: string, formData: FormData) {
-  const { course } = await requireCourseDc3Admin(courseId);
+  const { course, companyId, isTenantAdmin } =
+    await requireDc3EditionScope(courseId);
 
   const { startDate, endDate } = readEditionDates(formData);
   const overrides = readEditionOverrides(formData);
+
+  // La administración del tenant puede crear la edición a nombre de una
+  // empresa concreta; si no dice nada, la edición es del tenant y sirve a
+  // todas. El administrador de la empresa no elige: siempre es la suya.
+  let scopeCompanyId = companyId;
+  if (isTenantAdmin) {
+    const requested = text(formData, "companyId") ?? "";
+    if (requested) {
+      const company = await db.company.findFirst({
+        where: { id: requested, tenantId: course.tenantId },
+        select: { id: true },
+      });
+      if (!company) throw new Error("Empresa no válida");
+      scopeCompanyId = company.id;
+    }
+  }
 
   const edition = await db.dc3CourseEdition.create({
     data: {
       tenantId: course.tenantId,
       courseId,
+      companyId: scopeCompanyId,
       startDate,
       endDate,
       ...overrides,
@@ -426,26 +520,50 @@ export async function createDc3Edition(courseId: string, formData: FormData) {
   });
 
   revalidatePath(`/tenant-admin/dc3/${courseId}`);
+  revalidatePath("/dashboard/dc3/empresa");
   return { success: true, editionId: edition.id };
 }
 
-async function requireEditionAdmin(editionId: string) {
-  const admin = await requireTenantAdmin();
+/**
+ * Gate de una edición existente. El administrador de una empresa sólo
+ * alcanza las que creó su propia empresa: una edición del tenant
+ * (`companyId = null`) la comparten todas, así que dejarle editarla sería
+ * dejarle cambiar las fechas de las constancias ajenas.
+ */
+async function requireEditionEditor(editionId: string) {
+  const user = await requireUser();
 
   const edition = await db.dc3CourseEdition.findUnique({
     where: { id: editionId },
-    select: { id: true, tenantId: true, courseId: true },
+    select: {
+      id: true,
+      tenantId: true,
+      courseId: true,
+      companyId: true,
+    },
   });
   if (!edition) throw new Error("Edición no encontrada");
-  if (admin.role !== "SUPER_ADMIN" && edition.tenantId !== admin.tenantId) {
+
+  const isTenantAdmin =
+    user.role === "SUPER_ADMIN" ||
+    (user.role === "ADMIN" && user.tenantId === edition.tenantId);
+  if (isTenantAdmin) return { user, edition, isTenantAdmin };
+
+  const company = await ledCompany(user.id);
+  if (!company || company.tenantId !== edition.tenantId) {
     throw new Error("No autorizado");
   }
+  if (edition.companyId !== company.id) {
+    throw new Error(
+      "Estas fechas las administra la plataforma o son de otra empresa. Sólo puedes editar las que registró tu empresa."
+    );
+  }
 
-  return { admin, edition };
+  return { user, edition, isTenantAdmin };
 }
 
 export async function updateDc3Edition(editionId: string, formData: FormData) {
-  const { edition } = await requireEditionAdmin(editionId);
+  const { edition } = await requireEditionEditor(editionId);
 
   const { startDate, endDate } = readEditionDates(formData);
   const overrides = readEditionOverrides(formData);
@@ -456,11 +574,13 @@ export async function updateDc3Edition(editionId: string, formData: FormData) {
   });
 
   revalidatePath(`/tenant-admin/dc3/${edition.courseId}`);
+  revalidatePath("/dashboard/dc3/empresa");
+  revalidatePath("/dashboard/dc3");
   return { success: true };
 }
 
 export async function deleteDc3Edition(editionId: string) {
-  const { edition } = await requireEditionAdmin(editionId);
+  const { edition } = await requireEditionEditor(editionId);
 
   // Borrar una edición pondría a null el periodo de sus alumnos, y con él
   // el de constancias que aún no se han emitido. Se exige vaciarla antes
@@ -477,6 +597,7 @@ export async function deleteDc3Edition(editionId: string) {
   await db.dc3CourseEdition.delete({ where: { id: editionId } });
 
   revalidatePath(`/tenant-admin/dc3/${edition.courseId}`);
+  revalidatePath("/dashboard/dc3/empresa");
   return { success: true };
 }
 
@@ -488,26 +609,59 @@ export async function setEnrollmentDc3Edition(
   enrollmentId: string,
   editionId: string | null
 ) {
-  const admin = await requireTenantAdmin();
+  const user = await requireUser();
 
   const enrollment = await db.enrollment.findUnique({
     where: { id: enrollmentId },
-    select: { id: true, tenantId: true, courseId: true },
+    select: {
+      id: true,
+      tenantId: true,
+      courseId: true,
+      student: { select: { companyId: true } },
+    },
   });
   if (!enrollment) throw new Error("Inscripción no encontrada");
-  if (admin.role !== "SUPER_ADMIN" && enrollment.tenantId !== admin.tenantId) {
-    throw new Error("No autorizado");
+
+  const isTenantAdmin =
+    user.role === "SUPER_ADMIN" ||
+    (user.role === "ADMIN" && user.tenantId === enrollment.tenantId);
+
+  // El administrador de cursos de la empresa asigna las fechas de SU
+  // gente. Se comprueba contra la empresa del alumno, no contra el rol:
+  // un líder no puede fechar la formación de los trabajadores de otro
+  // patrón.
+  let actorCompanyId: string | null = null;
+  if (!isTenantAdmin) {
+    const company = await ledCompany(user.id);
+    if (
+      !company ||
+      company.tenantId !== enrollment.tenantId ||
+      company.id !== enrollment.student.companyId
+    ) {
+      throw new Error("No autorizado");
+    }
+    actorCompanyId = company.id;
   }
 
   if (editionId) {
     // La edición tiene que ser de ESTE curso: cruzarlas imprimiría en la
-    // constancia las fechas de una formación que el alumno no tomó.
+    // constancia las fechas de una formación que el alumno no tomó. Y
+    // para un administrador de empresa, además, tiene que ser suya o del
+    // tenant — nunca la de otra empresa.
     const edition = await db.dc3CourseEdition.findFirst({
-      where: { id: editionId, courseId: enrollment.courseId },
+      where: {
+        id: editionId,
+        courseId: enrollment.courseId,
+        ...(actorCompanyId
+          ? { OR: [{ companyId: actorCompanyId }, { companyId: null }] }
+          : {}),
+      },
       select: { id: true },
     });
     if (!edition) {
-      throw new Error("La edición no pertenece a este curso");
+      throw new Error(
+        "La edición no pertenece a este curso o no está disponible para tu empresa"
+      );
     }
   }
 
@@ -517,6 +671,7 @@ export async function setEnrollmentDc3Edition(
   });
 
   revalidatePath(`/tenant-admin/dc3/${enrollment.courseId}`);
+  revalidatePath("/dashboard/dc3/empresa");
   revalidatePath("/dashboard/dc3");
   return { success: true };
 }
@@ -527,8 +682,9 @@ export async function setEnrollmentDc3Edition(
 
 /**
  * Genera el DC-3 de una inscripción. Lo puede disparar el propio alumno,
- * el líder de proyecto de su empresa o la administración — los tres ven
- * el mismo botón y pasan por la misma validación.
+ * el administrador de cursos de su empresa o la administración de la
+ * plataforma — los tres ven el mismo botón y pasan por la misma
+ * validación.
  *
  * Idempotente: si ya estaba emitido devuelve el existente en vez de
  * duplicarlo.

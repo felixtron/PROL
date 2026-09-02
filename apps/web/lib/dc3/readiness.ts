@@ -19,10 +19,16 @@ import { toCalendarDate } from "@/lib/dc3/dates";
 /** Quién es responsable de completar un dato que falta. */
 export type Dc3Role = "WORKER" | "EMPLOYER" | "COURSE";
 
+/**
+ * Nombra al responsable con el título con el que esa persona se reconoce
+ * dentro de la plataforma. "Administrador" a secas no servía: hay dos, y
+ * el trabajador que ve el aviso necesita saber a cuál de los dos ir a
+ * buscar — el de su propia empresa o el de la plataforma.
+ */
 export const DC3_ROLE_LABELS: Record<Dc3Role, string> = {
   WORKER: "Trabajador",
-  EMPLOYER: "Líder de proyecto",
-  COURSE: "Administrador",
+  EMPLOYER: "Administrador de cursos de la empresa",
+  COURSE: "Administrador de la plataforma",
 };
 
 export interface Dc3MissingField {
@@ -37,6 +43,8 @@ export interface Dc3Source {
     status: string;
     enrolledAt: Date;
     completedAt: Date | null;
+    /** Hay un intento aprobado del examen final del curso. */
+    passedFinalExam: boolean;
   };
   user: {
     id: string;
@@ -68,6 +76,8 @@ export interface Dc3Source {
       name: string;
       stpsRegistry: string | null;
     } | null;
+    /** El curso tiene examen final configurado. */
+    hasFinalExam: boolean;
   };
   edition: {
     id: string;
@@ -204,9 +214,18 @@ export function evaluateDc3(source: Dc3Source): Dc3Readiness {
   const workersRepName = clean(company.dc3WorkersRepName);
 
   // ── Datos del programa de capacitación ──────────────────────────
-  const courseName = clean(course.dc3CourseName) ?? clean(course.title);
+  // Deliberadamente NO se cae a `course.title`. El título interno es de
+  // uso doméstico ("tesis diploma", "Copy v2 — piloto") y aquí acaba
+  // impreso en un documento oficial que el patrón entrega a la STPS. Si
+  // nadie capturó el nombre oficial, el dato falta: no hay sustituto
+  // aceptable.
+  const courseName = clean(course.dc3CourseName);
   if (!courseName) {
-    need("COURSE", "dc3CourseName", "Nombre del curso en el DC-3");
+    need(
+      "COURSE",
+      "dc3CourseName",
+      "Nombre oficial del curso tal y como debe imprimirse en el DC-3"
+    );
   }
 
   const durationHours = edition?.durationHours ?? course.dc3DurationHours;
@@ -243,6 +262,14 @@ export function evaluateDc3(source: Dc3Source): Dc3Readiness {
   //            impartición efectiva de un pregrabado, y es distinta para
   //            cada persona.
   const completed = enrollment.status === "COMPLETED" && !!enrollment.completedAt;
+
+  // La constancia acredita competencias, no asistencia: si el curso tiene
+  // examen final, aprobarlo es la evidencia de que se adquirieron. Se
+  // comprueba aparte de `completed` porque son cosas distintas y el
+  // trabajador merece leer cuál de las dos le falta.
+  if (course.hasFinalExam && !enrollment.passedFinalExam) {
+    need("WORKER", "finalExam", "Evaluación final del curso aprobada");
+  }
 
   let startDate: Date | null = null;
   let endDate: Date | null = null;
@@ -347,7 +374,23 @@ export const DC3_SOURCE_INCLUDE = {
       dc3DeliveryMode: true,
       dc3InstructorName: true,
       dc3TrainingAgent: { select: { name: true, stpsRegistry: true } },
+      // "¿Este curso tiene examen final?" en una sola fila. El examen
+      // cuelga de lección → módulo → curso, así que preguntarlo por el
+      // camino natural traería una fila por lección de cada curso, y esta
+      // consulta se usa sobre listados de cientos de inscripciones. Aquí
+      // basta con saber si existe: se filtra el módulo que lo contiene y
+      // se corta en uno.
+      modules: {
+        where: { lessons: { some: { quizzes: { some: { isFinalExam: true } } } } },
+        select: { id: true },
+        take: 1,
+      },
     },
+  },
+  quizAttempts: {
+    where: { passed: true, quiz: { isFinalExam: true } },
+    select: { id: true },
+    take: 1,
   },
   dc3Edition: {
     select: {
@@ -367,7 +410,10 @@ type EnrollmentWithDc3Source = {
   enrolledAt: Date;
   completedAt: Date | null;
   student: Dc3Source["user"] & { company: Dc3Source["company"] };
-  course: Dc3Source["course"];
+  course: Omit<Dc3Source["course"], "hasFinalExam"> & {
+    modules: { id: string }[];
+  };
+  quizAttempts: { id: string }[];
   dc3Edition: Dc3Source["edition"];
 };
 
@@ -381,10 +427,18 @@ export function evaluateDc3ForEnrollment(
       status: enrollment.status,
       enrolledAt: enrollment.enrolledAt,
       completedAt: enrollment.completedAt,
+      // El include ya filtró por `passed` y `isFinalExam`: que haya
+      // alguna fila es exactamente "aprobó el examen final".
+      passedFinalExam: enrollment.quizAttempts.length > 0,
     },
     user: enrollment.student,
     company: enrollment.student.company,
-    course: enrollment.course,
+    course: {
+      ...enrollment.course,
+      // Igual: el include sólo trae el módulo que contiene el examen
+      // final, si lo hay.
+      hasFinalExam: enrollment.course.modules.length > 0,
+    },
     edition: enrollment.dc3Edition,
   });
 }

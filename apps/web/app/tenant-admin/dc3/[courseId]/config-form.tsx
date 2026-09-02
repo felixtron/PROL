@@ -131,18 +131,25 @@ export function Dc3ConfigForm({
             htmlFor="dc3-course-name"
             className="mb-1.5 block text-sm font-medium text-text-primary"
           >
-            Nombre del curso en el DC-3
+            Nombre oficial del curso en el DC-3
+            {enabled && <span className="ml-1 text-red-600">*</span>}
           </label>
           <input
             id="dc3-course-name"
             value={courseName}
             onChange={(e) => setCourseName(e.target.value)}
             maxLength={200}
-            placeholder={course.title}
+            required={enabled}
+            placeholder="Seguridad e higiene en el trabajo"
             className={INPUT}
           />
+          {/* Sin este dato, la constancia imprimiría el título interno del
+              curso. Se dice explícitamente porque el título interno se ve
+              a dos centímetros de aquí y la tentación es dejarlo vacío. */}
           <p className="mt-1 text-xs text-text-tertiary">
-            Si lo dejas vacío se imprime el título del curso en la plataforma.
+            Obligatorio para emitir. Es el nombre que se imprime en la
+            constancia, no el título interno de la plataforma
+            {course.title && ` ("${course.title}")`}.
           </p>
         </div>
 

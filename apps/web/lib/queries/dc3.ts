@@ -68,15 +68,16 @@ export const getMyDc3Panel = cache(async () => {
         dc3OccupationCode: true,
         dc3JobPosition: true,
         dc3ConfirmedAt: true,
+        // Deliberadamente SIN los datos del patrón (RFC, representante
+        // legal, razón social). Este perfil viaja al navegador del
+        // trabajador dentro de la carga de la página, así que traerlos
+        // "por si acaso" los publicaría a toda la plantilla aunque
+        // ninguna pantalla los pinte. Quien los administra los lee en
+        // `getCompanyDc3AdminPanel`, que sí comprueba quién pregunta.
         company: {
           select: {
             id: true,
             name: true,
-            dc3LegalName: true,
-            dc3Rfc: true,
-            dc3LegalRepName: true,
-            dc3WorkersRepName: true,
-            dc3ConfirmedAt: true,
             leaderId: true,
           },
         },
@@ -136,7 +137,7 @@ export const getDc3StatusForEnrollment = cache(
   }
 );
 
-/** Datos del patrón que administra el líder de proyecto. */
+/** Datos del patrón que administra el administrador de cursos de la empresa. */
 export const getCompanyDc3Data = cache(async (companyId: string) => {
   return db.company.findUnique({
     where: { id: companyId },
@@ -219,7 +220,10 @@ export const getCourseDc3Detail = cache(async (courseId: string) => {
     db.dc3CourseEdition.findMany({
       where: { courseId },
       orderBy: { startDate: "desc" },
-      include: { _count: { select: { enrollments: true } } },
+      include: {
+        company: { select: { id: true, name: true } },
+        _count: { select: { enrollments: true } },
+      },
     }),
     db.enrollment.findMany({
       where: { courseId },
@@ -255,4 +259,163 @@ export const getDc3PrintHistory = cache(async (dc3Id: string) => {
     take: 100,
     include: { user: { select: { name: true, email: true } } },
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Panel del administrador de cursos de la empresa
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Empresa que administra el usuario actual, o null si no administra
+ * ninguna.
+ *
+ * Se resuelve por `Company.leaderId` y no por `user.role`: ser
+ * administrador de cursos es un encargo sobre una empresa concreta, no un
+ * rol global. La misma persona es un trabajador raso en todo lo demás.
+ */
+export const getMyAdministeredCompanyId = cache(async () => {
+  const user = await requireUser();
+  const company = await db.company.findUnique({
+    where: { leaderId: user.id },
+    select: { id: true },
+  });
+  return company?.id ?? null;
+});
+
+export interface Dc3CompanyParticipant {
+  enrollmentId: string;
+  studentId: string;
+  studentName: string | null;
+  studentEmail: string;
+  status: string;
+  completedAt: Date | null;
+  editionId: string | null;
+  readiness: Dc3Readiness;
+  issuedFolio: string | null;
+}
+
+export interface Dc3CompanyCourse {
+  courseId: string;
+  courseTitle: string;
+  officialName: string | null;
+  deliveryMode: string;
+  durationHours: number | null;
+  /** Ediciones que esta empresa puede usar: las suyas y las del tenant. */
+  editions: {
+    id: string;
+    name: string;
+    startDate: Date;
+    endDate: Date;
+    durationHours: number | null;
+    instructorName: string | null;
+    /** false = la registró la plataforma; la empresa no puede editarla. */
+    ownedByCompany: boolean;
+    assignedCount: number;
+  }[];
+  participants: Dc3CompanyParticipant[];
+}
+
+/**
+ * Todo lo que el administrador de cursos de una empresa necesita para
+ * desatascar las constancias de su gente: los datos del patrón, las
+ * fechas de ejecución por curso y quién está esperando qué.
+ *
+ * Se agrupa por curso —y no por persona— porque las fechas de ejecución
+ * se capturan una vez por generación y sirven a todos sus participantes.
+ * Pedirlas persona a persona sería pedir el mismo dato veinte veces.
+ */
+export const getCompanyDc3AdminPanel = cache(async (companyId: string) => {
+  const user = await requireUser();
+
+  const company = await db.company.findUnique({
+    where: { id: companyId },
+    select: {
+      id: true,
+      name: true,
+      tenantId: true,
+      leaderId: true,
+      dc3LegalName: true,
+      dc3Rfc: true,
+      dc3LegalRepName: true,
+      dc3WorkersRepName: true,
+      dc3ConfirmedAt: true,
+    },
+  });
+  if (!company) return null;
+
+  const isTenantAdmin =
+    user.role === "SUPER_ADMIN" ||
+    (user.role === "ADMIN" && user.tenantId === company.tenantId);
+  if (!isTenantAdmin && company.leaderId !== user.id) return null;
+
+  const enrollments = await db.enrollment.findMany({
+    where: {
+      student: { companyId },
+      course: { dc3Enabled: true },
+    },
+    include: {
+      ...DC3_SOURCE_INCLUDE,
+      student: {
+        select: {
+          ...DC3_SOURCE_INCLUDE.student.select,
+          email: true,
+        },
+      },
+      dc3Certificate: { select: DC3_SUMMARY_SELECT },
+    },
+    orderBy: [{ completedAt: "desc" }, { enrolledAt: "desc" }],
+    take: 1000,
+  });
+
+  const courseIds = [...new Set(enrollments.map((e) => e.courseId))];
+
+  // Las del tenant (companyId = null) sirven a todas las empresas; las
+  // propias sólo a ésta. Las de otra empresa ni se listan: sus fechas no
+  // dicen nada sobre cuándo se capacitó a esta gente.
+  const editions = await db.dc3CourseEdition.findMany({
+    where: {
+      courseId: { in: courseIds },
+      OR: [{ companyId }, { companyId: null }],
+    },
+    orderBy: { startDate: "desc" },
+    include: { _count: { select: { enrollments: true } } },
+  });
+
+  const courses: Dc3CompanyCourse[] = courseIds.map((courseId) => {
+    const rows = enrollments.filter((e) => e.courseId === courseId);
+    const course = rows[0]!.course;
+
+    return {
+      courseId,
+      courseTitle: course.title,
+      officialName: course.dc3CourseName,
+      deliveryMode: course.dc3DeliveryMode,
+      durationHours: course.dc3DurationHours,
+      editions: editions
+        .filter((ed) => ed.courseId === courseId)
+        .map((ed) => ({
+          id: ed.id,
+          name: ed.name,
+          startDate: ed.startDate,
+          endDate: ed.endDate,
+          durationHours: ed.durationHours,
+          instructorName: ed.instructorName,
+          ownedByCompany: ed.companyId === companyId,
+          assignedCount: ed._count.enrollments,
+        })),
+      participants: rows.map((e) => ({
+        enrollmentId: e.id,
+        studentId: e.studentId,
+        studentName: e.student.name,
+        studentEmail: e.student.email,
+        status: e.status,
+        completedAt: e.completedAt,
+        editionId: e.dc3EditionId,
+        readiness: evaluateDc3ForEnrollment(e),
+        issuedFolio: e.dc3Certificate?.folio ?? null,
+      })),
+    };
+  });
+
+  return { company, courses };
 });

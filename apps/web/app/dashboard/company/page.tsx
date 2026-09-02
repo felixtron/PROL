@@ -123,12 +123,11 @@ export default async function MyCompanyPage() {
         </div>
       </div>
 
-      {/* Datos del patrón para el DC-3. El líder los edita; el resto de
-          miembros sólo los consulta, porque son los que saldrán impresos
-          en sus constancias. */}
-      {dc3InUse && (
-        <Dc3EmployerForm company={company} canEdit={Boolean(isLeader)} />
-      )}
+      {/* Datos del patrón para el DC-3. Sólo los ve quien los captura: el
+          administrador de cursos de la empresa. Para el resto de los
+          miembros son datos fiscales ajenos —RFC y representante legal
+          del patrón—, así que ni se muestran en modo consulta. */}
+      {dc3InUse && isLeader && <Dc3EmployerForm company={company} />}
 
       {/* Team report — only for the company leader */}
       {teamReport && (

@@ -8,6 +8,7 @@ import {
 } from "@react-pdf/renderer";
 import { DC3_OCCUPATION_AREAS, DC3_THEMATIC_AREAS } from "@/lib/dc3/catalogs";
 import { dc3DateCells } from "@/lib/dc3/dates";
+import { DC3_NOT_APPLICABLE } from "@/lib/dc3/validation";
 
 /**
  * Formato DC-3 — Constancia de Competencias o de Habilidades Laborales.
@@ -544,8 +545,14 @@ export function Dc3Document(d: Dc3RenderData) {
               <Text style={styles.signRole}>
                 Representante de los trabajadores 5/
               </Text>
+              {/* Vacío no es lo mismo que "se me olvidó": la nota 5 sólo
+                  obliga a las empresas de más de 50 trabajadores. Se
+                  imprime "No aplica" para que quien reciba la constancia
+                  lea una decisión y no un hueco. */}
               <Text style={styles.signName}>
-                {d.workersRepName ? truncate(d.workersRepName, 46) : " "}
+                {d.workersRepName
+                  ? truncate(d.workersRepName, 46)
+                  : DC3_NOT_APPLICABLE}
               </Text>
               <View style={styles.signLine} />
               <Text style={styles.signCaption}>Nombre y Firma</Text>

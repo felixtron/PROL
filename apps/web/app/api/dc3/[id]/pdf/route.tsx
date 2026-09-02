@@ -11,7 +11,7 @@ import { loadUploadAsDataUrl } from "@/lib/certificate-assets";
  *
  * A diferencia del diploma, esta ruta NO es pública: el documento lleva
  * la CURP del trabajador y el RFC de su patrón, así que sólo lo ven el
- * propio trabajador, el líder de proyecto de su empresa y la
+ * propio trabajador, el administrador de cursos de su empresa y la
  * administración del tenant (ver `lib/dc3/access`).
  *
  * Cada descarga queda asentada en el historial. Es un requisito del
