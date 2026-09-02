@@ -46,6 +46,22 @@ Forma del módulo `apps/web/lib/r2.ts`: calcada de `apps/web/lib/cloudflare-stre
 
 Añadir en `assertCriticalServerEnv` un **warning de producción** (no throw) si `!R2_BUCKET && !PRIVATE_UPLOAD_DIR`, espejando el `warnedAboutPrivateDir` de `upload-paths.ts`.
 
+#### Enmienda del 2026-09-01: configuración R2 parcial
+
+La investigación encontró un caso que el warning de arriba no cubre: **`R2_BUCKET` presente pero con alguna de las otras tres credenciales ausente**. El warning no se dispara (el bucket sí existe) y el fallo aparecería sólo al primer archivo real.
+
+Se evaluaron tres respuestas y **el usuario eligió la tercera**:
+
+1. *Sólo warning* (lo que decía originalmente esta sección): entre el despliegue y la primera subida nadie se entera de que la configuración está a medias.
+2. *Fallar al arrancar*: detecta el problema cuanto antes, pero **una errata en una variable del módulo documental tumbaría toda la plataforma** —cursos, evaluaciones, certificados—, que es exactamente lo que el título "NO fail-fast" quería evitar.
+3. **Fallar al escribir, no al arrancar** ← elegida.
+
+**Comportamiento acordado:** la aplicación **arranca con normalidad** y registra un aviso claro en el log. Pero cuando `R2_BUCKET` está puesta y falta alguna credencial, `storePrivateFile` **no degrada a disco en silencio**: rechaza la escritura con un error explícito y lo registra.
+
+El razonamiento es que hay dos fallos malos y esto evita los dos: no tumba la plataforma entera por una variable de un módulo, y no esparce evidencias por almacenamiento efímero — que es el fallo que la fase 1 acaba de cerrar. La lectura (`readPrivateFile`) puede seguir intentando disco, porque leer de donde no hay devuelve `null` y eso ya está contemplado.
+
+`STORAGE_BACKEND` sigue siendo `"r2"` sólo con las cuatro variables. **El rollback de R2-04 no cambia**: quitar `R2_BUCKET` y reiniciar devuelve el backend a disco, sin configuración parcial de por medio.
+
 ### Qué NO se toca
 
 - `privateFileResponse`: **cero ediciones**.
