@@ -1,25 +1,12 @@
 import { PrismaClient } from "@prisma/client";
-import { scrypt, randomBytes } from "crypto";
-import { promisify } from "util";
+import { hashPassword } from "./seed-password";
+import { seedDocumentFixture } from "./seed-documents";
 
-const scryptAsync = promisify(scrypt);
 const prisma = new PrismaClient();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Hash a password using the same scrypt config as Better Auth */
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString("hex");
-  const key = (await scryptAsync(
-    password.normalize("NFKC"),
-    salt,
-    64,
-    { N: 16384, r: 16, p: 1, maxmem: 128 * 16384 * 16 * 2 }
-  )) as Buffer;
-  return `${salt}:${key.toString("hex")}`;
-}
 
 /** Returns a Date N days in the past from now. */
 function daysAgo(days: number): Date {
@@ -1064,6 +1051,20 @@ async function main() {
 
   console.log(`   ✅ Company: ${acmeCorp.name} (2 members, 1 course assigned, 1 pending invite)\n`);
 
+  // ── 12. Document fixture (Phase 3) ──────────────────────────────────────
+  console.log("📄 Creating document module fixture…");
+
+  const documentFixture = await seedDocumentFixture(prisma, {
+    tenantId: tenant.id,
+    authorUserId: admin.id,
+    hashPassword,
+  });
+
+  console.log(`   ✅ Second company: ${documentFixture.companies[1]?.name} (${documentFixture.companies[1]?.id})`);
+  console.log(`   ✅ Manual: ${documentFixture.manualId}, sección: ${documentFixture.sectionId}`);
+  console.log(`   ✅ Documento PROCEDIMIENTO: ${documentFixture.documentId}`);
+  console.log(`   ✅ Líder de Constructora Delta: ${documentFixture.leaderUserId}\n`);
+
   // ── Done! ──────────────────────────────────────────────────────────────
   console.log("═══════════════════════════════════════════════════════════════");
   console.log("🌱 Seed completed successfully!");
@@ -1081,6 +1082,7 @@ async function main() {
   console.log(`  • 2 Notifications`);
   console.log(`  • 1 Workshop`);
   console.log(`  • 1 Company (Acme Corp) with 2 members + 1 course assigned`);
+  console.log(`  • Document fixture: 2 companies, 1 published manual, 1 PROCEDIMIENTO document, 2 activations`);
   console.log();
 }
 
