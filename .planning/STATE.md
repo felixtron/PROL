@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
 status: executing
-stopped_at: Cerrada la brecha de verificación de 03-06 (03-06b)
-last_updated: "2026-09-02T18:20:00.000Z"
-last_activity: "2026-09-02 — 03-06b: cerrada por HTTP la brecha de verificación que dejó el checkpoint de 03-06 (aprobado sin ejercitarse, confirmado por el usuario). Se invocaron las cinco server actions reales (updateManualDocumentBody, issueCompanyDocument, startCompanyDocumentDraft, saveCompanyDocumentDraft, publishCompanyDocument) por HTTP directo con sesión real, no un script que imite su forma. Los ocho pasos del recorrido pasaron contra la base real: template_version 1→5 (edición real + importación de un .docx con tabla de celda combinada), Acme y Constructora Delta emitidas en v1 VIGENTE con snapshot idéntico y congelado, la plantilla editada de nuevo sin mover ese snapshot, borrador único e idempotente en Acme con dos guardados acumulados sin versionar, publicación con degradación correcta (v2 VIGENTE/v1 OBSOLETO) y Constructora Delta intacta. Invariante de una sola VIGENTE reverificado en tres puntos de control, cero infracciones. DOC-01/02/03/06 pasan a Complete en REQUIREMENTS.md. Fixture de regresión de fase 1 reconfirmado intacto (2 companies, 2 evidences con form_snapshot, prol-db sin reinicios). check-types/lint/build re-verificados, idénticos al cierre original. Blocker de 03-07 resuelto: la base ya tiene los datos reales que ese plan necesita."
+stopped_at: "Completado 03-07 — vista del cliente aprobada en pantalla; dev server sigue corriendo en :3000 para 03-08"
+last_updated: "2026-09-02T19:40:54.494Z"
+last_activity: "2026-09-02 — 03-07 completado: la vista del cliente (identidad, historial, aviso de versión atrasada) se aprobó en pantalla por el usuario, entrando como Acme Corp y como Constructora Delta (respondió literalmente 'LOS VI BIEN AVANZA'). El cambio de logo en vivo sin re-emitir —la única parte que el usuario no ejerció— se cerró aparte por HTTP con hashes reales antes/durante/después y el logo restaurado. Ver 03-07-SUMMARY.md. DOC-04/05/07 pasan a Complete en REQUIREMENTS.md. Sólo queda 03-08 (despliegue a producción) para cerrar la fase 3."
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 33
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-09-01)
 ## Current Position
 
 Phase: 3 of 6 (Procedimientos nativos)
-Plan: 7 of 8 in current phase
+Plan: 8 of 8 in current phase
 Status: Ready to execute
-Last activity: 2026-09-02 — 03-06b cerró por HTTP la brecha de verificación de 03-06 (checkpoint aprobado sin ejercitarse). Las cinco server actions reales se invocaron por HTTP directo con sesión real; los ocho pasos del recorrido pasaron contra la base real y DOC-01/02/03/06 pasan a Complete. Ver `03-06-SUMMARY.md` §"Cierre de la brecha (03-06b)" y el blocker resuelto abajo. Base lista para que 03-07 construya la vista del cliente sobre datos reales (Acme v2 VIGENTE/v1 OBSOLETO, Constructora Delta v1 VIGENTE).
+Last activity: 2026-09-02 — 03-07 completado: la vista del cliente (identidad, historial, aviso de versión atrasada) se aprobó en pantalla por el usuario, entrando como Acme Corp y como Constructora Delta (respondió literalmente 'LOS VI BIEN AVANZA'). El cambio de logo en vivo sin re-emitir —la única parte que el usuario no ejerció— se cerró aparte por HTTP con hashes reales antes/durante/después y el logo restaurado. Ver 03-07-SUMMARY.md. DOC-04/05/07 pasan a Complete en REQUIREMENTS.md. Sólo queda 03-08 (despliegue a producción) para cerrar la fase 3.
 
 Progress: [███░░░░░░░] 33% (2 de 6 fases)
 
@@ -62,6 +62,7 @@ Progress: [███░░░░░░░] 33% (2 de 6 fases)
 | Phase 03 P04 | ~20min | 3 tasks | 5 files |
 | Phase 03 P05 | ~25min | 3 tasks | 3 files |
 | Phase 03 P06 | ~40min | 3 tasks | 6 files |
+| Phase 03 P07 | ~35min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,9 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03-06]: DOC-01/02/03/06 NO se marcan Complete pese a instrucción de cierre: company_documents sigue en 0 filas y template_version en 1 tras el checkpoint aprobado — la evidencia de base que se pidió capturar no existe, así que se documenta el hallazgo en vez de redactar el resultado esperado.
 - [Phase 03-06b]: El usuario confirmó que aprobó el checkpoint de 03-06 sin ejercitarlo. La brecha se cerró ejercitando las cinco server actions reales por HTTP directo (Next-Action + cookie de sesión real), no repitiendo el checkpoint humano ni fabricando filas con un script que imite la forma de las transacciones. Los ocho pasos del recorrido pasaron contra la base real; DOC-01/02/03/06 pasan a Complete. Ver `03-06-SUMMARY.md`.
 - [Phase 03-06b]: El manifest global `.next/server/server-reference-manifest.json` no es fiable para invocar server actions contra un `next dev` con Turbopack en ejecución — sus IDs no coincidían con el proceso vivo (404 "Server action not found"). El manifest correcto es el específico de cada ruta, bajo `.next/dev/server/app/.../page/server-reference-manifest.json`.
+- [Phase 03-07]: El checkpoint de la tarea 3 sí se ejerció (LOS VI BIEN AVANZA): el usuario entró como Acme y como Constructora Delta y comparó identidad, tabla de control de cambios y aviso de plantilla desactualizada en pantalla. Sólo el cambio de logo en vivo, que el usuario no pidió, quedó sin presenciar.
+- [Phase 03-07]: DOC-04 cierra con evidencia mixta y declarada por partes en REQUIREMENTS.md: render por-empresa (logo/razon social/codigo) aprobado por el usuario en pantalla; el mecanismo de logo-en-vivo-sin-re-emitir se cerro aparte, server-verified por HTTP (login real + tres GET sucesivos a /dashboard/documents/[id]), con md5 del content_html identico en los tres (2148bb78b88c5f17e178401ac625893d) y el logo de Acme restaurado a su valor original al terminar.
+- [Phase 03-07]: El scroll horizontal de la tabla del procedimiento en viewport estrecho no se reclama como verificado: se confirmo que el mecanismo CSS existe (manual-content.css), pero nadie lo vio scrollear de verdad.
 
 ### Pending Todos
 
@@ -138,6 +142,6 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T18:20:00.000Z
-Stopped at: Cerrada la brecha de verificación de 03-06 (03-06b) — dev server sigue corriendo en :3000 para 03-07
+Last session: 2026-09-02T19:37:10.392Z
+Stopped at: Completado 03-07 — vista del cliente aprobada en pantalla; dev server sigue corriendo en :3000 para 03-08
 Resume file: None
