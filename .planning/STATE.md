@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: "Fase 3.1 completa: 6/6 planes ejecutados y desplegados a producción (imagen 9bf55ee). Confirmación visual humana pendiente (checkpoint aprobado sin ejercitarse, tercera vez en la fase). Fases 4 (Puente HTML→PDF) y 5 (Registros nativos) sin planificar todavía (plans: TBD en ROADMAP.md)."
-stopped_at: "Completado 03.1-06 — fase 3.1 desplegada a producción y cerrada; confirmación visual humana pendiente"
-last_updated: "2026-09-03T04:41:42.841Z"
-last_activity: "2026-09-03 — 03.1-06 completado: producción corre la imagen 9bf55ee (fase 3.1 + cierre de brechas de DC-3, aaaf8d5, aprobado explícitamente por el usuario tras conocer el alcance completo). Cinco sentencias de esquema aplicadas antes de mover latest (dos de esta fase, tres de DC-3), todas aditivas. documents_enabled sin tocar. El checkpoint final se aprobó con un 'aprobado' sin contestar las tres preguntas del resume-signal, pese a habérsele dicho que así se registraría como 'aprobado sin ejercitar' — se registra exactamente así: nadie ha visto el sidebar de IBIZA en producción, y la deuda heredada del plan 03-08 (descargar un certificado o PDF) sigue sin saldarse. NAV-01/02/03 quedan Complete por su evidencia de desarrollo (03.1-02); DRV-02 sigue Pending. Ver 03.1-06-SUMMARY.md y DEPLOY.md §7e."
+status: completed
+stopped_at: Completado 03.1-06 — fase 3.1 desplegada a producción (imagen 9bf55ee) y cerrada; confirmación visual humana pendiente, tercera vez en la fase
+last_updated: "2026-09-03T04:49:16.737Z"
+last_activity: "2026-09-03 — 03.1-06 completado: producción corre la imagen `9bf55ee` (fase 3.1 + cierre de brechas de DC-3, `aaaf8d5`, aprobado explícitamente por el usuario tras conocer el alcance completo). Cinco sentencias de esquema aplicadas antes de mover `latest` (dos de esta fase, tres de DC-3), todas aditivas, ninguna pidió `--accept-data-loss`. `documents_enabled` sin tocar (`ibiza-online=true`, los otros dos `false`). Verificación automatizada completa y re-confirmada de forma independiente. El checkpoint final se aprobó con un "aprobado" sin contestar las tres preguntas del `resume-signal`, pese a habérsele dicho explícitamente que así se registraría como "aprobado sin ejercitar" — se registra exactamente así. Ver 03.1-06-SUMMARY.md y DEPLOY.md §7e."
 progress:
   total_phases: 6
   completed_phases: 4
