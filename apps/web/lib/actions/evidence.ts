@@ -118,9 +118,13 @@ export async function submitEvidence(input: {
   }
 
   const kind = activity.requirement.kind;
-  if (kind === "FILE" && !input.file) {
-    return { success: false, error: "Adjunta el archivo de la evidencia" };
-  }
+  // `FILE` ya no exige archivo. Desde la fase 3.1 el expediente vive en la carpeta de
+  // Google Drive del proyecto (`ManualAssignment.driveUrl`) y PROL conserva sólo el
+  // circuito: qué requisito toca, cuándo vence, quién lo aprobó y qué se dijo por el
+  // camino. El `create` de más abajo ya escribía `fileKey: input.file?.fileKey ?? null`
+  // —la fila siempre supo existir sin archivo, porque RISK_MATRIX y EVALUATION_LINK
+  // nunca tuvieron uno—, así que quitar este `if` es literalmente todo el cambio de
+  // servidor. El significado de `FILE` está escrito sobre el enum en `schema.prisma`.
   if (kind === "RISK_MATRIX" && !input.riskAssessmentId) {
     return { success: false, error: "Falta la matriz que sustenta la evidencia" };
   }

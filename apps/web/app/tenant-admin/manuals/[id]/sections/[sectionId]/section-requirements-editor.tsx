@@ -26,7 +26,7 @@ export interface RequirementRow {
 }
 
 const KIND_LABEL: Record<EvidenceRequirementKind, string> = {
-  FILE: "Archivo que sube el cliente",
+  FILE: "Archivo en la carpeta de Drive del proyecto",
   RISK_MATRIX: "Matriz de riesgos y oportunidades",
   EVALUATION_LINK: "Evaluación de la plataforma",
 };
@@ -194,6 +194,11 @@ export function SectionRequirementsEditor({
                   </option>
                 ))}
               </select>
+              {kind === "FILE" ? (
+                <p className="mt-1 text-xs text-text-tertiary">
+                  El cliente lo guarda en Drive y aquí sólo marca que está hecho.
+                </p>
+              ) : null}
             </div>
             <div className="w-44">
               <label className="mb-1 block text-xs font-medium text-text-secondary">
