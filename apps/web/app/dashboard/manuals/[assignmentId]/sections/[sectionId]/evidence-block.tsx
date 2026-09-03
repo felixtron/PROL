@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
+  CheckCircle2,
   Download,
-  FileUp,
   Loader2,
   MessageSquare,
   Table2,
@@ -18,10 +18,7 @@ import type {
 } from "@prol/db";
 import { submitEvidence } from "@/lib/actions/evidence";
 import { openRiskMatrix } from "@/lib/actions/risk";
-import {
-  EVIDENCE_ACCEPT,
-  MAX_FILE_SIZE,
-} from "@/lib/document-files";
+import { DriveFolderLink } from "@/components/drive-folder-link";
 import {
   EVIDENCE_STATUS_CLASS,
   EVIDENCE_STATUS_LABEL,
@@ -83,6 +80,8 @@ interface EvidenceBlockProps {
   requirement: EvidenceRequirementRow;
   activity: EvidenceActivity | null;
   readOnly: boolean;
+  driveUrl: string | null;
+  driveUrlIsInvalid: boolean;
 }
 
 function formatSize(bytes: number | null): string {
@@ -105,49 +104,31 @@ export function EvidenceBlock({
   requirement,
   activity,
   readOnly,
+  driveUrl,
+  driveUrlIsInvalid,
 }: EvidenceBlockProps) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const [showForm, setShowForm] = useState(false);
 
   const latest = activity?.latestEvidence ?? null;
   const canSubmit =
     !readOnly && activity?.status === "OPEN" && canSubmitEvidence(latest?.status);
   const correction = lastReviewComment(latest);
 
-  async function handleFileSubmit(file: File) {
-    setError(null);
-    if (file.size > MAX_FILE_SIZE) {
-      setError("El archivo supera los 25MB");
-      return;
-    }
+  function handleMarkFulfilled() {
     if (!activity) return;
-
-    const body = new FormData();
-    body.append("file", file);
-    const res = await fetch("/api/upload/evidence", { method: "POST", body });
-    const uploaded = await res.json();
-    if (!res.ok) {
-      setError(uploaded.error ?? "No se pudo subir el archivo");
-      return;
-    }
-
-    const result = await submitEvidence({
-      activityId: activity.id,
-      notes,
-      file: uploaded,
+    setError(null);
+    startTransition(async () => {
+      const result = await submitEvidence({ activityId: activity.id, notes });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setNotes("");
+      router.refresh();
     });
-    if (!result.success) {
-      setError(result.error);
-      return;
-    }
-    setNotes("");
-    setShowForm(false);
-    if (inputRef.current) inputRef.current.value = "";
-    router.refresh();
   }
 
   function handleOpenMatrix() {
@@ -216,7 +197,11 @@ export function EvidenceBlock({
         <div className="mt-3 rounded-lg bg-surface-secondary p-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span className="text-text-primary">
-              {latest.fileName ?? latest.title ?? "Captura en plataforma"}
+              {latest.fileName ??
+                latest.title ??
+                (requirement.kind === "FILE"
+                  ? "Marcada como cumplida — el archivo está en Drive"
+                  : "Captura en plataforma")}
               {latest.fileSize ? (
                 <span className="ml-2 text-xs text-text-tertiary">
                   {formatSize(latest.fileSize)}
@@ -303,8 +288,14 @@ export function EvidenceBlock({
               )}
               .
             </div>
-          ) : showForm ? (
+          ) : (
             <div className="space-y-3">
+              <DriveFolderLink
+                driveUrl={driveUrl}
+                invalid={driveUrlIsInvalid}
+                emptyHint="Pídesela a tu consultor: es donde va tu expediente."
+                size="compact"
+              />
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -312,44 +303,27 @@ export function EvidenceBlock({
                 placeholder="Nota para el consultor (opcional)"
                 className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:border-primary-400 focus:outline-none"
               />
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept={EVIDENCE_ACCEPT}
-                  disabled={isPending}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) startTransition(() => handleFileSubmit(file));
-                  }}
-                  className="text-sm text-text-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary-700"
-                />
+              <button
+                type="button"
+                onClick={handleMarkFulfilled}
+                disabled={isPending}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
+              >
                 {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-text-tertiary" />
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="text-sm text-text-secondary hover:text-text-primary"
-                >
-                  Cancelar
-                </button>
-              </div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                {latest?.status === "NEEDS_CORRECTION"
+                  ? "Volver a marcarlo como cumplido"
+                  : "Marcar como cumplido"}
+              </button>
               <p className="text-xs text-text-tertiary">
-                Word, Excel, PDF, imágenes, audio o video. Hasta 25 MB.
+                El archivo que respalda este requisito vive en la carpeta de Drive del
+                proyecto. Aquí sólo se registra que está hecho, para que tu consultor lo
+                revise.
               </p>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-            >
-              <FileUp className="h-4 w-4" />
-              {latest?.status === "NEEDS_CORRECTION"
-                ? "Subir corrección"
-                : "Subir evidencia"}
-            </button>
           )}
         </div>
       ) : latest?.status === "APPROVED" && requirement.periodicity !== "ONCE" ? (

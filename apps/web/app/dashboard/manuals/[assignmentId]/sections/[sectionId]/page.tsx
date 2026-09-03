@@ -207,6 +207,8 @@ export default async function ManualSectionPage({
                 requirement={req}
                 activity={activityByRequirement.get(req.id) ?? null}
                 readOnly={data.assignment.status !== "ACTIVE"}
+                driveUrl={data.assignment.driveUrl}
+                driveUrlIsInvalid={data.driveUrlIsInvalid}
               />
             ))}
           </div>

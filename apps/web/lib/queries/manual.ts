@@ -639,7 +639,9 @@ export const getSectionForCompany = cache(
     const index = siblings.findIndex((s) => s.id === section.id);
 
     return {
-      assignment,
+      assignment: { ...assignment, driveUrl: safeDriveUrl(assignment.driveUrl) },
+      driveUrlIsInvalid:
+        assignment.driveUrl !== null && safeDriveUrl(assignment.driveUrl) === null,
       isLeader,
       isStaff,
       section,
