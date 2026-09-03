@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarClock, CheckCircle2, FileText } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  CheckCircle2,
+  FileText,
+  FolderOpen,
+} from "lucide-react";
 import { getManualOverview } from "@/lib/queries/manual";
 import { ACTIVITY_STATE_LABEL } from "@/lib/compliance";
+import { DriveFolderLink } from "@/components/drive-folder-link";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,7 @@ export default async function ManualOverviewPage({
   const data = await getManualOverview(assignmentId).catch(() => null);
   if (!data) notFound();
 
-  const { manual, progress, checkedBySection, upcoming } = data;
+  const { assignment, manual, progress, checkedBySection, upcoming } = data;
 
   // Capítulos raíz en orden, cada uno con sus subcapítulos.
   const roots = manual.chapters.filter((c) => !c.parentChapterId);
@@ -77,6 +84,25 @@ export default async function ManualOverviewPage({
             {progress.approvedRequirements} de {progress.totalRequirements}{" "}
             evidencias aprobadas
           </span>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-surface p-5">
+        <h2 className="flex items-center gap-2 font-heading text-base font-semibold text-text-primary">
+          <FolderOpen className="h-4 w-4 text-text-tertiary" />
+          Evidencias del proyecto
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Los archivos de tu expediente viven en la carpeta de Google Drive que
+          compartió tu consultor. Aquí dentro sigues viendo qué toca, cuándo
+          vence y cómo va la revisión.
+        </p>
+        <div className="mt-3">
+          <DriveFolderLink
+            driveUrl={assignment.driveUrl}
+            invalid={data.driveUrlIsInvalid}
+            emptyHint="Pídesela a tu consultor: es donde va a subir y a revisar tus archivos."
+          />
         </div>
       </section>
 

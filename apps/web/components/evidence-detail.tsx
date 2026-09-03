@@ -12,6 +12,7 @@ import {
   riskLevel,
 } from "@/lib/compliance";
 import { EvidenceReviewActions } from "@/components/evidence-review-actions";
+import { DriveFolderLink } from "@/components/drive-folder-link";
 
 const DATE = new Intl.DateTimeFormat("es-MX", {
   day: "numeric",
@@ -52,7 +53,7 @@ export function EvidenceDetail({
   backHref: string;
   canResolveDeletion: boolean;
 }) {
-  const { evidence, versions } = data;
+  const { evidence, versions, driveUrlIsInvalid } = data;
   const section = evidence.activity.requirement.section;
   const state = activityState({
     status: evidence.activity.status,
@@ -148,6 +149,15 @@ export function EvidenceDetail({
           {evidence.notes ? (
             <p className="mt-3 text-sm text-text-secondary">{evidence.notes}</p>
           ) : null}
+
+          <div className="mt-3">
+            <DriveFolderLink
+              driveUrl={evidence.assignment.driveUrl}
+              invalid={driveUrlIsInvalid}
+              emptyHint="Configúrala en el panel del proyecto."
+              size="compact"
+            />
+          </div>
         </div>
 
         {/* Snapshot de la matriz de riesgos */}
