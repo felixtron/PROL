@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { AlertTriangle, FolderOpen, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { setProjectDriveUrl } from "@/lib/actions/manual";
+import { DriveFolderLink } from "@/components/drive-folder-link";
 
 /**
  * Bloque de la carpeta de Drive del proyecto.
@@ -56,29 +57,15 @@ export function ProjectDriveLink({
 
   return (
     <div className="space-y-3">
-      {driveUrl ? (
-        <a
-          href={driveUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700"
-        >
-          <FolderOpen className="h-4 w-4" />
-          Abrir la carpeta de Drive
-        </a>
-      ) : invalid ? (
-        <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          El enlace guardado no es de Google Drive, así que no se abre desde aquí.
-        </p>
-      ) : (
-        <p className="text-sm text-text-secondary">
-          Este proyecto todavía no tiene carpeta de Drive.
-          {canEdit
-            ? " Pega el enlace de la carpeta compartida con el cliente."
-            : " Pídele a un administrador que la configure."}
-        </p>
-      )}
+      <DriveFolderLink
+        driveUrl={driveUrl}
+        invalid={invalid}
+        emptyHint={
+          canEdit
+            ? "Pega el enlace de la carpeta compartida con el cliente."
+            : "Pídele a un administrador que la configure."
+        }
+      />
 
       {canEdit ? (
         <div className="flex flex-wrap items-center gap-2">

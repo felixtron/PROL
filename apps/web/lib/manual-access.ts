@@ -284,6 +284,7 @@ export interface AssignmentMemberContext {
     companyId: string;
     tenantId: string;
     status: string;
+    driveUrl: string | null;
   };
   /** Es líder de la empresa: supervisa evidencias y puede pedir bajas. */
   isLeader: boolean;
@@ -308,6 +309,7 @@ export async function requireAssignmentMemberAccess(
       companyId: true,
       tenantId: true,
       status: true,
+      driveUrl: true,
       company: { select: { leaderId: true } },
     },
   });
@@ -329,6 +331,7 @@ export async function requireAssignmentMemberAccess(
       companyId: assignment.companyId,
       tenantId: assignment.tenantId,
       status: assignment.status,
+      driveUrl: assignment.driveUrl,
     },
     isLeader: assignment.company.leaderId === user.id,
     isStaff,

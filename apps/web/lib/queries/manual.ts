@@ -467,7 +467,9 @@ export const getManualOverview = cache(async (assignmentId: string) => {
   }
 
   return {
-    assignment,
+    assignment: { ...assignment, driveUrl: safeDriveUrl(assignment.driveUrl) },
+    driveUrlIsInvalid:
+      assignment.driveUrl !== null && safeDriveUrl(assignment.driveUrl) === null,
     isLeader,
     isStaff,
     manual,

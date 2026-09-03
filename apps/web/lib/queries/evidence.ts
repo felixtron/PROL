@@ -16,6 +16,7 @@ import {
 } from "@/lib/manual-access";
 import { activityState } from "@/lib/compliance";
 import { requireUser } from "@/lib/auth";
+import { safeDriveUrl } from "@/lib/drive-url";
 
 export interface EvidenceQueueFilters {
   status?: EvidenceStatus | "ALL" | "DELETION_REQUESTED";
@@ -160,6 +161,7 @@ export const getEvidenceDetail = cache(async (evidenceId: string) => {
       assignment: {
         select: {
           id: true,
+          driveUrl: true,
           company: { select: { id: true, name: true } },
           manual: { select: { id: true, title: true } },
         },
@@ -175,7 +177,16 @@ export const getEvidenceDetail = cache(async (evidenceId: string) => {
     select: { id: true, version: true, status: true, submittedAt: true, deletedAt: true },
   });
 
-  return { user, evidence: row, versions };
+  return {
+    user,
+    evidence: {
+      ...row,
+      assignment: { ...row.assignment, driveUrl: safeDriveUrl(row.assignment.driveUrl) },
+    },
+    driveUrlIsInvalid:
+      row.assignment.driveUrl !== null && safeDriveUrl(row.assignment.driveUrl) === null,
+    versions,
+  };
 });
 
 // ─── Panel del líder de empresa ──────────────────────────────────────────────
