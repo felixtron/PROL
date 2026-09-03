@@ -495,6 +495,93 @@ ssh panel-prosuite-2 "podman tag localhost/prol-web:55c020d localhost/prol-web:l
 cat /opt/prol/backup_20260902_1953_pre_fase3.sql | ssh panel-prosuite-2 'podman exec -i prol-db-1 psql -U prol -d prol'
 ```
 
+### 7e. Ibiza Experts 360 y gestión documental en Drive (fase 3.1)
+
+El menú agrupado con rótulo por tenant, el enlace de Drive por proyecto y el
+requisito que se cumple sin subir archivo a PROL.
+
+> **Estado: APLICADO en `panel-prosuite-2` el 2026-09-03.** Imagen `9bf55ee`
+> (venía de `04135ca`; anteriores, ambas siguen tagueadas para rollback:
+> `55c020d` y `64f7476`). El usuario aprobó explícitamente "desplegar-ahora"
+> tras revisar alcance, riesgo, rollback y verificación — y sabiendo, porque se
+> le dijo antes de decidir, que el despliegue **lleva dentro el cierre de
+> siete brechas de DC-3** (`aaaf8d5 feat(dc3): cerrar las siete brechas del
+> modulo DC-3`), commiteado por la sesión `prol-1d` **por debajo** de los seis
+> planes de esta fase — fijar el SHA de esta fase no lo excluye, porque
+> `aaaf8d5` está entre `04135ca` y HEAD. Si algo va mal en producción y hay que
+> atribuirlo a uno de los dos trabajos, éste es el registro.
+>
+> Dump previo en `/opt/prol/backup_20260903_0404_pre_fase31.sql` (3.4M).
+>
+> **Esquema aplicado — cinco sentencias, todas aditivas, ninguna sin
+> atribuir:**
+> ```sql
+> ALTER TABLE "tenants"              ADD COLUMN "documents_menu_label" TEXT;   -- fase 3.1
+> ALTER TABLE "manual_assignments"   ADD COLUMN "drive_url" TEXT;              -- fase 3.1
+> ALTER TABLE "dc3_course_editions"  ADD COLUMN "company_id" TEXT;             -- DC-3 (aaaf8d5)
+> CREATE INDEX "dc3_course_editions_company_id_idx" ON "dc3_course_editions"("company_id");  -- DC-3 (aaaf8d5)
+> ALTER TABLE "dc3_course_editions"  ADD CONSTRAINT … FOREIGN KEY ("company_id") REFERENCES "companies"("id") ON DELETE CASCADE;  -- DC-3 (aaaf8d5)
+> ```
+> Ni `DROP`, ni `SET NOT NULL`, ni enum nuevo, ni `--accept-data-loss` pedido
+> en ningún momento. El `db push` se aplicó **antes** de mover `latest`.
+>
+> **Verificación posterior (automatizable, confirmada por este agente y
+> re-confirmada por el orquestador de forma independiente):**
+>
+> | Comprobación | Resultado |
+> | --- | --- |
+> | `systemctl is-active prol-web-1.service` | `active` |
+> | `GET /api/health` | `200` |
+> | `GET /sign-in` | `200` |
+> | `tenants.documents_menu_label` / `manual_assignments.drive_url` | `text`, `nullable`, sin `default` |
+> | `tenants` con `documents_menu_label` no nulo | `0` |
+> | `EvidenceRequirementKind` | sin cambios, 3 valores |
+> | `documents_enabled` antes/después | idéntico: `ibiza-online=true`, `academia-digital=false`, `mecanica-g3=false` |
+> | `POST /api/upload/evidence` | `404` (retirada en 03.1-05, cero llamantes confirmados por grep) |
+> | Imágenes tagueadas | `9bf55ee` (nueva), `04135ca`, `55c020d`, `64f7476` |
+> | Log de arranque (`06:10:46`) | limpio, ninguna traza de Prisma por columna desconocida, ninguna credencial |
+> | `manual_assignments` / `evidences` en producción | `0` filas cada una |
+>
+> **`documents_enabled` no se tocó.** Este despliegue no encendió ni apagó el
+> módulo en ningún tenant.
+>
+> **Confirmación visual humana: PENDIENTE, otra vez.** El checkpoint final de
+> este plan pedía explícitamente tres respuestas (¿se descargó un
+> certificado o PDF?, ¿un desplegable o cuatro entradas sueltas en el sidebar
+> de IBIZA?, ¿qué rótulo exacto lleva?) para poder registrar la aprobación
+> como verificación real. El usuario respondió únicamente **"aprobado"**, sin
+> contestar ninguna de las tres — pese a que se le dijo, inmediatamente antes
+> de responder, que una aprobación en blanco se registraría como "aprobado
+> sin ejercitar" y que el estado de producción quedaría descrito como
+> "automatizable confirmado, confirmación humana pendiente". Se registra
+> exactamente así, sin inventar una confirmación que no ocurrió:
+> - **Nadie ha visto el sidebar de IBIZA en producción.** No hay confirmación
+>   de que el menú agrupado, el desplegable con sus cuatro hijos ni el
+>   rótulo se estén viendo como se diseñaron.
+> - **La deuda heredada del plan 03-08 sigue abierta.** Nadie ha descargado un
+>   certificado o un PDF de resultados en producción desde entonces. Van ya
+>   **tres** checkpoints de verificación humana consecutivos en esta fase
+>   (03.1-02 sí se ejerció; 03.1-04 y 03.1-06 no) sin ese paso, y ésta es la
+>   segunda vez que la misma deuda de la fase 3 se traslada sin saldarse.
+> - Lo automatizable de la tabla de arriba sigue siendo válido: producción está
+>   sana, las columnas están donde deben, y `documents_enabled` no se movió.
+>   Lo que falta es exclusivamente el juicio humano sobre lo que se ve en
+>   pantalla.
+>
+> **Rollback, un comando, con `04135ca` todavía tagueada:**
+> ```bash
+> ssh panel-prosuite-2 "podman tag localhost/prol-web:04135ca localhost/prol-web:latest && systemctl restart prol-web-1.service"
+> ```
+> Las dos columnas nuevas se quedan en la base sin molestar: el código
+> anterior no las lee. Segundo nivel, sólo para una catástrofe del push:
+> restaurar `/opt/prol/backup_20260903_0404_pre_fase31.sql`.
+>
+> **Lo que este despliegue NO demuestra:** que alguien pegue un enlace de
+> Drive real en producción y lo abra. `manual_assignments` está en 0 filas —
+> no hay dónde pegarlo hasta que IBIZA cree su primer manual. Eso se demostró
+> en local, en pantalla y con confirmación del usuario (plan 03.1-04); sigue
+> siendo evidencia local, no de producción.
+
 ### 8. Verificar
 
 ```bash

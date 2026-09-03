@@ -22,7 +22,7 @@ El orden no es negociable en su tramo inicial: la fase 1 elimina dos amenazas de
 - [x] **Phase 1: Higiene y operación** - Cierra la deuda del módulo anterior y el agujero de respaldo (completed 2026-09-01)
 - [x] **Phase 2: R2 para el tier confidencial** - Evidencias y plantillas salen del volumen local (completed 2026-09-02)
 - [x] **Phase 3: Procedimientos nativos** - El documento de texto vive en la plataforma (completed 2026-09-02)
-- [ ] **Phase 3.1: Ibiza Experts 360 y Drive** - INSERTED 2026-09-02 · El expediente vive en Drive; PROL lleva el control
+- [x] **Phase 3.1: Ibiza Experts 360 y Drive** - INSERTED 2026-09-02 · El expediente vive en Drive; PROL lleva el control (completed 2026-09-03)
 - [ ] **Phase 4: Puente HTML→PDF** - El artefacto que se lleva el auditor
 - [ ] **Phase 5: Registros nativos** - El formato que el cliente llena en pantalla
 - ~~**Phase 6: Subida directa a R2**~~ - Cancelada el 2026-09-02: las evidencias pesadas van a Drive
@@ -121,12 +121,12 @@ Plans:
 **Plans**: 6 plans (olas estrictamente seriales: 1 → 03.1-01, 2 → 03.1-02, 3 → 03.1-03, 4 → 03.1-04, 5 → 03.1-05, 6 → 03.1-06). Un plan por ola a propósito: `branching_strategy` es "none" y otra sesión interactiva (`prol-1d`) tiene ~18 archivos sin commitear en este mismo árbol — en la ola 1 de la fase 1 dos ejecutores concurrentes se absorbieron archivos entre el `add` y el `commit`. Los planes 02, 04 y 06 llevan checkpoint humano (`autonomous: false`): el menú y el clic que aterriza en Drive se firman en pantalla, y la fase cierra con un despliegue aprobado.
 
 Plans:
-- [ ] 03.1-01-PLAN.md — Esquema (dos columnas aditivas), validador de URL de Drive y rótulo por tenant editable (NAV-01, DRV-01, DRV-03)
-- [ ] 03.1-02-PLAN.md — Menú agrupado con rótulo del tenant en los tres paneles, y vocabulario Manuales Maestros / Proyectos (NAV-01, NAV-02, NAV-03)
-- [ ] 03.1-03-PLAN.md — El proyecto guarda su enlace de Drive, con guarda de administrador y validación de host (DRV-01, DRV-03)
-- [ ] 03.1-04-PLAN.md — Abrir Evidencias desde el proyecto lleva a la carpeta de Drive (DRV-02, DRV-03)
-- [ ] 03.1-05-PLAN.md — Un requisito se cumple sin archivo, conservando el circuito entero (DRV-04, DRV-02)
-- [ ] 03.1-06-PLAN.md — Despliegue a producción con checkpoint de decisión (NAV-01…DRV-04)
+- [x] 03.1-01-PLAN.md — Esquema (dos columnas aditivas), validador de URL de Drive y rótulo por tenant editable (NAV-01, DRV-01, DRV-03)
+- [x] 03.1-02-PLAN.md — Menú agrupado con rótulo del tenant en los tres paneles, y vocabulario Manuales Maestros / Proyectos (NAV-01, NAV-02, NAV-03)
+- [x] 03.1-03-PLAN.md — El proyecto guarda su enlace de Drive, con guarda de administrador y validación de host (DRV-01, DRV-03)
+- [x] 03.1-04-PLAN.md — Abrir Evidencias desde el proyecto lleva a la carpeta de Drive (DRV-02, DRV-03)
+- [x] 03.1-05-PLAN.md — Un requisito se cumple sin archivo, conservando el circuito entero (DRV-04, DRV-02)
+- [x] 03.1-06-PLAN.md — Despliegue a producción con checkpoint de decisión (NAV-01…DRV-04)
 
 > **Por qué se inserta.** El 2026-09-02, con la fase 3 recién desplegada, se comprobó
 > que producción tenía **0 evidencias, 0 proyectos, 0 manuales y 0 actividades**: el
@@ -205,6 +205,6 @@ La 7 ya no existe (su contenido está dentro de la 3) y la 6 se canceló: las ev
 | 3. Procedimientos nativos | 8/8 | Complete    | 2026-09-02 |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
-| 3.1. Ibiza Experts 360 y Drive | 5/6 | In Progress|  |
+| 3.1. Ibiza Experts 360 y Drive | 6/6 | Complete   | 2026-09-03 |
 | ~~6. Subida directa a R2~~ | — | Cancelada | 2026-09-02 |
 | ~~7. Importación .docx~~ | — | Absorbida por la 3 | 2026-09-02 |
