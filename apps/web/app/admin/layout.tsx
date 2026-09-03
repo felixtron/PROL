@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
+import { BRAND_NAME } from "@/lib/brand";
 
 const navItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
@@ -32,11 +33,11 @@ export default async function AdminLayout({
   return (
     <SidebarShell
       navItems={navItems}
-      mobileTitle="PROL · Admin"
+      mobileTitle={`${BRAND_NAME} · Admin`}
       brand={
         <>
           <span className="font-heading text-xl font-bold text-primary-700">
-            PROL
+            {BRAND_NAME}
           </span>
           <span className="rounded-pill bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
             ADMIN

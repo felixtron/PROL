@@ -129,7 +129,7 @@ export function SidebarShell({
             <Menu className="h-5 w-5" />
           </button>
           <span className="font-heading text-base font-semibold text-text-primary">
-            {mobileTitle ?? "PROL"}
+            {mobileTitle}
           </span>
         </header>
 

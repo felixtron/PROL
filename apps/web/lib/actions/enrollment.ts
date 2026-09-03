@@ -8,6 +8,7 @@ import { createNotification } from "@/lib/notifications";
 import { issueCertificateForEnrollment } from "@/lib/certificate-issuer";
 import { triggerSurveysForStudent } from "@/lib/survey-dispatch";
 import crypto from "crypto";
+import { APP_URL, BRAND_NAME } from "@/lib/brand";
 
 export async function enrollInCourse(courseId: string) {
   const user = await requireUser();
@@ -74,9 +75,9 @@ export async function enrollInCourse(courseId: string) {
 
   // Send enrollment confirmation email (non-blocking — failures don't affect enrollment)
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+    const appUrl = APP_URL;
     const courseUrl = `${appUrl}/dashboard/courses/${courseId}`;
-    const tenantName = user.tenant?.name ?? "PROL";
+    const tenantName = user.tenant?.name ?? BRAND_NAME;
 
     const emailData = enrollmentConfirmation({
       name: user.name ?? "Estudiante",
@@ -229,9 +230,9 @@ export async function manualEnrollStudent(input: {
 
   if (input.sendWelcomeEmail) {
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+      const appUrl = APP_URL;
       const courseUrl = `${appUrl}/dashboard/courses/${course.id}`;
-      const tenantName = student.tenant?.name ?? "PROL";
+      const tenantName = student.tenant?.name ?? BRAND_NAME;
       const emailData = enrollmentConfirmation({
         name: student.name ?? "Estudiante",
         courseName: course.title,

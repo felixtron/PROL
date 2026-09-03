@@ -99,7 +99,7 @@ export default function OnboardingPage() {
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-primary-700">
                 <li>• Cursos ilimitados</li>
-                <li>• Subdominio personalizado (tuacademia.prol.prosuite.pro)</li>
+                <li>• Subdominio personalizado para tu academia</li>
                 <li>• Pagos integrados con Stripe</li>
                 <li>• Alumnos ilimitados</li>
               </ul>

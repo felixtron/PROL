@@ -7,6 +7,7 @@ import { resolveDocumentsMenuLabel } from "@/lib/tenant-labels";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { TenantBrand } from "@/components/tenant-brand";
+import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import type { SidebarNavItem } from "@/components/nav-icons";
 import { SidebarNav } from "./sidebar-nav";
@@ -162,7 +163,7 @@ export default async function DashboardLayout({
           className="flex items-center gap-2 px-6 py-4"
         >
           <TenantBrand
-            name={tenant?.name ?? "PROL"}
+            name={tenant?.name ?? BRAND_NAME}
             logo={tenant?.logo ?? null}
           />
         </Link>

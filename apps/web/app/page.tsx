@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ArrowRight,
   Smartphone,
@@ -78,6 +79,18 @@ const mobileFeatures = [
 ];
 
 export default function Home() {
+  // Esta portada es la página COMERCIAL de PROL: vende la plataforma ("te
+  // mostramos PROL en vivo", "si lo enseñas, lo enseñas en PROL"). En una
+  // instalación dedicada a un cliente no tiene sentido —no vende un LMS— y
+  // además sería el único sitio donde seguiría apareciendo la marca de otro.
+  //
+  // No se parametriza: cambiarle el nombre dejaría un texto de venta absurdo
+  // para una consultora. El apex de una instancia dedicada es su academia, así
+  // que va al catálogo, que ya sale con la marca y los colores del tenant.
+  if (process.env.DEFAULT_TENANT_SLUG) {
+    redirect("/courses");
+  }
+
   return (
     <div className="min-h-screen bg-ink-50 font-body text-ink-900">
       {/* Header */}

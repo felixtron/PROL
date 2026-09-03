@@ -75,7 +75,9 @@ export async function updateTenant(
     if (!DOMAIN_RE.test(cd)) {
       throw new Error("Dominio inválido (use formato ejemplo.com)");
     }
-    const baseDomain = (process.env.NEXT_PUBLIC_DOMAIN ?? "").toLowerCase();
+    // `APP_DOMAIN` y no `NEXT_PUBLIC_DOMAIN`: la pública se sustituye en build,
+    // así que en producción valía "" y esta guarda no comprobaba nada.
+    const baseDomain = (process.env.APP_DOMAIN ?? "").toLowerCase();
     if (baseDomain && cd.endsWith(`.${baseDomain}`)) {
       throw new Error("No se permite un subdominio de la plataforma como dominio personalizado");
     }

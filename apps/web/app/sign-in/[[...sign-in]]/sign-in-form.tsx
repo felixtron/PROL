@@ -17,9 +17,13 @@ interface TenantBranding {
 export function SignInForm({
   tenant,
   turnstileSiteKey,
+  poweredBy,
+  brandName,
 }: {
   tenant: TenantBranding | null;
   turnstileSiteKey: string | null;
+  poweredBy: { name: string; url: string } | null;
+  brandName: string;
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -132,10 +136,10 @@ export function SignInForm({
               <p className="mt-2 text-text-secondary">Inicia sesión</p>
             </>
           ) : (
-            // No tenant (apex domain): default PROL branding.
+            // Sin tenant (dominio apex): marca de la instancia.
             <>
               <h1 className="font-heading text-3xl font-bold text-primary-600">
-                PROL
+                {brandName}
               </h1>
               <p className="mt-2 text-text-secondary">
                 Inicia sesión en tu cuenta
@@ -270,11 +274,11 @@ export function SignInForm({
           </p>
         </div>
 
-        {tenant ? (
+        {tenant && poweredBy ? (
           <p className="mt-6 text-center text-[11px] text-text-tertiary">
             Powered by{" "}
-            <Link href="https://prol.prosuite.pro" className="hover:underline">
-              PROL
+            <Link href={poweredBy.url} className="hover:underline">
+              {poweredBy.name}
             </Link>
           </p>
         ) : null}

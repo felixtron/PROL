@@ -19,9 +19,10 @@ import {
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { createNotification } from "@/lib/notifications";
 import { daysUntil, nextDueDate, periodLabel } from "@/lib/compliance";
+import { APP_URL } from "@/lib/brand";
 
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+  return APP_URL;
 }
 
 /** Enlace del cliente a una sección de su manual. */

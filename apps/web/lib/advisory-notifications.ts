@@ -1,5 +1,6 @@
 import { db } from "@prol/db";
 import { APP_TIME_ZONE } from "@/lib/timezone";
+import { APP_URL, BRAND_NAME } from "@/lib/brand";
 
 /**
  * Envío de correos del módulo de Consultoría Online.
@@ -100,7 +101,7 @@ async function buildParams(session: SessionForEmail, advisorName: string) {
     : null;
 
   return {
-    tenantName: tenant?.name ?? "PROL",
+    tenantName: tenant?.name ?? BRAND_NAME,
     title: session.title,
     description: session.description,
     advisorName,
@@ -109,7 +110,7 @@ async function buildParams(session: SessionForEmail, advisorName: string) {
     meetingUrl: session.meetingUrl,
     locationLabel,
     sessionCount: seriesCount,
-    panelUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro"}/dashboard/advisory`,
+    panelUrl: `${APP_URL}/dashboard/advisory`,
   };
 }
 

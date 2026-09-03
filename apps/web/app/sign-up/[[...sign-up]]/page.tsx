@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getCurrentTenant } from "@/lib/tenant";
 import { SignUpForm } from "./sign-up-form";
+import { BRAND_NAME, POWERED_BY } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
       icons: tenant.favicon ? { icon: tenant.favicon } : undefined,
     };
   }
-  return { title: "Crear cuenta — PROL" };
+  return { title: `Crear cuenta — ${BRAND_NAME}` };
 }
 
 /**
@@ -39,6 +40,8 @@ export default async function SignUpPage() {
           : null
       }
       turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? null}
+      poweredBy={POWERED_BY}
+      brandName={BRAND_NAME}
     />
   );
 }

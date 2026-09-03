@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import { APP_URL } from "@/lib/brand";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * Format a sequential certificate folio: PREFIX-YYYY-NNNN
@@ -9,7 +11,7 @@ export function generateCertificateFolio(
   year: number,
   seq: number
 ): string {
-  const safePrefix = (prefix || "PROL")
+  const safePrefix = (prefix || BRAND_NAME)
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 8);
@@ -50,6 +52,6 @@ export function sha256Hex(input: string): string {
  * Uses NEXT_PUBLIC_APP_URL with /verify/{folio}.
  */
 export function buildVerificationUrl(folio: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = APP_URL;
   return `${baseUrl.replace(/\/$/, "")}/verify/${folio}`;
 }

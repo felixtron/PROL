@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TenantBrand } from "@/components/tenant-brand";
+import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import { getCurrentTenant } from "@/lib/tenant";
 
@@ -32,7 +33,7 @@ export default async function CoursesLayout({
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/courses" className="flex items-center gap-2">
             <TenantBrand
-              name={tenant?.name ?? "PROL"}
+              name={tenant?.name ?? BRAND_NAME}
               logo={tenant?.logo ?? null}
             />
           </Link>

@@ -4,6 +4,7 @@ import {
   DC3_ROLE_LABELS,
   evaluateDc3ForEnrollment,
 } from "@/lib/dc3/readiness";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * Emisor de DC-3 a nivel sistema.
@@ -24,7 +25,7 @@ export function generateDc3Folio(
   year: number,
   seq: number
 ): string {
-  const safePrefix = (prefix || "PROL")
+  const safePrefix = (prefix || BRAND_NAME)
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 8);
@@ -84,7 +85,7 @@ export async function issueDc3ForEnrollment(
   const d = readiness.data;
   const issuedAt = new Date();
   const year = issuedAt.getUTCFullYear();
-  const prefix = enrollment.tenant.certificatePrefix ?? "PROL";
+  const prefix = enrollment.tenant.certificatePrefix ?? BRAND_NAME;
 
   // Toda la mutación va dentro de una transacción para que un fallo en el
   // `create` también deshaga el incremento del contador. Si no, un fallo

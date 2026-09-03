@@ -65,18 +65,39 @@ const STORAGE_BACKEND: "r2" | "disk" = isR2Configured() ? "r2" : "disk";
 const R2_PARTIAL_ENV: string[] = process.env.R2_BUCKET ? missingR2Env() : [];
 
 /**
- * El bucket de R2 está COMPARTIDO con otro producto en producción, que guarda lo
- * suyo bajo `empresas/` y `leads/`. Todo lo que escriba o lea PROL cuelga de
- * `prol/`, y el token tiene permiso sobre todo el bucket: por eso en esta fase no
- * existe ninguna operación de borrado, ni regla de ciclo de vida, ni versionado.
+ * El bucket de R2 está COMPARTIDO: con otro producto en producción, que guarda
+ * lo suyo bajo `empresas/` y `leads/`, y ahora también entre instalaciones de
+ * esta misma aplicación. Cada una escribe bajo su propio prefijo y no ve los
+ * archivos de las demás. El token tiene permiso sobre todo el bucket: por eso
+ * no existe ninguna operación de borrado, ni regla de ciclo de vida, ni
+ * versionado.
+ *
+ * El valor por defecto es el histórico, así que una instancia que no lo
+ * configure sigue leyendo y escribiendo donde ya tiene sus archivos. Cambiarlo
+ * NO mueve nada: los objetos hay que copiarlos antes, y eso es una decisión de
+ * operación, nunca un efecto colateral de desplegar.
  *
  * Este prefijo NO entra nunca en `fileKey`. La base sigue guardando la clave
  * opaca `<subdir>/<uuid>.<ext>`. Si se filtrara: (1) las filas que ya existen
  * dejarían de resolver, (2) el rollback a disco se rompería, porque las rutas de
- * disco no llevan `prol/`, y (3) la base dejaría de ser agnóstica al backend, que
- * es la propiedad que hace barato tener dos.
+ * disco no llevan prefijo, y (3) la base dejaría de ser agnóstica al backend,
+ * que es la propiedad que hace barato tener dos. Es también lo que permite
+ * mover una instalación de `prol/` a `ibiza/` sin tocar una sola fila.
+ *
+ * Se normaliza a "algo/" (sin barra inicial, con barra final) para que un
+ * `R2_KEY_PREFIX=ibiza` mal escrito no acabe generando `ibizaevidence/...`.
  */
-const R2_KEY_PREFIX = "prol/";
+const R2_KEY_PREFIX = normalizeKeyPrefix(process.env.R2_KEY_PREFIX || "prol/");
+
+function normalizeKeyPrefix(raw: string): string {
+  const trimmed = raw.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!trimmed || !/^[a-z0-9][a-z0-9-]*$/.test(trimmed)) {
+    throw new Error(
+      `R2_KEY_PREFIX inválido: ${JSON.stringify(raw)}. Se espera un segmento simple, p. ej. "prol" o "ibiza".`,
+    );
+  }
+  return `${trimmed}/`;
+}
 
 /**
  * Traduce una `fileKey` de la base a la clave real dentro del bucket compartido.

@@ -12,6 +12,7 @@ import {
   PublishPanel,
   RecipientsTable,
 } from "./campaign-panel";
+import { APP_URL } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +50,12 @@ export default async function AdminCampaignPage({
   ]);
 
   const h = await headers();
-  const host = h.get("host") ?? "prol.prosuite.pro";
+  // El host de la petición es lo correcto (el enlace tiene que funcionar en el
+  // dominio por el que entró quien lo lee); `APP_URL` sólo cubre el caso de que
+  // no venga cabecera, y apunta a esta instancia, no a otra.
+  const host = h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
-  const baseUrl = `${proto}://${host}`;
+  const baseUrl = host ? `${proto}://${host}` : APP_URL;
 
   const state = campaignState(campaign);
 

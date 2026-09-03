@@ -18,6 +18,7 @@ import {
 } from "@prol/email";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { campaignState, daysUntil } from "@/lib/surveys";
+import { APP_URL } from "@/lib/brand";
 
 /** Token URL-safe de 32 caracteres para enlaces de respuesta y resultados. */
 export function surveyToken(bytes = 24): string {
@@ -25,7 +26,7 @@ export function surveyToken(bytes = 24): string {
 }
 
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+  return APP_URL;
 }
 
 /** Enlace personal de respuesta de un destinatario. */

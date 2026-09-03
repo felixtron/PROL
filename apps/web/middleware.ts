@@ -70,7 +70,19 @@ export function middleware(req: NextRequest) {
 
   // --- Tenant resolution ---
   // Extract tenant slug from subdomain
-  const baseDomain = process.env.NEXT_PUBLIC_DOMAIN || "localhost:3000";
+  // `APP_DOMAIN`, y SIN caer a `NEXT_PUBLIC_DOMAIN`.
+  //
+  // El middleware se empaqueta para el runtime edge, donde Next sustituye en
+  // build toda variable con prefijo `NEXT_PUBLIC_` por su valor de entonces.
+  // Un `?? process.env.NEXT_PUBLIC_DOMAIN` no es compatibilidad hacia atrás:
+  // es una constante horneada con lo que hubiera en la máquina que construyó
+  // la imagen. Se comprobó en el bundle — el término desaparecía y quedaba
+  // `process.env.APP_DOMAIN||"localhost:3000"`, con el literal del .env local.
+  //
+  // Por eso `APP_DOMAIN` es obligatoria en producción (`lib/env.ts` revienta el
+  // arranque si falta) en vez de degradar en silencio: un dominio base
+  // equivocado no rompe nada visible, sólo deja de resolver todos los tenants.
+  const baseDomain = process.env.APP_DOMAIN || "localhost:3000";
   let tenantSlug: string | null = null;
 
   if (hostname !== baseDomain && hostname.endsWith(baseDomain)) {
@@ -84,8 +96,31 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  // Create response with tenant headers if needed
+  // Instancia dedicada a un solo tenant: el apex ES el tenant.
+  //
+  // En el modelo multi-tenant cada academia vive en un subdominio, así que un
+  // host igual al dominio base significa "portada de la plataforma" y no
+  // resuelve ningún tenant. Una instalación dedicada invierte eso: su dominio
+  // propio no tiene subdominio que mirar, y sin esta regla un visitante
+  // anónimo vería el catálogo sin marca y quien se diera de alta quedaría con
+  // `tenantId = null`, sin acceso a ningún curso.
+  //
+  // Va al final a propósito: un subdominio explícito siempre gana, así el
+  // acceso por `<slug>.<dominio>` sigue funcionando durante la transición.
+  // Sin la variable, el comportamiento es idéntico al de siempre.
+  if (!tenantSlug && process.env.DEFAULT_TENANT_SLUG && hostname === baseDomain) {
+    tenantSlug = process.env.DEFAULT_TENANT_SLUG;
+  }
+
+  // `x-tenant-slug` es una cabecera de confianza: `lib/auth.ts` la usa para
+  // decidir en qué tenant nace un usuario, y `lib/tenant.ts` para resolver de
+  // quién es el catálogo. Se BORRA antes de nada porque `new Headers(req.headers)`
+  // copia también lo que mandó el cliente, y sin este delete bastaría un
+  // `curl -H 'x-tenant-slug: <víctima>'` contra /api/auth/sign-up/email para
+  // darse de alta dentro del tenant ajeno. El `input: false` de
+  // `user.additionalFields` cierra la vía del cuerpo de la petición, no ésta.
   const requestHeaders = new Headers(req.headers);
+  requestHeaders.delete("x-tenant-slug");
   if (tenantSlug) {
     requestHeaders.set("x-tenant-slug", tenantSlug);
   }

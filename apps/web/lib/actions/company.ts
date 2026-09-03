@@ -9,6 +9,7 @@ import {
   assertSameTenant,
 } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { APP_URL } from "@/lib/brand";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -423,7 +424,7 @@ export async function inviteToCompany(
   // Send email (non-blocking)
   try {
     const { sendEmail, companyInvitationEmail } = await import("@prol/email");
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+    const appUrl = APP_URL;
     const acceptUrl = `${appUrl}/invite/${token}`;
     const tpl = companyInvitationEmail({
       companyName: company.name,

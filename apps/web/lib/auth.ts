@@ -39,8 +39,8 @@ function buildAuthPlugins() {
 // así que aceptamos el apex + cualquier subdominio del dominio base.
 // Para dev (`localhost:3000`) sólo aceptamos el origen literal.
 function buildTrustedOrigins(): string[] {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  const domain = process.env.NEXT_PUBLIC_DOMAIN;
+  const appUrl = process.env.APP_URL;
+  const domain = process.env.APP_DOMAIN;
   const origins = new Set<string>();
   if (appUrl) origins.add(appUrl);
   if (domain && !domain.startsWith("localhost")) {
@@ -77,11 +77,30 @@ function buildSocialProviders() {
 }
 
 export const auth = betterAuth({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  baseURL: process.env.APP_URL,
   trustedOrigins: buildTrustedOrigins(),
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  // Sin esta declaración, Better Auth descarta `tenantId` al escribir el
+  // usuario: el adaptador sólo persiste los campos que conoce, así que el
+  // `databaseHooks` de abajo lo devolvía y nadie lo guardaba. Verificado
+  // reproduciendo el alta contra la base: el usuario salía con `tenant_id`
+  // nulo incluso mandando la cabecera `x-tenant-slug` a mano.
+  //
+  // `input: false` no es opcional: sin él, el campo entra en la carga útil del
+  // alta y cualquiera podría darse de alta dentro del tenant que quisiera
+  // mandando su id. El tenant lo decide el servidor a partir del host, nunca
+  // el cliente.
+  user: {
+    additionalFields: {
+      tenantId: {
+        type: "string",
+        required: false,
+        input: false,
+      },
+    },
+  },
   databaseHooks: {
     user: {
       create: {

@@ -44,10 +44,31 @@ services:
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_BUCKET: ${R2_BUCKET:-}
+      # Prefijo dentro del bucket. Cambiarlo NO mueve objetos: hay que copiarlos
+      # antes o la instancia deja de encontrar sus archivos.
+      R2_KEY_PREFIX: ${R2_KEY_PREFIX:-}
 
       # App URL & Auth
+      # `APP_URL`/`APP_DOMAIN` son las que lee la aplicación: las `NEXT_PUBLIC_*`
+      # se sustituyen por su valor durante el build y nunca reflejan el entorno
+      # del contenedor. Se siguen pasando porque una imagen anterior a la
+      # separación todavía las usa, y así el mismo env file sirve para ambas
+      # durante la transición.
+      APP_URL: ${APP_URL}
+      APP_DOMAIN: ${APP_DOMAIN}
       NEXT_PUBLIC_APP_URL: ${APP_URL}
       NEXT_PUBLIC_DOMAIN: ${APP_DOMAIN}
+
+      # Identidad de la instancia (vacías = comportamiento histórico de PROL)
+      BRAND_NAME: ${BRAND_NAME:-}
+      BRAND_TAGLINE: ${BRAND_TAGLINE:-}
+      BRAND_DESCRIPTION: ${BRAND_DESCRIPTION:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      POWERED_BY_ENABLED: ${POWERED_BY_ENABLED:-}
+      POWERED_BY_NAME: ${POWERED_BY_NAME:-}
+      POWERED_BY_URL: ${POWERED_BY_URL:-}
+      # Instancia dedicada a un solo tenant: el apex ES ese tenant.
+      DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: ${APP_URL}
 
@@ -63,6 +84,8 @@ services:
       # Email (Resend)
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_DOMAIN: ${RESEND_DOMAIN:-}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
 
       # Google Meet (opcional - links automáticos en sesiones virtuales)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}

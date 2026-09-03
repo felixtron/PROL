@@ -3,6 +3,7 @@ import {
   type DocsArticle,
   type DocsCategory,
 } from "@/components/knowledge-base";
+import { SUPPORT_EMAIL } from "@/lib/brand";
 
 const categories: DocsCategory[] = [
   {
@@ -854,6 +855,7 @@ export default function TenantAdminDocsPage() {
         subtitle="Busca por palabra clave o filtra por categoría para administrar tu academia: empresas, usuarios, inscripciones y cobros."
         categories={categories}
         articles={articles}
+        supportEmail={SUPPORT_EMAIL}
       />
     </div>
   );

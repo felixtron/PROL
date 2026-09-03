@@ -139,7 +139,7 @@ export function KnowledgeBase({
   subtitle,
   categories,
   articles,
-  supportEmail = "soporte@prol.prosuite.pro",
+  supportEmail,
 }: KnowledgeBaseProps) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);

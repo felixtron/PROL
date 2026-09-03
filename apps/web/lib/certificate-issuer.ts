@@ -7,6 +7,7 @@ import {
 } from "@/lib/certificates";
 import { resolveCertificateTemplate } from "@/lib/certificate-templates/catalog";
 import { triggerSurveysForStudent } from "@/lib/survey-dispatch";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * System-level certificate issuer. NOT exported from a "use server" module,
@@ -50,7 +51,7 @@ export async function issueCertificateForEnrollment(
 
   const issuedAt = new Date();
   const year = issuedAt.getUTCFullYear();
-  const prefix = enrollment.tenant.certificatePrefix ?? "PROL";
+  const prefix = enrollment.tenant.certificatePrefix ?? BRAND_NAME;
 
   const studentName = enrollment.student.name ?? "Estudiante";
   const professorName = enrollment.course.professor.name ?? "Profesor";

@@ -7,8 +7,8 @@ interface TenantBrandProps {
 
 /**
  * Renders the tenant's logo (if uploaded) + name, with an optional role
- * badge ("PRO" / "ADMIN"). Falls back to text-only PROL branding when
- * the tenant has no logo configured.
+ * badge ("PRO" / "ADMIN"). El nombre lo resuelve quien llama (tenant o
+ * marca de la instancia): aquí no se decide la identidad.
  */
 export function TenantBrand({
   name,
@@ -26,7 +26,7 @@ export function TenantBrand({
         />
       ) : null}
       <span className="font-heading text-lg font-bold text-primary-700">
-        {logo ? name : "PROL"}
+        {name}
       </span>
       {badge && (
         <span

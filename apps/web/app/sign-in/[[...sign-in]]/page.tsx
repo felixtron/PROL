@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getCurrentTenant } from "@/lib/tenant";
 import { SignInForm } from "./sign-in-form";
+import { BRAND_NAME, POWERED_BY } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
       icons: tenant.favicon ? { icon: tenant.favicon } : undefined,
     };
   }
-  return { title: "Iniciar sesión — PROL" };
+  return { title: `Iniciar sesión — ${BRAND_NAME}` };
 }
 
 /**
@@ -39,6 +40,8 @@ export default async function SignInPage() {
           : null
       }
       turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? null}
+      poweredBy={POWERED_BY}
+      brandName={BRAND_NAME}
     />
   );
 }

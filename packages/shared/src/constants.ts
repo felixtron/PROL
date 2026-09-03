@@ -2,22 +2,10 @@
 // Platform Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const PLATFORM_NAME = "PROL" as const;
-export const DOMAIN = "prol.prosuite.pro" as const;
 export const DEFAULT_CURRENCY = "MXN" as const;
 export const DEFAULT_REVENUE_SHARE = 0.30;
 export const MIN_REVENUE_SHARE = 0.30;
 export const TRIAL_DAYS = 7;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tenant Subdomain
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Builds the full subdomain URL for a tenant. */
-export const tenantDomain = (slug: string) => `${slug}.${DOMAIN}` as const;
-
-/** Regex to extract the tenant slug from a hostname. */
-export const TENANT_SUBDOMAIN_PATTERN = /^([a-z0-9][a-z0-9-]*[a-z0-9])\.prol\.prosuite\.pro$/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Route Paths

@@ -19,6 +19,7 @@ import {
   renderCertificate,
   resolveCertificateTemplate,
 } from "@/lib/certificate-templates";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
  * Vista previa del diploma de un curso, con un alumno ficticio.
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
     const studentName = "Nombre del Alumno";
     const issuedAt = new Date();
     const folio = generateCertificateFolio(
-      course.tenant.certificatePrefix ?? "PROL",
+      course.tenant.certificatePrefix ?? BRAND_NAME,
       issuedAt.getUTCFullYear(),
       0
     );

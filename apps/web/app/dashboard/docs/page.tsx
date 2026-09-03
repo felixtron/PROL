@@ -3,6 +3,7 @@ import {
   type DocsArticle,
   type DocsCategory,
 } from "@/components/knowledge-base";
+import { SUPPORT_EMAIL } from "@/lib/brand";
 
 const categories: DocsCategory[] = [
   {
@@ -636,6 +637,7 @@ export default function StudentDocsPage() {
           subtitle="Busca por palabra clave o filtra por categoría para resolver dudas sobre tus cursos, certificados y sesiones."
           categories={categories}
           articles={articles}
+          supportEmail={SUPPORT_EMAIL}
         />
       </div>
     </div>

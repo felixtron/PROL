@@ -10,6 +10,7 @@ import {
   assertSameTenant,
 } from "@/lib/auth";
 import { createUserWithPassword } from "@/lib/users";
+import { APP_URL, BRAND_NAME } from "@/lib/brand";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ export async function createTenantUser(formData: FormData) {
     email,
     name,
     tempPassword,
-    tenantName: admin.tenant?.name ?? "PROL",
+    tenantName: admin.tenant?.name ?? BRAND_NAME,
   });
 
   revalidatePath("/tenant-admin/users");
@@ -277,7 +278,7 @@ export async function resendWelcomeEmail(userId: string) {
   // the temp password — the user can choose their own.
   const reqHeaders = await headers();
   await auth.api.requestPasswordReset({
-    body: { email: user.email, redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password` },
+    body: { email: user.email, redirectTo: `${APP_URL}/reset-password` },
     headers: reqHeaders,
     asResponse: false,
   });
@@ -368,7 +369,7 @@ export async function bulkImportUsers(
   });
   const existingEmails = new Set(existing.map((u) => u.email));
 
-  const tenantName = admin.tenant?.name ?? "PROL";
+  const tenantName = admin.tenant?.name ?? BRAND_NAME;
 
   // Process row by row (sequential to allow per-row error reporting + emails)
   for (let i = 0; i < rows.length; i++) {
@@ -474,7 +475,7 @@ async function sendInvitationEmail(params: {
   tenantName: string;
 }) {
   const { sendEmail, accountCreatedEmail } = await import("@prol/email");
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+  const appUrl = APP_URL;
   const tpl = accountCreatedEmail({
     name: params.name,
     email: params.email,

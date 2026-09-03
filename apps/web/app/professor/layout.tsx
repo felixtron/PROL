@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
+import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 
 const baseNavItems: SidebarNavItem[] = [
@@ -86,10 +87,10 @@ export default async function ProfessorLayout({
       />
       <SidebarShell
       navItems={navItems}
-      mobileTitle={tenant?.name ?? "PROL · Profesor"}
+      mobileTitle={tenant?.name ?? `${BRAND_NAME} · Profesor`}
       brand={
         <TenantBrand
-          name={tenant?.name ?? "PROL"}
+          name={tenant?.name ?? BRAND_NAME}
           logo={tenant?.logo ?? null}
           badge="PRO"
           badgeColor="bg-accent-500"

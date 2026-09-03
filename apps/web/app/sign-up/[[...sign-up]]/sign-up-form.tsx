@@ -17,9 +17,13 @@ interface TenantBranding {
 export function SignUpForm({
   tenant,
   turnstileSiteKey,
+  poweredBy,
+  brandName,
 }: {
   tenant: TenantBranding | null;
   turnstileSiteKey: string | null;
+  poweredBy: { name: string; url: string } | null;
+  brandName: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,7 +119,7 @@ export function SignUpForm({
           ) : (
             <>
               <h1 className="font-heading text-3xl font-bold text-primary-600">
-                PROL
+                {brandName}
               </h1>
               <p className="mt-2 text-text-secondary">Crea tu cuenta gratuita</p>
             </>
@@ -238,11 +242,11 @@ export function SignUpForm({
           </p>
         </div>
 
-        {tenant ? (
+        {tenant && poweredBy ? (
           <p className="mt-6 text-center text-[11px] text-text-tertiary">
             Powered by{" "}
-            <Link href="https://prol.prosuite.pro" className="hover:underline">
-              PROL
+            <Link href={poweredBy.url} className="hover:underline">
+              {poweredBy.name}
             </Link>
           </p>
         ) : null}

@@ -5,6 +5,7 @@ import { getStripe } from "@/lib/stripe";
 import { createLogger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import type Stripe from "stripe";
+import { APP_URL } from "@/lib/brand";
 
 const log = createLogger("stripe-webhook");
 
@@ -271,7 +272,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     });
 
     if (student?.email && course && tenantData) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://prol.prosuite.pro";
+      const appUrl = APP_URL;
       const courseUrl = `${appUrl}/dashboard/courses/${courseId}`;
       const displayAmount = (amount / 100).toFixed(2);
       const currency = session.currency?.toUpperCase() ?? "MXN";

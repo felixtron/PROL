@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import { db } from "@prol/db";
 import { requireUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
+import { APP_URL } from "@/lib/brand";
 
 // ---------------------------------------------------------------------------
 // createCheckoutSession — Initiates Stripe Checkout for a course purchase
@@ -75,7 +76,7 @@ export async function createCheckoutSession(
     revalidatePath("/dashboard/courses");
 
     return {
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/courses/${courseId}?enrolled=true`,
+      url: `${APP_URL}/dashboard/courses/${courseId}?enrolled=true`,
     };
   }
 
@@ -110,8 +111,8 @@ export async function createCheckoutSession(
         quantity: 1,
       },
     ],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/courses/${courseId}?enrolled=true`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/courses/${courseId}`,
+    success_url: `${APP_URL}/dashboard/courses/${courseId}?enrolled=true`,
+    cancel_url: `${APP_URL}/courses/${courseId}`,
     metadata: {
       courseId,
       studentId: user.id,
@@ -212,8 +213,8 @@ export async function createConnectOnboardingLink() {
   const accountLink = await getStripe().accountLinks.create({
     account: stripeAccountId,
     type: "account_onboarding",
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/tenant-admin/settings?stripe=success`,
-    refresh_url: `${process.env.NEXT_PUBLIC_APP_URL}/tenant-admin/settings?stripe=refresh`,
+    return_url: `${APP_URL}/tenant-admin/settings?stripe=success`,
+    refresh_url: `${APP_URL}/tenant-admin/settings?stripe=refresh`,
   });
 
   return { url: accountLink.url };

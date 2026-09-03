@@ -16,10 +16,13 @@ import { missingR2Env } from "@/lib/r2";
 // rutas específicas y se validan en su propio módulo si se usan.
 const CriticalEnvSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL es obligatoria"),
-  NEXT_PUBLIC_APP_URL: z
-    .string()
-    .url("NEXT_PUBLIC_APP_URL debe ser una URL absoluta (https://...)"),
-  NEXT_PUBLIC_DOMAIN: z.string().min(1, "NEXT_PUBLIC_DOMAIN es obligatoria"),
+  // Sin prefijo `NEXT_PUBLIC_` y sin fallback a las públicas. Esas variables se
+  // sustituyen por su valor durante el build, así que aceptarlas aquí haría que
+  // esta comprobación pasara mirando una constante horneada en la imagen en vez
+  // del entorno del contenedor — justo el fallo que esta validación existe para
+  // detectar. Ver el comentario largo en `middleware.ts`.
+  APP_URL: z.string().url("APP_URL debe ser una URL absoluta (https://...)"),
+  APP_DOMAIN: z.string().min(1, "APP_DOMAIN es obligatoria"),
   BETTER_AUTH_SECRET: z
     .string()
     .min(32, "BETTER_AUTH_SECRET debe tener al menos 32 caracteres"),
@@ -74,13 +77,25 @@ export function assertCriticalServerEnv(): void {
     );
   }
 
+  // `R2_KEY_PREFIX` mal escrito hace que `lib/document-storage.ts` lance al
+  // importarse. Sin esta comprobación el contenedor arranca sano, pasa el
+  // healthcheck, y sólo revienta cuando alguien abre una evidencia — con el
+  // despliegue ya dado por bueno. Se valida aquí para que falle en el arranque,
+  // que es donde alguien está mirando.
+  const prefix = process.env.R2_KEY_PREFIX;
+  if (prefix && !/^\/?[a-z0-9][a-z0-9-]*\/?$/.test(prefix.trim())) {
+    const msg = `R2_KEY_PREFIX inválido: ${JSON.stringify(prefix)}. Se espera un segmento simple, p. ej. "prol" o "ibiza".`;
+    if (process.env.NODE_ENV === "production") throw new Error(msg);
+    console.warn(`[env] ${msg}`);
+  }
+
   const result = CriticalEnvSchema.safeParse(process.env);
   if (result.success) return;
 
   const issues = result.error.issues
     .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
     .join("\n");
-  const message = `Configuración de entorno inválida:\n${issues}\nRevisa /opt/prol/.env (producción) o .env (local).`;
+  const message = `Configuración de entorno inválida:\n${issues}\nRevisa el archivo de entorno de la instancia (producción) o .env (local).`;
 
   if (process.env.NODE_ENV === "production") {
     throw new Error(message);

@@ -1,5 +1,40 @@
 import { getResend } from "./client";
 
+/**
+ * Remitente y buzón de respuesta de esta instancia.
+ *
+ * Una misma imagen sirve a varias instalaciones, así que ni el nombre ni el
+ * dominio pueden vivir en un literal: los 19 puntos de envío de la aplicación
+ * llaman aquí sin pasar `from`, y hasta ahora todos firmaban "PROL" pasara lo
+ * que pasara. El valor por defecto sigue siendo el de PROL para que desplegar
+ * sin configurar nada no cambie ni un correo.
+ *
+ * `EMAIL_REPLY_TO` no tiene default a propósito: sin él, las respuestas van a
+ * `noreply@` y se pierden — que es el comportamiento de hoy. Configurarlo es
+ * lo que las hace aterrizar en un buzón real.
+ */
+function defaultFrom(): string {
+  const name = process.env.EMAIL_FROM_NAME || "PROL";
+  const domain = process.env.RESEND_DOMAIN || "prol.prosuite.pro";
+  return `${quoteDisplayName(name)} <noreply@${domain}>`;
+}
+
+/**
+ * Entrecomilla el nombre visible del remitente según RFC 5322.
+ *
+ * Sin esto, una razón social con coma —"Ibiza Experts, S.A." es un nombre
+ * perfectamente normal— produce una cabecera `From` inválida que Resend
+ * rechaza. Y como `sendEmail` no lanza, el fallo sería invisible: TODO el
+ * correo de la instancia dejaría de salir dejando sólo una línea de log.
+ */
+function quoteDisplayName(name: string): string {
+  return `"${name.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function defaultReplyTo(): string | undefined {
+  return process.env.EMAIL_REPLY_TO || undefined;
+}
+
 interface SendEmailParams {
   to: string;
   subject: string;
@@ -20,7 +55,7 @@ export async function sendEmail({ to, subject, html, from, replyTo }: SendEmailP
     return null;
   }
 
-  const fromAddress = from ?? `PROL <noreply@${process.env.RESEND_DOMAIN ?? "prol.prosuite.pro"}>`;
+  const fromAddress = from ?? defaultFrom();
 
   try {
     const { data, error } = await getResend().emails.send({
@@ -28,7 +63,7 @@ export async function sendEmail({ to, subject, html, from, replyTo }: SendEmailP
       to,
       subject,
       html,
-      replyTo,
+      replyTo: replyTo ?? defaultReplyTo(),
     });
 
     if (error) {
@@ -80,8 +115,7 @@ export async function sendBulkEmail(
     return 0;
   }
 
-  const fromAddress =
-    from ?? `PROL <noreply@${process.env.RESEND_DOMAIN ?? "prol.prosuite.pro"}>`;
+  const fromAddress = from ?? defaultFrom();
 
   const BATCH_LIMIT = 100;
   let accepted = 0;
@@ -95,6 +129,7 @@ export async function sendBulkEmail(
           to: r.to,
           subject: r.subject,
           html: r.html,
+          replyTo: defaultReplyTo(),
         })),
       );
       if (error) {
