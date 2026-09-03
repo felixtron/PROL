@@ -90,7 +90,6 @@ export async function submitEvidence(input: {
   activityId: string;
   title?: string;
   notes?: string;
-  file?: { fileKey: string; fileName: string; fileSize: number; mimeType: string };
   riskAssessmentId?: string;
   evaluationSubmissionId?: string;
 }): Promise<EvidenceActionResult & { evidenceId?: string }> {
@@ -164,10 +163,16 @@ export async function submitEvidence(input: {
         status: "PENDING",
         title: optionalText(input.title, 200),
         notes: optionalText(input.notes),
-        fileKey: input.file?.fileKey ?? null,
-        fileName: input.file?.fileName ?? null,
-        fileSize: input.file?.fileSize ?? null,
-        mimeType: input.file?.mimeType ?? null,
+        // Sin ruta de subida (se retiró `/api/upload/evidence`: cero llamantes,
+        // confirmado por grep), `submitEvidence` ya no acepta una `fileKey` de
+        // entrada — un cliente autenticado ya no podría adjuntar a su propia
+        // evidencia una clave ajena. Las cuatro columnas se conservan en el
+        // esquema para las filas históricas, que se siguen descargando por
+        // `/files/evidence/:id`.
+        fileKey: null,
+        fileName: null,
+        fileSize: null,
+        mimeType: null,
         riskAssessmentId: input.riskAssessmentId ?? null,
         evaluationSubmissionId: input.evaluationSubmissionId ?? null,
         uploadedById: user.id,
