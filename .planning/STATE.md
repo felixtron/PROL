@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: "Fase 3.1 en curso: plan 04 (bloque de Drive compartido, DRV-02 pendiente — checkpoint aprobado sin ejercitarse) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
-stopped_at: Completado 03.1-04 — DriveFolderLink compartido, checkpoint aprobado sin ejercitarse, DRV-02 Pending
-last_updated: "2026-09-03T03:41:28.478Z"
-last_activity: "2026-09-02/03 — 03.1-04 completado: DriveFolderLink (bloque de sólo lectura, tres estados) compartido por el proyecto del cliente y la ficha de revisión de evidencia; getManualOverview y getEvidenceDetail revalidan driveUrl con safeDriveUrl y devuelven driveUrlIsInvalid, mismos nombres que getAssignmentPanel (03.1-03). Href server-verificado idéntico carácter por carácter a la columna en ambas pantallas nuevas, sin fuga entre empresas ni sin sesión. El checkpoint humano de la tarea 3 (el clic real hacia una carpeta de Drive) se aprobó dos veces ("aprobado"/"continua") sin aportar un enlace real ni contestar el resume-signal, pese a que se le explicó que DRV-02 quedaría sin marcar. DRV-02 permanece Pending; DRV-03 reconfirmada con la evidencia de las dos pantallas nuevas. manual_assignments.drive_url restaurado a NULL en las tres filas. Ver 03.1-04-SUMMARY.md."
+status: "Fase 3.1 en curso: plan 05 (submitEvidence sin exigencia de archivo para FILE, /api/upload/evidence retirado, DRV-04 Complete) ejecutado. Queda el plan 06 (despliegue). Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
+stopped_at: "Completado 03.1-05 — un requisito FILE se cumple sin archivo, circuito entero verificado, DRV-04 Complete, DRV-02 sigue Pending"
+last_updated: "2026-09-03T03:56:14.379Z"
+last_activity: "2026-09-03 — 03.1-05 completado: submitEvidence dejó de exigir (y de aceptar) archivo para kind FILE; el guard se quitó con el create ya null-safe desde antes. EvidenceBlock reescribió su rama FILE con el DriveFolderLink compartido (03.1-04) + botón 'Marcar como cumplido', sin fetch previo. /api/upload/evidence se retiró tras confirmar cero llamantes por grep. Circuito completo (ocho pasos, tres sesiones HTTP reales) verificado contra la base: entrega sin archivo con file_key NULL, rechazo de segunda PENDING, Pendiente→En revisión→Requiere corrección→Pendiente→Aprobada recorrido entero, actividad cerrada y ciclo 2 programado con due_at (periodicidad semestral), bitácora con las seis acciones y su autor, empresa ajena rechazada, agenda mostrando la actividad nueva en los dos paneles. Requisito y datos de prueba fabricados y borrados al cierre (deleteEvidenceRequirement rehusó por guarda de auditoría intencional; limpieza por SQL directo). DRV-04 pasa a Complete. DRV-02 sigue Pending: la evidencia de este plan es enteramente servidor-verificada, sin el clic humano hacia una carpeta real de Drive. Ver 03.1-05-SUMMARY.md."
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 22
-  completed_plans: 20
-  percent: 91
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 4/6 ejecutado, DRV-02 pendiente)
+**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 5/6 ejecutado, DRV-04 Complete, DRV-02 pendiente)
 
 ## Current Position
 
-Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 4/6 planes ejecutados
-Plan: 4 of 6 in current phase — completado (checkpoint de la tarea 3 aprobado sin ejercitarse)
-Status: Fase 3.1 en curso: plan 04 (bloque de Drive compartido, DRV-02 pendiente — checkpoint aprobado sin ejercitarse) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
-Last activity: 2026-09-02/03 — 03.1-04 completado: DriveFolderLink (bloque de sólo lectura, tres estados) compartido por el proyecto del cliente y la ficha de revisión de evidencia; getManualOverview y getEvidenceDetail revalidan driveUrl con safeDriveUrl y devuelven driveUrlIsInvalid, mismos nombres que getAssignmentPanel (03.1-03). Href server-verificado idéntico carácter por carácter a la columna en ambas pantallas nuevas, sin fuga entre empresas ni sin sesión. El checkpoint humano de la tarea 3 (el clic real hacia una carpeta de Drive) se aprobó dos veces ("aprobado"/"continua") sin aportar un enlace real ni contestar el resume-signal, pese a que se le explicó que DRV-02 quedaría sin marcar. DRV-02 permanece Pending; DRV-03 reconfirmada con la evidencia de las dos pantallas nuevas. manual_assignments.drive_url restaurado a NULL en las tres filas. Ver 03.1-04-SUMMARY.md.
+Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 5/6 planes ejecutados
+Plan: 5 of 6 in current phase — completado (circuito de ocho pasos verificado por HTTP real, DRV-04 Complete)
+Status: Fase 3.1 en curso: plan 05 (submitEvidence sin exigencia de archivo para FILE, /api/upload/evidence retirado, DRV-04 Complete) ejecutado. Queda el plan 06 (despliegue). Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
+Last activity: 2026-09-03 — 03.1-05 completado: submitEvidence dejó de exigir (y de aceptar) archivo para kind FILE; el guard se quitó con el create ya null-safe desde antes. EvidenceBlock reescribió su rama FILE con el DriveFolderLink compartido (03.1-04) + botón "Marcar como cumplido", sin fetch previo. /api/upload/evidence se retiró tras confirmar cero llamantes por grep. Circuito completo (ocho pasos, tres sesiones HTTP reales) verificado contra la base: entrega sin archivo con file_key NULL, rechazo de segunda PENDING, Pendiente→En revisión→Requiere corrección→Pendiente→Aprobada recorrido entero, actividad cerrada y ciclo 2 programado con due_at (periodicidad semestral), bitácora con las seis acciones y su autor, empresa ajena rechazada, agenda mostrando la actividad nueva en los dos paneles. Requisito y datos de prueba fabricados y borrados al cierre (deleteEvidenceRequirement rehusó por guarda de auditoría intencional; limpieza por SQL directo). DRV-04 pasa a Complete. DRV-02 sigue Pending: la evidencia de este plan es enteramente servidor-verificada, sin el clic humano hacia una carpeta real de Drive. Ver 03.1-05-SUMMARY.md.
 
-Progress: [█████████░] 91% (20 de 22 planes)
+Progress: [█████████░] 95% (21 de 22 planes)
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 91% (20 de 22 planes)
 | Phase 03.1 P02 | ~20min (continuación; tareas 1-2 en sesión previa) | 3 tasks | 0 files |
 | Phase 03.1 P03 | ~50min | 3 tasks | 4 files |
 | Phase 03.1 P04 | ~25min (continuación) | 3 tasks | 7 files |
+| Phase 03.1 P05 | ~50min | 3 tasks | 6 files (1 borrado) |
 
 ## Accumulated Context
 
@@ -130,6 +131,9 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03.1-04]: driveUrl se llevó al cliente por la guarda (requireAssignmentMemberAccess), opción 1 del plan — un solo sitio que también resuelve lo que 03.1-05 necesita para getSectionForCompany.
 - [Phase 03.1-04]: El checkpoint de la tarea 3 se aprobó SIN ejercitarse, dos veces ("aprobado"/"continua"), sin enlace real de Drive ni respuesta al resume-signal, pese a que se le dijo al usuario que DRV-02 quedaría sin marcar. Se registró como aprobación informada de no ejercitar, no como verificación — DRV-02 permanece Pending. Precedente aplicado: plan 03-06.
 - [Phase 03.1-04]: Se encontró un enlace real de Drive puesto en el proyecto equivocado ("Manual de prueba OPS-04", que el guion del checkpoint esperaba sin enlace) en vez del proyecto que el guion pedía usar (ISO 9001, que estaba en NULL). Restaurado a NULL en las tres filas al cerrar el plan, sin poder determinar si esto contribuyó a que el checkpoint no se ejerciera.
+- [Phase 03.1-05]: submitEvidence deja de exigir y de aceptar archivo para kind FILE; /api/upload/evidence se retiró tras confirmar cero llamantes por grep. Las cuatro columnas de archivo se escriben null explícitamente, conservadas en el esquema para las filas históricas.
+- [Phase 03.1-05]: deleteEvidenceRequirement rehusó borrar el requisito de prueba por una guarda de auditoría intencional (evidencias ya entregadas); la limpieza del fixture se hizo por SQL directo, no es un bug del plan ni del código existente.
+- [Phase 03.1-05]: DRV-04 pasa a Complete con evidencia server-verificada de ocho pasos; DRV-02 permanece Pending porque este plan usó un enlace de Drive deliberadamente ficticio y no aporta el clic humano hacia una carpeta real que 03.1-04 dejó pendiente.
 
 ### Pending Todos
 
@@ -163,8 +167,8 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-03T03:41:28.472Z
-Stopped at: Completado 03.1-04 — DriveFolderLink compartido, checkpoint aprobado sin ejercitarse, DRV-02 Pending
+Last session: 2026-09-03T03:56:14.379Z
+Stopped at: Completado 03.1-05 — un requisito FILE se cumple sin archivo, circuito entero verificado, DRV-04 Complete, DRV-02 sigue Pending
 Resume file: None
 
 **Nota de concurrencia**: al cerrar esta sesión, otra sesión interactiva (`prol-1d`) tiene trabajo de DC-3 sin commitear en este mismo working tree (~18 archivos, incluido `packages/db/prisma/schema.prisma`). No fue tocado por 03-08.
