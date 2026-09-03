@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: "Fase 3.1 en curso: plan 03 (enlace de Drive del proyecto, escritura estrecha y lectura revalidada) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
-stopped_at: Completado 03.1-03 — setProjectDriveUrl con guarda estrecha, lectura revalidada, ProjectDriveLink en el panel, nueve pasos de autorización ejercitados por HTTP real.
-last_updated: "2026-09-03T00:42:20.354Z"
-last_activity: "2026-09-02 — 03.1-03 completado: setProjectDriveUrl con requireManualAdmin + comprobación de tenant a mano, getAssignmentPanel revalida con safeDriveUrl (driveUrlIsInvalid, canEditDriveUrl), ProjectDriveLink con tres estados de lectura montado en el panel del proyecto. Nueve pasos de autorización y dos capturas de HTML servido ejercitados por HTTP real contra la base de desarrollo. DRV-01/03 completos. Ver 03.1-03-SUMMARY.md."
+status: "Fase 3.1 en curso: plan 04 (bloque de Drive compartido, DRV-02 pendiente — checkpoint aprobado sin ejercitarse) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md)."
+stopped_at: Completado 03.1-04 — DriveFolderLink compartido, checkpoint aprobado sin ejercitarse, DRV-02 Pending
+last_updated: "2026-09-03T03:41:28.478Z"
+last_activity: "2026-09-02/03 — 03.1-04 completado: DriveFolderLink (bloque de sólo lectura, tres estados) compartido por el proyecto del cliente y la ficha de revisión de evidencia; getManualOverview y getEvidenceDetail revalidan driveUrl con safeDriveUrl y devuelven driveUrlIsInvalid, mismos nombres que getAssignmentPanel (03.1-03). Href server-verificado idéntico carácter por carácter a la columna en ambas pantallas nuevas, sin fuga entre empresas ni sin sesión. El checkpoint humano de la tarea 3 (el clic real hacia una carpeta de Drive) se aprobó dos veces ("aprobado"/"continua") sin aportar un enlace real ni contestar el resume-signal, pese a que se le explicó que DRV-02 quedaría sin marcar. DRV-02 permanece Pending; DRV-03 reconfirmada con la evidencia de las dos pantallas nuevas. manual_assignments.drive_url restaurado a NULL en las tres filas. Ver 03.1-04-SUMMARY.md."
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 22
-  completed_plans: 19
-  percent: 86
+  completed_plans: 20
+  percent: 91
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 3/6 ejecutado)
+**Current focus:** Phase 3.1 — Ibiza Experts 360 y Drive (plan 4/6 ejecutado, DRV-02 pendiente)
 
 ## Current Position
 
-Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 3/6 planes ejecutados
-Plan: 3 of 6 in current phase — completado
-Status: Fase 3.1 en curso: plan 03 (enlace de Drive del proyecto, escritura estrecha y lectura revalidada) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
-Last activity: 2026-09-02 — 03.1-03 completado: setProjectDriveUrl con requireManualAdmin + comprobación de tenant a mano, getAssignmentPanel revalida con safeDriveUrl (driveUrlIsInvalid, canEditDriveUrl), ProjectDriveLink con tres estados de lectura montado en el panel del proyecto. Nueve pasos de autorización y dos capturas de HTML servido ejercitados por HTTP real contra la base de desarrollo. DRV-01/03 completos. Ver 03.1-03-SUMMARY.md.
+Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 4/6 planes ejecutados
+Plan: 4 of 6 in current phase — completado (checkpoint de la tarea 3 aprobado sin ejercitarse)
+Status: Fase 3.1 en curso: plan 04 (bloque de Drive compartido, DRV-02 pendiente — checkpoint aprobado sin ejercitarse) ejecutado. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
+Last activity: 2026-09-02/03 — 03.1-04 completado: DriveFolderLink (bloque de sólo lectura, tres estados) compartido por el proyecto del cliente y la ficha de revisión de evidencia; getManualOverview y getEvidenceDetail revalidan driveUrl con safeDriveUrl y devuelven driveUrlIsInvalid, mismos nombres que getAssignmentPanel (03.1-03). Href server-verificado idéntico carácter por carácter a la columna en ambas pantallas nuevas, sin fuga entre empresas ni sin sesión. El checkpoint humano de la tarea 3 (el clic real hacia una carpeta de Drive) se aprobó dos veces ("aprobado"/"continua") sin aportar un enlace real ni contestar el resume-signal, pese a que se le explicó que DRV-02 quedaría sin marcar. DRV-02 permanece Pending; DRV-03 reconfirmada con la evidencia de las dos pantallas nuevas. manual_assignments.drive_url restaurado a NULL en las tres filas. Ver 03.1-04-SUMMARY.md.
 
-Progress: [█████████░] 86% (19 de 22 planes)
+Progress: [█████████░] 91% (20 de 22 planes)
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [█████████░] 86% (19 de 22 planes)
 | Phase 03.1 P01 | ~55min | 3 tasks | 6 files |
 | Phase 03.1 P02 | ~20min (continuación; tareas 1-2 en sesión previa) | 3 tasks | 0 files |
 | Phase 03.1 P03 | ~50min | 3 tasks | 4 files |
+| Phase 03.1 P04 | ~25min (continuación) | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03.1-02]: Checkpoint ejercitado (no aprobado en blanco): el usuario confirmo las tres respuestas del resume-signal via Q&A estructurada. El panel de consultor, no visto por el usuario, se cerro con HTTP real (login + GET autenticado) en vez de inferirse del codigo compartido.
 - [Phase 03.1-03]: Task 3 (verificación con cuatro sesiones reales + un tenant desechable) no produjo cambios de código: no hay commit de tarea para ella, sólo la evidencia documentada en 03.1-03-SUMMARY.md. El script desechable se escribió temporalmente dentro de packages/db/ (para resolución de módulos de tsx) y se borró antes de terminar; nunca apareció en un commit ni quedó en git status.
 - [Phase 03.1-03]: El manifest de server actions correcto para invocar por HTTP sigue siendo el de la ruta específica (.next/dev/server/app/tenant-admin/projects/[assignmentId]/page/server-reference-manifest.json), no el global — mismo hallazgo que 03-06b.
+- [Phase 03.1-04]: driveUrl se llevó al cliente por la guarda (requireAssignmentMemberAccess), opción 1 del plan — un solo sitio que también resuelve lo que 03.1-05 necesita para getSectionForCompany.
+- [Phase 03.1-04]: El checkpoint de la tarea 3 se aprobó SIN ejercitarse, dos veces ("aprobado"/"continua"), sin enlace real de Drive ni respuesta al resume-signal, pese a que se le dijo al usuario que DRV-02 quedaría sin marcar. Se registró como aprobación informada de no ejercitar, no como verificación — DRV-02 permanece Pending. Precedente aplicado: plan 03-06.
+- [Phase 03.1-04]: Se encontró un enlace real de Drive puesto en el proyecto equivocado ("Manual de prueba OPS-04", que el guion del checkpoint esperaba sin enlace) en vez del proyecto que el guion pedía usar (ISO 9001, que estaba en NULL). Restaurado a NULL en las tres filas al cerrar el plan, sin poder determinar si esto contribuyó a que el checkpoint no se ejerciera.
 
 ### Pending Todos
 
@@ -133,6 +137,7 @@ Decisiones recientes que afectan al trabajo actual:
 - **`apps/web/app/surveys/[publicSlug]/`** se sacó del repo (código muerto: importaba `getSurveyByPublicSlug` y `submitSurveyResponse`, que no existen; lo sustituyeron `surveys/answer/` y `surveys/open/`). Copia en el scratchpad de la sesión por si hiciera falta consultarla.
 - **Confirmación visual humana sobre producción, pendiente (03-08).** Falta que el usuario entre a `https://prol.prosuite.pro`, vea el panel normal y descargue algo que ya funcionara antes (certificado o PDF de resultados). No bloqueante: todo lo automatizable ya se confirmó y el rollback de un comando (`podman tag localhost/prol-web:55c020d localhost/prol-web:latest && systemctl restart prol-web-1.service`) está listo si algo apareciera mal.
 - ~~Sesión concurrente en el mismo working tree.~~ **RESUELTO al ejecutar 03.1-01**: al empezar el plan, `git diff --stat -- packages/db/prisma/schema.prisma` estaba vacío — la sesión `prol-1d` ya había commiteado su trabajo de DC-3 antes de que este plan tocara el árbol (confirmado también por los commits `f41f286`/`d67f453`/`2bebc00` de planificación de esta misma fase). Se dio el Caso A previsto por el plan: `git add` directo sobre `schema.prisma`, sin construir un blob. El árbol sigue limpio tras el commit. Cualquier operación futura sobre este árbol debe seguir revisando `git status` antes de tocar nada destructivo, por si otra sesión vuelve a entrar.
+- **DRV-02 pendiente (03.1-04).** El checkpoint que debía confirmar que el clic hacia "Abrir la carpeta de Drive" aterriza en una carpeta real se aprobó dos veces sin ejercitarse: falta que un usuario con una cuenta de Drive real entre como administrador, pegue su enlace en el proyecto ISO 9001 de Acme, y confirme que el botón lo lleva ahí desde el panel del cliente y desde la ficha de revisión del consultor. No bloqueante para 03.1-05/06: toda la evidencia server-side (href idéntico a la columna, sin fuga entre empresas) ya está cerrada. Ver `03.1-04-SUMMARY.md` §"Tarea 3: aprobado sin ejercitar".
 
 ### Blockers/Concerns
 
@@ -158,8 +163,8 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-02T23:42:57.022Z
-Stopped at: Completado 03.1-03 — setProjectDriveUrl con guarda estrecha, lectura revalidada, ProjectDriveLink en el panel, nueve pasos de autorización ejercitados por HTTP real.
+Last session: 2026-09-03T03:41:28.472Z
+Stopped at: Completado 03.1-04 — DriveFolderLink compartido, checkpoint aprobado sin ejercitarse, DRV-02 Pending
 Resume file: None
 
 **Nota de concurrencia**: al cerrar esta sesión, otra sesión interactiva (`prol-1d`) tiene trabajo de DC-3 sin commitear en este mismo working tree (~18 archivos, incluido `packages/db/prisma/schema.prisma`). No fue tocado por 03-08.

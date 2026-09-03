@@ -205,6 +205,6 @@ La 7 ya no existe (su contenido está dentro de la 3) y la 6 se canceló: las ev
 | 3. Procedimientos nativos | 8/8 | Complete    | 2026-09-02 |
 | 4. Puente HTML→PDF | 0/TBD | Not started | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
-| 3.1. Ibiza Experts 360 y Drive | 3/6 | In Progress|  |
+| 3.1. Ibiza Experts 360 y Drive | 4/6 | In Progress|  |
 | ~~6. Subida directa a R2~~ | — | Cancelada | 2026-09-02 |
 | ~~7. Importación .docx~~ | — | Absorbida por la 3 | 2026-09-02 |
