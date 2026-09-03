@@ -146,10 +146,13 @@ Plans:
   2. Ninguna fila de tabla se parte entre páginas.
   3. Cambiar el logo de la empresa cambia el PDF sin regenerar ni volver a emitir nada.
   4. La vista previa dentro del editor coincide con el archivo descargado.
-**Plans**: TBD
+**Plans**: 4 plans (olas estrictamente seriales: 1 → 04-01, 2 → 04-02, 3 → 04-03, 4 → 04-04). Un plan por ola a propósito: `branching_strategy` es "none" y los cuatro tocan el mismo mapeador y el mismo working tree; en la ola 1 de la fase 1 dos ejecutores concurrentes se absorbieron archivos entre el `add` y el `commit`. El plan 04 lleva dos checkpoints (`autonomous: false`): la firma humana de lo que se ve y la decisión de desplegar.
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — Spike medido de tablas, armazón del PDF, mapeador básico y las dos rutas de descarga (PDF-01)
+- [ ] 04-02-PLAN.md — Tablas con bordes, filas irrompibles, resto del allowlist y banco de pruebas multipágina (PDF-02)
+- [ ] 04-03-PLAN.md — Descarga en el visor, la vista previa ES el PDF, y el logo en vivo demostrado con hashes (PDF-01, PDF-04)
+- [ ] 04-04-PLAN.md — Verificación humana, decisión de despliegue y cierre de requisitos (PDF-01, PDF-02, PDF-04)
 
 ### Phase 5: Registros nativos
 **Goal**: El consultor define un formato con bloques y el cliente lo llena en pantalla; el resultado entra como evidencia al flujo de aprobación que ya existe.
@@ -203,7 +206,7 @@ La 7 ya no existe (su contenido está dentro de la 3) y la 6 se canceló: las ev
 | 1. Higiene y operación | 4/4 | Complete    | 2026-09-01 |
 | 2. R2 para el tier confidencial | 4/4 | Complete    | 2026-09-02 |
 | 3. Procedimientos nativos | 8/8 | Complete    | 2026-09-02 |
-| 4. Puente HTML→PDF | 0/TBD | Not started | - |
+| 4. Puente HTML→PDF | 0/4 | Planned | - |
 | 5. Registros nativos | 0/TBD | Not started | - |
 | 3.1. Ibiza Experts 360 y Drive | 6/6 | Complete    | 2026-09-03 |
 | ~~6. Subida directa a R2~~ | — | Cancelada | 2026-09-02 |
