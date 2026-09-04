@@ -84,21 +84,29 @@ export async function loadCompanyDocumentIdentity(companyDocumentId: string): Pr
 
 /**
  * Identidad de la vista previa de plantilla — lo que el consultor ve antes de
- * emitir (plan 03-06). Rellena la MISMA interfaz que una emisión real, pero
- * desde `ManualDocument` en vez de desde `CompanyDocument`: `version` es el
- * `templateVersion` actual, `status` es `BORRADOR` (nada se ha adoptado
- * todavía) y `sourceTemplateVersion` se fija igual al `templateVersion`
- * actual para que `isOutdated` sea siempre `false` en la vista previa — es
- * justo el truco que usa `renderCertificate`: los dos consumidores llenan la
- * misma interfaz desde fuentes distintas, así que lo que se ve en vista
- * previa no puede divergir de lo que se emitiría.
+ * emitir (plan 03-06), y también la vista previa en PDF de la plantilla sola
+ * (plan 04-01, sin elegir empresa). Rellena la MISMA interfaz que una
+ * emisión real, pero desde `ManualDocument` en vez de desde
+ * `CompanyDocument`: `version` es el `templateVersion` actual, `status` es
+ * `BORRADOR` (nada se ha adoptado todavía) y `sourceTemplateVersion` se fija
+ * igual al `templateVersion` actual para que `isOutdated` sea siempre
+ * `false` en la vista previa — es justo el truco que usa `renderCertificate`:
+ * los dos consumidores llenan la misma interfaz desde fuentes distintas, así
+ * que lo que se ve en vista previa no puede divergir de lo que se emitiría.
  *
- * Devuelve `null` si el documento o la empresa no existen.
+ * `companyId` es opcional: la plantilla del manual no está ligada a ninguna
+ * empresa todavía. Sin él, se sustituye la empresa por un marcador fijo
+ * («Empresa de ejemplo»), el mismo truco que usa la vista previa del diploma
+ * con «Nombre del Alumno» — se sustituye una entidad por un marcador, no se
+ * toma prestada la de otra empresa real.
+ *
+ * Devuelve `null` si el documento no existe, o si se pasó un `companyId` que
+ * no existe.
  */
 export async function loadTemplatePreviewIdentity(
   documentId: string,
-  companyId: string,
-): Promise<{ identity: DocumentIdentity; contentHtml: string } | null> {
+  companyId?: string | null,
+): Promise<{ identity: DocumentIdentity; contentHtml: string; tenantId: string } | null> {
   const [doc, company] = await Promise.all([
     db.manualDocument.findUnique({
       where: { id: documentId },
@@ -108,24 +116,36 @@ export async function loadTemplatePreviewIdentity(
         kind: true,
         contentHtml: true,
         templateVersion: true,
-        manual: { select: { normaLabel: true } },
+        manual: {
+          select: { normaLabel: true, tenantId: true, tenant: { select: { name: true } } },
+        },
       },
     }),
-    db.company.findUnique({
-      where: { id: companyId },
-      select: {
-        name: true,
-        dc3LegalName: true,
-        logo: true,
-        tenant: { select: { name: true } },
-      },
-    }),
+    companyId
+      ? db.company.findUnique({
+          where: { id: companyId },
+          select: {
+            name: true,
+            dc3LegalName: true,
+            logo: true,
+            tenant: { select: { name: true } },
+          },
+        })
+      : null,
   ]);
-  if (!doc || !company) return null;
+  if (!doc) return null;
+  if (companyId && !company) return null;
+
+  const companyInput = company ?? {
+    name: "Empresa de ejemplo",
+    dc3LegalName: null,
+    logo: null,
+  };
+  const tenantInput = company?.tenant ?? { name: doc.manual.tenant.name };
 
   const identity = buildDocumentIdentity({
-    company,
-    tenant: company.tenant,
+    company: companyInput,
+    tenant: tenantInput,
     normaLabel: doc.manual.normaLabel,
     code: doc.code,
     codeOverride: null,
@@ -139,5 +159,5 @@ export async function loadTemplatePreviewIdentity(
     latestTemplateVersion: doc.templateVersion,
   });
 
-  return { identity, contentHtml: doc.contentHtml ?? "" };
+  return { identity, contentHtml: doc.contentHtml ?? "", tenantId: doc.manual.tenantId };
 }
