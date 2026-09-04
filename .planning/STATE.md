@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Documentos nativos y R2
-status: completed
-stopped_at: Phase 4 context gathered
-last_updated: "2026-09-03T15:22:58.910Z"
-last_activity: "2026-09-03 — 03.1-06 completado: producción corre la imagen `9bf55ee` (fase 3.1 + cierre de brechas de DC-3, `aaaf8d5`, aprobado explícitamente por el usuario tras conocer el alcance completo). Cinco sentencias de esquema aplicadas antes de mover `latest` (dos de esta fase, tres de DC-3), todas aditivas, ninguna pidió `--accept-data-loss`. `documents_enabled` sin tocar (`ibiza-online=true`, los otros dos `false`). Verificación automatizada completa y re-confirmada de forma independiente. El checkpoint final se aprobó con un "aprobado" sin contestar las tres preguntas del `resume-signal`, pese a habérsele dicho explícitamente que así se registraría como "aprobado sin ejercitar" — se registra exactamente así. Ver 03.1-06-SUMMARY.md y DEPLOY.md §7e."
+status: "Plan 04-01 ejecutado end-to-end contra el servidor de desarrollo y la base local real: 16 comprobaciones HTTP pasaron (200/401/403/404/409, banda de identidad, pie numerado, sello por estatus). El spike midió VEREDICTO A para la técnica de cabecera de tabla `fixed` — el plan 04-02 la aplica sin repetir la medición ni discutir el fallback. `check-types` limpio, `lint` en 81 warnings, `build` verde con las dos rutas nuevas en la salida."
+stopped_at: Completado 04-01-PLAN.md
+last_updated: "2026-09-04T15:02:41.880Z"
+last_activity: "2026-09-04 — 04-01 completado: dependencias (htmlparser2, domhandler) promovidas a directas sin mover versión; spike-pdf-tables.mjs midió VEREDICTO A (cabecera de tabla repetida sólo en páginas con fila) y FILA-GIGANTE: VISIBLE; html-to-pdf-nodes.tsx y document-pdf.tsx dejan el armazón y el mapeador de bloques/inline; las dos rutas de descarga (plantilla y documento de empresa) y verify-document-pdf.mjs (arnés HTTP + pdf-parse) verificados contra la base local real. Ver 04-01-SUMMARY.md."
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_plans: 26
+  completed_plans: 23
+  percent: 88
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-01)
 
 **Core value:** Que una empresa cliente llegue a su auditoría con el expediente completo, trazable y aprobado, sin que nadie haya tenido que intercambiar un archivo por correo.
-**Current focus:** Fase 3.1 completa y desplegada. Fase 4 (Puente HTML→PDF) sin planificar todavía.
+**Current focus:** Fase 4 (Puente HTML→PDF) en curso: plan 01 de 4 completado.
 
 ## Current Position
 
-Phase: 3.1 of 6 (Ibiza Experts 360 y Drive) — INSERTED, 6/6 planes ejecutados, Complete
-Plan: 6 of 6 in current phase — completado (desplegado a producción, imagen `9bf55ee`; confirmación visual humana pendiente)
-Status: Fase 3.1 cerrada: los seis planes ejecutados y en producción. NAV-01/02/03 y DRV-01/03/04 Complete; DRV-02 sigue Pending (ni desarrollo ni producción aportan el clic humano hacia una carpeta real de Drive, porque `manual_assignments` sigue en 0 filas en producción). Confirmación visual humana sobre producción pendiente, tercera vez consecutiva en la fase. Fase 4 (Puente HTML→PDF) sin planificar todavía (plans: TBD en ROADMAP.md).
-Last activity: 2026-09-03 — 03.1-06 completado: producción corre la imagen `9bf55ee` (fase 3.1 + cierre de brechas de DC-3, `aaaf8d5`, aprobado explícitamente por el usuario tras conocer el alcance completo). Cinco sentencias de esquema aplicadas antes de mover `latest` (dos de esta fase, tres de DC-3), todas aditivas, ninguna pidió `--accept-data-loss`. `documents_enabled` sin tocar (`ibiza-online=true`, los otros dos `false`). Verificación automatizada completa y re-confirmada de forma independiente. El checkpoint final se aprobó con un "aprobado" sin contestar las tres preguntas del `resume-signal`, pese a habérsele dicho explícitamente que así se registraría como "aprobado sin ejercitar" — se registra exactamente así. Ver 03.1-06-SUMMARY.md y DEPLOY.md §7e.
+Phase: 4 of 6 (Puente HTML→PDF) — 1/4 planes ejecutados, In Progress
+Plan: 1 of 4 in current phase — completado (spike medido de tablas, armazón del PDF, mapeador básico y las dos rutas de descarga; PDF-01 demostrado para un documento de una página)
+Status: Plan 04-01 ejecutado end-to-end contra el servidor de desarrollo y la base local real: 16 comprobaciones HTTP pasaron (200/401/403/404/409, banda de identidad, pie numerado, sello por estatus). El spike midió VEREDICTO A para la técnica de cabecera de tabla `fixed` — el plan 04-02 la aplica sin repetir la medición ni discutir el fallback. `check-types` limpio, `lint` en 81 warnings, `build` verde con las dos rutas nuevas en la salida.
+Last activity: 2026-09-04 — 04-01 completado: dependencias (htmlparser2, domhandler) promovidas a directas sin mover versión; spike-pdf-tables.mjs midió VEREDICTO A (cabecera de tabla repetida sólo en páginas con fila) y FILA-GIGANTE: VISIBLE; html-to-pdf-nodes.tsx y document-pdf.tsx dejan el armazón y el mapeador de bloques/inline; las dos rutas de descarga (plantilla y documento de empresa) y verify-document-pdf.mjs (arnés HTTP + pdf-parse) verificados contra la base local real. Ver 04-01-SUMMARY.md.
 
-Progress: [██████████] 100% (22 de 22 planes)
+Progress: [█████████░] 88% (23 de 26 planes)
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [██████████] 100% (22 de 22 planes)
 | Phase 03.1 P04 | ~25min (continuación) | 3 tasks | 7 files |
 | Phase 03.1 P05 | ~50min | 3 tasks | 6 files (1 borrado) |
 | Phase 03.1 P06 | tareas 1-2 no cronometrables (aprobación humana + despliegue en sesión previa); continuación tarea 3 ~20min | 3 tasks | 4 files |
+| Phase 04 P01 | ~30min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ Decisiones recientes que afectan al trabajo actual:
 - [Phase 03.1-06]: `documents_enabled` no se tocó — idéntico antes y después en los tres tenants.
 - [Phase 03.1-06]: El checkpoint final (tarea 3) se aprobó con un "aprobado" sin contestar ninguna de las tres preguntas del `resume-signal`, pese a habérsele dicho explícitamente que así se registraría como "aprobado sin ejercitar". Se registra exactamente así: nadie ha visto el sidebar de IBIZA en producción, y la deuda heredada del plan 03-08 (descargar un certificado o PDF) sigue sin saldarse. Tercera vez consecutiva en la fase que un checkpoint de verificación humana se aprueba sin ejercitarse (sólo 03.1-02 se ejerció de verdad).
 - [Phase 03.1-06]: NAV-01/02/03 permanecen Complete por su evidencia de desarrollo (03.1-02); se añadió nota explícita de que la confirmación visual en producción está pendiente, sin retirarles el estado que ya tenían por evidencia genuina de otro plan. DRV-02 permanece Pending: `manual_assignments` está en 0 filas en producción, así que el despliegue no puede aportar la evidencia que falta.
+- [Phase 04-01]: Spike midio VEREDICTO A: <View fixed> anidado en el contenedor de la tabla repite la cabecera solo en paginas con fila; el plan 04-02 usa esta tecnica tal cual, sin fallback. FILA-GIGANTE: VISIBLE (una fila wrap={false} mas alta que la pagina se mueve entera, no desaparece).
+- [Phase 04-01]: loadTemplatePreviewIdentity gana companyId opcional (sin llamantes previos, confirmado por grep): sin empresa devuelve el marcador Empresa de ejemplo y el tenantId del manual, para que la vista previa de plantilla no exija elegir empresa.
 
 ### Pending Todos
 
@@ -176,8 +179,8 @@ Decisiones recientes que afectan al trabajo actual:
 
 ## Session Continuity
 
-Last session: 2026-09-03T15:22:58.896Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-puente-html-pdf/04-CONTEXT.md
+Last session: 2026-09-04T15:02:41.874Z
+Stopped at: Completado 04-01-PLAN.md
+Resume file: .planning/phases/04-puente-html-pdf/04-02-PLAN.md
 
 **Nota de concurrencia**: la sesión interactiva `prol-1d` había commiteado su trabajo de DC-3 (`aaaf8d5`) antes de que este plan tocara el árbol — confirmado en 03.1-01 y desplegado junto con esta fase en 03.1-06, con el consentimiento explícito del usuario.

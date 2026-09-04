@@ -38,7 +38,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 
 ### Exportación
 
-- [ ] **PDF-01**: Todo documento nativo se descarga en PDF con encabezado ISO y pie numerado.
+- [x] **PDF-01**: Todo documento nativo se descarga en PDF con encabezado ISO y pie numerado.
 - [ ] **PDF-02**: Las tablas salen con bordes y ninguna fila se parte entre páginas.
 - [ ] **PDF-03**: El PDF de una evidencia se renderiza desde el snapshot y nunca desde el dato vivo.
 - [ ] **PDF-04**: Cambiar el logo de una empresa actualiza sus PDFs sin regenerar nada.
@@ -89,7 +89,7 @@ Requisitos de este milestone. Cada uno se mapea a una fase del roadmap.
 | DOC-06 | Phase 3 | Complete — cerrado en 03-06b: sobre la fila `VIGENTE` de Acme (`v1`), `startCompanyDocumentDraft` por HTTP creó `v2 BORRADOR`; una segunda llamada idéntica devolvió el mismo `draftId` (idempotente, no creó `v3`). `saveCompanyDocumentDraft` se invocó dos veces con contenido distinto cada vez: siguió existiendo exactamente una fila `BORRADOR` (`v2`) y el contenido final llevaba las dos ediciones. `publishCompanyDocument` promovió `v2` a `VIGENTE` y degradó `v1` a `OBSOLETO`; Constructora Delta permaneció en `v1 VIGENTE` sin tocar. Invariante "una sola VIGENTE por (documento, empresa)" reverificado tras cada paso: cero infracciones. Ver `03-06-SUMMARY.md`. |
 | DOC-07 | Phase 3 | Complete — *aprobado por el usuario en pantalla* (checkpoint de 03-07): antes del recorrido, la continuación subió `P-RFC-4.1-01.template_version` a 6 sin re-emitir a nadie (`sourceTemplateVersion` de las dos filas de empresa se quedó en 4), y el usuario vio en ambas empresas el aviso ámbar "hay una versión más reciente de la plantilla" redactado sin dar a entender que su documento caducó. Reconfirmado por HTTP en el cierre de 03-07 (los mismos `GET` autenticados de la demostración del logo): el aviso sigue presente para Acme y para Constructora Delta. |
 | OPS-05 | Phase 3 | Complete |
-| PDF-01 | Phase 4 | Pending |
+| PDF-01 | Phase 4 | Complete |
 | PDF-02 | Phase 4 | Pending |
 | PDF-04 | Phase 4 | Pending |
 | REG-01 | Phase 5 | Pending |
