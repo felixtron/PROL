@@ -1,4 +1,29 @@
 import { getResend } from "./client";
+import {
+  buildMessage,
+  postmarkSend,
+  postmarkSendBatch,
+  postmarkToken,
+} from "./postmark";
+
+/**
+ * Proveedor activo. Se decide una vez por proceso, igual que el backend de
+ * almacenamiento: describen el mismo entorno y no pueden discrepar a media
+ * vida del contenedor.
+ *
+ * Sin `EMAIL_PROVIDER` se infiere de las credenciales presentes, de forma que
+ * una instalación que hoy sólo tiene Resend siga exactamente igual: esta
+ * imagen se despliega a las dos instancias y ninguna puede cambiar de
+ * proveedor por el hecho de actualizar.
+ */
+function provider(): "postmark" | "resend" | "none" {
+  const explicit = (process.env.EMAIL_PROVIDER || "").trim().toLowerCase();
+  if (explicit === "postmark") return "postmark";
+  if (explicit === "resend") return "resend";
+  if (postmarkToken()) return "postmark";
+  if (process.env.RESEND_API_KEY) return "resend";
+  return "none";
+}
 
 /**
  * Remitente y buzón de respuesta de esta instancia.
@@ -15,8 +40,14 @@ import { getResend } from "./client";
  */
 function defaultFrom(): string {
   const name = process.env.EMAIL_FROM_NAME || "PROL";
-  const domain = process.env.RESEND_DOMAIN || "prol.prosuite.pro";
-  return `${quoteDisplayName(name)} <noreply@${domain}>`;
+  // `EMAIL_FROM_ADDRESS` es la dirección completa y es lo que debe usar una
+  // instalación dedicada: su buzón no tiene por qué ser `noreply@` ni vivir en
+  // el dominio de Resend. El derivado se conserva como compatibilidad con la
+  // configuración anterior, que no tiene la variable nueva.
+  const address =
+    process.env.EMAIL_FROM_ADDRESS ||
+    `noreply@${process.env.RESEND_DOMAIN || "prol.prosuite.pro"}`;
+  return `${quoteDisplayName(name)} <${address}>`;
 }
 
 /**
@@ -44,11 +75,12 @@ interface SendEmailParams {
 }
 
 export async function sendEmail({ to, subject, html, from, replyTo }: SendEmailParams) {
-  // When RESEND_API_KEY is not configured (e.g. fresh deploy, local dev),
-  // skip sending instead of throwing so the caller's server action can
-  // continue. The omission is logged so the operator notices.
-  if (!process.env.RESEND_API_KEY) {
-    logRecord("warn", "RESEND_API_KEY no configurada; envío omitido", {
+  // Sin proveedor configurado (despliegue nuevo, desarrollo local) no se lanza:
+  // se omite el envío y se registra, para que la acción de servidor que llamó
+  // pueda seguir. Un correo que no sale no debe tumbar una inscripción.
+  const p = provider();
+  if (p === "none") {
+    logRecord("warn", "Sin proveedor de correo configurado; envío omitido", {
       to,
       subject,
     });
@@ -56,6 +88,28 @@ export async function sendEmail({ to, subject, html, from, replyTo }: SendEmailP
   }
 
   const fromAddress = from ?? defaultFrom();
+
+  if (p === "postmark") {
+    try {
+      const r = await postmarkSend(
+        buildMessage({
+          From: fromAddress,
+          To: to,
+          Subject: subject,
+          HtmlBody: html,
+          ReplyTo: replyTo ?? defaultReplyTo(),
+        }),
+      );
+      return { id: r.MessageID ?? null };
+    } catch (err) {
+      logRecord("error", "Postmark rechazó el envío", {
+        to,
+        subject,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  }
 
   try {
     const { data, error } = await getResend().emails.send({
@@ -108,14 +162,50 @@ export async function sendBulkEmail(
 ): Promise<number> {
   if (recipients.length === 0) return 0;
 
-  if (!process.env.RESEND_API_KEY) {
-    logRecord("warn", "RESEND_API_KEY no configurada; envío masivo omitido", {
+  const p = provider();
+  if (p === "none") {
+    logRecord("warn", "Sin proveedor de correo configurado; envío masivo omitido", {
       count: recipients.length,
     });
     return 0;
   }
 
   const fromAddress = from ?? defaultFrom();
+
+  if (p === "postmark") {
+    try {
+      const results = await postmarkSendBatch(
+        recipients.map((r) =>
+          buildMessage({
+            From: fromAddress,
+            To: r.to,
+            Subject: r.subject,
+            HtmlBody: r.html,
+            ReplyTo: defaultReplyTo(),
+          }),
+        ),
+      );
+      // Postmark responde con un ErrorCode POR DESTINATARIO, así que aquí se
+      // sabe QUIÉN no recibió el correo y por qué. Es la razón de fondo para
+      // preferirlo en los barridos de cumplimiento: hasta ahora un rebote se
+      // contabilizaba como entrega y nadie se enteraba de que a esa persona no
+      // le llegó su recordatorio.
+      const failed = results.filter((r) => r.ErrorCode !== 0);
+      for (const f of failed) {
+        logRecord("error", "Postmark rechazó un destinatario", {
+          to: f.To,
+          error: `${f.ErrorCode} ${f.Message}`,
+        });
+      }
+      return results.length - failed.length;
+    } catch (err) {
+      logRecord("error", "Error inesperado en envío masivo (Postmark)", {
+        count: recipients.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return 0;
+    }
+  }
 
   const BATCH_LIMIT = 100;
   let accepted = 0;

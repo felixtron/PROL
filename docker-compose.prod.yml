@@ -84,8 +84,12 @@ services:
       # Email (Resend)
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_DOMAIN: ${RESEND_DOMAIN:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-}
       EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
+      POSTMARK_SERVER_TOKEN: ${POSTMARK_SERVER_TOKEN:-}
+      POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
 
       # Google Meet (opcional - links automáticos en sesiones virtuales)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
