@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export default function ForgotPasswordPage() {
   return (
     <ForgotPasswordForm
-      turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? null}
+      turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || null}
     />
   );
 }

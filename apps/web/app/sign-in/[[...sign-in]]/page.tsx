@@ -39,7 +39,7 @@ export default async function SignInPage() {
             }
           : null
       }
-      turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? null}
+      turnstileSiteKey={process.env.TURNSTILE_SITE_KEY || null}
       poweredBy={POWERED_BY}
       brandName={BRAND_NAME}
     />
