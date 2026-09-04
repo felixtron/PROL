@@ -205,6 +205,16 @@ export const getCurrentUser = cache(async () => {
     },
   });
 
+  // Una cuenta deshabilitada deja de existir para todo lo que pregunta "¿quién
+  // eres?". Hasta ahora `disabledAt` sólo servía para filtrar listados y no
+  // enviar correos: quien pulsaba "Deshabilitar" en el panel creía haber
+  // cerrado el acceso, y el usuario seguía entrando y operando con normalidad.
+  //
+  // Se comprueba aquí y no en el login porque aquí pasan TODAS las peticiones
+  // con sesión, incluidas las sesiones ya emitidas antes de deshabilitar. Bloquear
+  // sólo el login dejaría dentro a quien ya estuviera dentro.
+  if (user?.disabledAt) return null;
+
   return user;
 });
 
