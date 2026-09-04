@@ -44,10 +44,11 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 IMAGE="localhost/prol-web"
-UNIT_WEB="${INSTANCE}-web"
-UNIT_DB="${INSTANCE}-db"
-# Convención de deploy/quadlets/. La instalación anterior a la separación usaba
-# `prol_prol-internal`; se puede forzar con PROL_DEPLOY_NETWORK mientras dure.
+# Los nombres siguen la convención de deploy/quadlets/. La instalación anterior
+# a la separación usa `prol-web-1` / `prol-db-1` / `prol_prol-internal`, así que
+# durante la transición se fuerzan con estas tres variables.
+UNIT_WEB="${PROL_DEPLOY_UNIT_WEB:-${INSTANCE}-web}"
+UNIT_DB="${PROL_DEPLOY_UNIT_DB:-${INSTANCE}-db}"
 NETWORK="${PROL_DEPLOY_NETWORK:-${INSTANCE}-internal}"
 REMOTE_DIR="/opt/prol-deploy-${SHA}"
 
