@@ -23,6 +23,8 @@
     "aws4fetch": "^1.0.20",
     "better-auth": "^1.2.0",
     "clsx": "^2.1.1",
+    "domhandler": "^6.0.1",
+    "htmlparser2": "^12.0.0",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.0",
     "next": "16.2.0",
