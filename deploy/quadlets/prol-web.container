@@ -1,0 +1,28 @@
+[Unit]
+Description=prol-web
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=prol-web
+# Tag móvil de ESTA instancia sobre un SHA inmutable. `Pull=never`: la imagen
+# se construye en el host, no hay registry. Lo mueve scripts/deploy.sh.
+Image=localhost/prol-web:prol
+Pull=never
+Network=prol-internal.network:alias=web
+Network=traefik.network
+Volume=prol_uploads:/app/apps/web/public/uploads
+Volume=prol_private:/app/private-uploads
+EnvironmentFile=/etc/containers/env/prol-web.env
+HealthCmd=wget -q -O /dev/null http://127.0.0.1:3000/api/health
+HealthInterval=30s
+HealthTimeout=5s
+HealthStartPeriod=30s
+HealthRetries=5
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

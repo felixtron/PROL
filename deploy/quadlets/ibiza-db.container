@@ -1,0 +1,26 @@
+[Unit]
+Description=ibiza-db
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=ibiza-db
+Image=pgvector/pgvector:pg16
+Pull=never
+Network=ibiza-internal.network:alias=db
+Volume=ibiza_db_data:/var/lib/postgresql/data
+EnvironmentFile=/etc/containers/env/ibiza-db.env
+# OJO: usuario y base van escritos aquí, no salen del EnvironmentFile. Al
+# renombrar la base hay que cambiarlos también o la unit queda `unhealthy`
+# sin que nada esté roto de verdad.
+HealthCmd="pg_isready -U ibiza -d ibiza"
+HealthInterval=10s
+HealthTimeout=5s
+HealthRetries=5
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

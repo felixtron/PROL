@@ -1,0 +1,28 @@
+[Unit]
+Description=ibiza-web
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+ContainerName=ibiza-web
+# Tag móvil de ESTA instancia sobre un SHA inmutable. `Pull=never`: la imagen
+# se construye en el host, no hay registry. Lo mueve scripts/deploy.sh.
+Image=localhost/prol-web:ibiza
+Pull=never
+Network=ibiza-internal.network:alias=web
+Network=traefik.network
+Volume=ibiza_uploads:/app/apps/web/public/uploads
+Volume=ibiza_private:/app/private-uploads
+EnvironmentFile=/etc/containers/env/ibiza-web.env
+HealthCmd=wget -q -O /dev/null http://127.0.0.1:3000/api/health
+HealthInterval=30s
+HealthTimeout=5s
+HealthStartPeriod=30s
+HealthRetries=5
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target default.target

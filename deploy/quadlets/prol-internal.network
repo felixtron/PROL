@@ -1,0 +1,8 @@
+[Unit]
+Description=red prol-internal
+
+[Network]
+NetworkName=prol-internal
+
+[Install]
+WantedBy=multi-user.target default.target

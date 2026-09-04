@@ -46,6 +46,9 @@ fi
 IMAGE="localhost/prol-web"
 UNIT_WEB="${INSTANCE}-web"
 UNIT_DB="${INSTANCE}-db"
+# Convención de deploy/quadlets/. La instalación anterior a la separación usaba
+# `prol_prol-internal`; se puede forzar con PROL_DEPLOY_NETWORK mientras dure.
+NETWORK="${PROL_DEPLOY_NETWORK:-${INSTANCE}-internal}"
 REMOTE_DIR="/opt/prol-deploy-${SHA}"
 
 echo "==> instancia=${INSTANCE} sha=${SHA} host=${HOST}"
@@ -59,24 +62,29 @@ ssh "$HOST" "podman build -t ${IMAGE}:${SHA} ${REMOTE_DIR}"
 
 echo "==> 3/7 respaldando la base de ${INSTANCE}"
 BACKUP="/opt/prol/backup_$(date -u +%Y%m%d_%H%M)_${INSTANCE}_pre_${SHA}.sql"
-ssh "$HOST" "podman exec ${UNIT_DB} pg_dump -U \$(podman exec ${UNIT_DB} printenv POSTGRES_USER) \
-  -d \$(podman exec ${UNIT_DB} printenv POSTGRES_DB) > ${BACKUP} && ls -lh ${BACKUP}"
+ssh "$HOST" "set -e
+  DBU=\$(podman exec ${UNIT_DB} printenv POSTGRES_USER)
+  DBN=\$(podman exec ${UNIT_DB} printenv POSTGRES_DB)
+  podman exec ${UNIT_DB} pg_dump -U \"\$DBU\" -d \"\$DBN\" > ${BACKUP}
+  test -s ${BACKUP} || { echo 'respaldo vacío'; exit 1; }
+  ls -lh ${BACKUP}"
 
 echo "==> 4/7 cambios de esquema pendientes"
-# Se usa el schema que trae la IMAGEN NUEVA, no el del host, que está viejo.
-ssh "$HOST" "podman run --rm --network ${INSTANCE}_internal \
+# Las migraciones se leen del árbol recién enviado, que es exactamente el SHA
+# que se va a desplegar — no del checkout viejo de /opt/prol. El contenedor de
+# node es desechable: la imagen de runtime corre como usuario sin privilegios y
+# no lleva el CLI de prisma. Es el patrón que ya usaba DEPLOY.md.
+PRISMA_RUN="podman run --rm --network ${NETWORK} \
   --env-file /etc/containers/env/${UNIT_WEB}.env \
-  ${IMAGE}:${SHA} \
-  sh -c 'cd /app/packages/db && npx -y prisma@5.22.0 migrate status' || true"
+  -v ${REMOTE_DIR}/packages/db:/work:Z -w /work docker.io/node:20-alpine \
+  sh -c 'apk add --no-cache openssl libc6-compat >/dev/null && npx -y prisma@5.22.0"
+ssh "$HOST" "${PRISMA_RUN} migrate status'" || true
 
 read -r -p "¿Aplicar migraciones y desplegar a '${INSTANCE}'? (escribe: si) " ANSWER
 [ "$ANSWER" = "si" ] || die "cancelado por el operador"
 
 echo "==> 5/7 aplicando migraciones"
-ssh "$HOST" "podman run --rm --network ${INSTANCE}_internal \
-  --env-file /etc/containers/env/${UNIT_WEB}.env \
-  ${IMAGE}:${SHA} \
-  sh -c 'cd /app/packages/db && npx -y prisma@5.22.0 migrate deploy'"
+ssh "$HOST" "${PRISMA_RUN} migrate deploy'"
 
 # El tag se mueve DESPUÉS de migrar: si el contenedor reiniciara antes,
 # arrancaría contra tablas que todavía no existen.

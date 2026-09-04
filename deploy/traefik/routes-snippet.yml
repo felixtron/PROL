@@ -1,0 +1,47 @@
+# Fragmento para /opt/traefik/dynamic/routes.yml del host.
+#
+# NO es un archivo completo: ese `routes.yml` lo comparten los ~20 servicios de
+# propodvps2, así que estas entradas se INSERTAN en sus secciones (`services:` y
+# `routers:`), nunca se sobrescribe el archivo.
+#
+# El ruteo vive en fichero y no en labels del quadlet porque las reglas llevan
+# espacios y `Label=` de Quadlet trunca en el primer espacio y se come los
+# escapes. Lo declara el propio traefik-podman.yml del host.
+
+http:
+  services:
+    # El nombre del contenedor es el host: ambas instancias están en la red
+    # `traefik`, y Traefik resuelve por DNS interno de Podman.
+    ibiza: {loadBalancer: {servers: [{url: "http://ibiza-web:3000"}]}}
+    prol:  {loadBalancer: {servers: [{url: "http://prol-web:3000"}]}}
+
+  routers:
+    # Instancia dedicada: un solo host, sin comodín. `letsencrypt` (HTTP-01)
+    # basta y evita depender del reto DNS para un certificado de un nombre.
+    ibiza:
+      rule: "Host(`ibizaonline.ibizaconsultores.mx`)"
+      entryPoints: [websecure]
+      service: ibiza
+      tls: {certResolver: letsencrypt}
+
+    # PROL sigue siendo multi-tenant por subdominio, así que necesita el
+    # comodín, y un comodín sólo se valida por DNS-01 (`letsencrypt-dns`, que ya
+    # tiene el token de Cloudflare montado).
+    prol:
+      rule: "Host(`prol.prosuite.pro`) || HostRegexp(`^[a-z0-9-]+\\.prol\\.prosuite\\.pro$`)"
+      entryPoints: [websecure]
+      service: prol
+      tls:
+        certResolver: letsencrypt-dns
+        domains:
+          - main: "prol.prosuite.pro"
+            sans: ["*.prol.prosuite.pro"]
+
+  middlewares:
+    # Durante la transición: el subdominio antiguo de Ibiza manda al dominio
+    # nuevo. Se retira cuando su tráfico llegue a cero.
+    ibiza-legacy-redirect:
+      redirectRegex:
+        regex: "^https://ibiza-online\\.prol\\.prosuite\\.pro/(.*)"
+        replacement: "https://ibizaonline.ibizaconsultores.mx/${1}"
+        permanent: true

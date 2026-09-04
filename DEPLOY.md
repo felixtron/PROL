@@ -83,6 +83,24 @@ pnpm --filter @prol/db db:baseline    # prisma migrate resolve --applied 0000_ba
 
 En una base vacia no hace falta: `migrate deploy` lo aplica como cualquier otra.
 
+### Ruteo: va en fichero, NO en el quadlet
+
+Traefik monta el socket de Podman, asi que las labels *funcionarian*. No se
+usan: las reglas llevan espacios, y `Label=` de Quadlet trunca en el primer
+espacio y se come los escapes. Lo declara el propio
+`/opt/traefik/config/traefik-podman.yml`:
+
+> *"Todo el ruteo vive aqui: las reglas con espacios y con `${1}` no sobreviven
+> a `Label=` de Quadlet."*
+
+El router y el service de cada instancia van en
+`/opt/traefik/dynamic/routes.yml`, que **comparten los ~20 servicios del host**:
+se insertan entradas, nunca se sobrescribe el archivo. El fragmento a insertar
+esta en `deploy/traefik/routes-snippet.yml`.
+
+Resolvers disponibles: `letsencrypt` (HTTP-01, suficiente para un host suelto) y
+`letsencrypt-dns` (DNS-01 con token de Cloudflare, necesario para comodines).
+
 ### Alta de una instancia nueva
 
 1. Copiar `.env.production.example` a `/etc/containers/env/<instancia>-web.env`

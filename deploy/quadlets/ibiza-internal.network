@@ -1,0 +1,8 @@
+[Unit]
+Description=red ibiza-internal
+
+[Network]
+NetworkName=ibiza-internal
+
+[Install]
+WantedBy=multi-user.target default.target
