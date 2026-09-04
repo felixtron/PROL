@@ -59,11 +59,11 @@ git archive --format=tar.gz "$SHA" \
   | ssh "$HOST" "mkdir -p ${REMOTE_DIR} && tar -xz -C ${REMOTE_DIR}"
 
 echo "==> 2/7 construyendo ${IMAGE}:${SHA}"
-ssh "$HOST" "podman build -t ${IMAGE}:${SHA} ${REMOTE_DIR}"
+ssh -n "$HOST" "podman build -t ${IMAGE}:${SHA} ${REMOTE_DIR}"
 
 echo "==> 3/7 respaldando la base de ${INSTANCE}"
 BACKUP="/opt/prol/backup_$(date -u +%Y%m%d_%H%M)_${INSTANCE}_pre_${SHA}.sql"
-ssh "$HOST" "set -e
+ssh -n "$HOST" "set -e
   DBU=\$(podman exec ${UNIT_DB} printenv POSTGRES_USER)
   DBN=\$(podman exec ${UNIT_DB} printenv POSTGRES_DB)
   podman exec ${UNIT_DB} pg_dump -U \"\$DBU\" -d \"\$DBN\" > ${BACKUP}
@@ -79,23 +79,28 @@ PRISMA_RUN="podman run --rm --network ${NETWORK} \
   --env-file /etc/containers/env/${UNIT_WEB}.env \
   -v ${REMOTE_DIR}/packages/db:/work:Z -w /work docker.io/node:20-alpine \
   sh -c 'apk add --no-cache openssl libc6-compat >/dev/null && npx -y prisma@5.22.0"
-ssh "$HOST" "${PRISMA_RUN} migrate status'" || true
+ssh -n "$HOST" "${PRISMA_RUN} migrate status'" || true
 
+# Todas las llamadas a ssh de aquí arriba llevan `-n` salvo la del `git archive`,
+# que recibe el tar por stdin. Sin `-n`, ssh consume la entrada estándar del
+# script: la primera de ellas se comía la respuesta a esta pregunta y `read`
+# recibía EOF, así que el despliegue se cancelaba solo después de haber
+# construido la imagen y respaldado la base. Pasó el 2026-09-04 con PROL.
 read -r -p "¿Aplicar migraciones y desplegar a '${INSTANCE}'? (escribe: si) " ANSWER
 [ "$ANSWER" = "si" ] || die "cancelado por el operador"
 
 echo "==> 5/7 aplicando migraciones"
-ssh "$HOST" "${PRISMA_RUN} migrate deploy'"
+ssh -n "$HOST" "${PRISMA_RUN} migrate deploy'"
 
 # El tag se mueve DESPUÉS de migrar: si el contenedor reiniciara antes,
 # arrancaría contra tablas que todavía no existen.
 echo "==> 6/7 moviendo ${IMAGE}:${INSTANCE} y reiniciando ${UNIT_WEB}"
-PREVIOUS=$(ssh "$HOST" "podman image inspect ${IMAGE}:${INSTANCE} --format '{{index .RepoTags 0}}' 2>/dev/null || true")
-ssh "$HOST" "podman tag ${IMAGE}:${SHA} ${IMAGE}:${INSTANCE} && systemctl restart ${UNIT_WEB}.service"
+PREVIOUS=$(ssh -n "$HOST" "podman image inspect ${IMAGE}:${INSTANCE} --format '{{index .RepoTags 0}}' 2>/dev/null || true")
+ssh -n "$HOST" "podman tag ${IMAGE}:${SHA} ${IMAGE}:${INSTANCE} && systemctl restart ${UNIT_WEB}.service"
 
 echo "==> 7/7 esperando healthy"
 for i in $(seq 1 30); do
-  STATUS=$(ssh "$HOST" "podman inspect ${UNIT_WEB} --format '{{.State.Health.Status}}' 2>/dev/null || echo desconocido")
+  STATUS=$(ssh -n "$HOST" "podman inspect ${UNIT_WEB} --format '{{.State.Health.Status}}' 2>/dev/null || echo desconocido")
   echo "    [${i}/30] ${STATUS}"
   if [ "$STATUS" = "healthy" ]; then
     echo "==> ${INSTANCE} desplegada en ${SHA}"
@@ -107,7 +112,7 @@ for i in $(seq 1 30); do
 done
 
 echo "!!! ${UNIT_WEB} no llegó a healthy en 150s" >&2
-ssh "$HOST" "podman logs --tail 40 ${UNIT_WEB}" >&2 || true
+ssh -n "$HOST" "podman logs --tail 40 ${UNIT_WEB}" >&2 || true
 if [ -n "$PREVIOUS" ]; then
   echo "!!! el tag anterior era ${PREVIOUS}; revertir con:" >&2
   echo "    scripts/deploy.sh ${INSTANCE} <sha-anterior>" >&2
