@@ -17,4 +17,5 @@ README.md
 !PROJECT_OVERVIEW.md
 .DS_Store
 *.log
-.npmrc
+# .npmrc NO se excluye: lleva los reintentos de red que el build del VPS
+# necesita para no morir en un ERR_SOCKET_TIMEOUT del registry.

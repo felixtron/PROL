@@ -9,6 +9,93 @@ Este documento es referencia para:
 
 ---
 
+## Despliegue (procedimiento vigente)
+
+> Lo de mas abajo describe como se llego hasta aqui y sigue siendo util como
+> historia, pero **el procedimiento vigente es este**. La orquestacion real
+> (Podman + quadlets) esta documentada en "Orquestacion real del VPS".
+
+### Dos instancias, una imagen
+
+A partir del milestone v1.2 el host sirve dos instalaciones de la misma
+aplicacion. Lo unico que las distingue es su archivo de entorno:
+
+| | Ibiza | PROL |
+|---|---|---|
+| Dominio | `ibizaonline.ibizaconsultores.mx` | `prol.prosuite.pro` |
+| Units | `ibiza-web` / `ibiza-db` | `prol-web` / `prol-db` |
+| Entorno | `/etc/containers/env/ibiza-web.env` | `/etc/containers/env/prol-web.env` |
+| Tag movil | `localhost/prol-web:ibiza` | `localhost/prol-web:prol` |
+| Prefijo R2 | `ibiza/` | `prol/` |
+| `DEFAULT_TENANT_SLUG` | `ibiza-online` | vacio (multi-tenant) |
+
+**La imagen es la misma**: se construye una vez por commit y se etiqueta con su
+SHA. Cada instancia tiene su propio tag movil apuntando al SHA que corre. No
+hay un `latest` compartido a proposito: con el, desplegar a una instancia
+tocaria tambien a la otra en su siguiente reinicio.
+
+### Desplegar
+
+```bash
+scripts/deploy.sh <instancia> [sha]      # sha por defecto: HEAD local
+```
+
+El script manda el arbol con `git archive` (el host no tiene git), construye,
+respalda la base, ensena los cambios de esquema pendientes, **pide
+confirmacion**, migra, mueve el tag de esa instancia, reinicia su unit y espera
+a `healthy`. Exige el arbol limpio: `git archive` exporta lo commiteado, asi
+que un cambio sin commitear no viajaria y la imagen no seria el SHA que dice.
+
+**Rollback**: `scripts/deploy.sh <instancia> <sha-anterior>`. Si el cambio
+tocaba el esquema, restaura ademas el respaldo que imprime el script.
+
+### Variables de entorno obligatorias
+
+> **AL ACTUALIZAR A v1.2**: el archivo de entorno debe incluir `APP_URL` y
+> `APP_DOMAIN` **antes** de mover el tag. Hasta ahora solo tenia sus gemelas
+> `NEXT_PUBLIC_*`, y esas Next las sustituye por su valor durante el build: no
+> reflejan el entorno del contenedor. La aplicacion ya no las lee y revienta el
+> arranque si faltan las nuevas.
+
+El resto de variables de identidad (`BRAND_NAME`, `EMAIL_FROM_NAME`,
+`POWERED_BY_ENABLED`, `DEFAULT_TENANT_SLUG`, `R2_KEY_PREFIX`...) estan
+documentadas en `.env.production.example`. Todas tienen por defecto el
+comportamiento historico: no ponerlas deja la instalacion como estaba.
+
+`R2_KEY_PREFIX` merece cuidado aparte: **cambiarlo no mueve ningun objeto**.
+Hay que copiarlos en el bucket antes, o la instancia deja de encontrar sus
+archivos.
+
+### Cambios de esquema
+
+El esquema se gestiona con migraciones de Prisma desde v1.2. Antes se aplicaba
+con `db push`, sin historial ni orden — insostenible con dos bases que deben
+converger, y en la base de un cliente un `db push` mal medido pide
+`--accept-data-loss`.
+
+`prisma/migrations/0000_baseline` es el esquema completo tal como estaba al
+adoptarlas. En una base **que ya existe** hay que marcarlo como aplicado una
+sola vez, o `migrate deploy` intentaria crear tablas que ya estan:
+
+```bash
+pnpm --filter @prol/db db:baseline    # prisma migrate resolve --applied 0000_baseline
+```
+
+En una base vacia no hace falta: `migrate deploy` lo aplica como cualquier otra.
+
+### Alta de una instancia nueva
+
+1. Copiar `.env.production.example` a `/etc/containers/env/<instancia>-web.env`
+   y rellenarlo (secretos propios, nunca compartidos entre instancias).
+2. Instalar los quadlets de `deploy/quadlets/` con el prefijo de la instancia y
+   `systemctl daemon-reload`.
+3. `scripts/deploy.sh <instancia>`.
+4. Crear el primer superusuario: `pnpm --filter @prol/db db:bootstrap`.
+   **Nunca `db:seed` contra produccion**: siembra usuarios con contrasena
+   conocida.
+
+---
+
 ## Arquitectura de produccion
 
 ```

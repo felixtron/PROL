@@ -11,11 +11,28 @@ WORKDIR /app
 
 # ─── Stage 2: Build (install + generate + build) ─────────────────────────────
 FROM base AS builder
-# Copy everything first so pnpm can resolve workspace packages
-COPY . .
 
-# Install all deps (including dev) for the full workspace
-RUN pnpm install --frozen-lockfile
+# El lockfile ANTES que el código, y `pnpm fetch` en vez de `pnpm install`.
+#
+# `pnpm fetch` puebla el store desde el lockfile y no necesita ningún
+# `package.json`, así que esta capa —la única que va a la red y la que más
+# tarda— sólo se invalida cuando cambian las dependencias. Antes venía un
+# `COPY . .` delante, de modo que cambiar una línea de código reinstalaba el
+# workspace entero: en este proyecto se construye a mano en el VPS, sin CI y
+# sin caché remota, así que ese coste se pagaba en cada despliegue.
+#
+# `.npmrc` va aquí a propósito. Sus reintentos y timeouts existen porque el
+# registry se cuelga desde este VPS (ERR_SOCKET_TIMEOUT en los paquetes de
+# Trigger.dev/OpenTelemetry), y `.dockerignore` lo excluía — es decir, la
+# configuración que existe para que el build del VPS no se caiga era justo la
+# que no llegaba al build.
+COPY pnpm-lock.yaml .npmrc ./
+RUN pnpm fetch
+
+# Ahora sí el árbol completo; `--offline` obliga a resolver todo desde el store
+# que acaba de cachearse, así una capa reutilizada no puede ocultar una descarga.
+COPY . .
+RUN pnpm install --frozen-lockfile --offline
 
 # Generate Prisma Client
 RUN pnpm --filter @prol/db exec prisma generate
