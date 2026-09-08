@@ -196,6 +196,13 @@ enum NotificationType {
   DOCUMENT
 }
 
+enum AgentProposalStatus {
+  PENDING
+  COMMITTED
+  REJECTED
+  EXPIRED
+}
+
 enum AIJobStatus {
   PENDING
   PROCESSING
@@ -554,6 +561,7 @@ model Tenant {
   auditLogs           AuditLog[]
   notifications       Notification[]
   aiGenerationJobs    AIGenerationJob[]
+  agentProposals      AgentProposal[]
   companies           Company[]
   certificateCounters CertificateCounter[]
   courseDrafts        CourseDraft[]
@@ -632,6 +640,7 @@ model User {
   notifications               Notification[]
   auditLogs                   AuditLog[]
   aiGenerationJobs            AIGenerationJob[]
+  agentProposals              AgentProposal[]
   invitationsSent             CompanyInvitation[]          @relation("InvitationsSent")
   assignmentsMade             CompanyCourseAssignment[]    @relation("AssignmentsMade")
   courseDrafts                CourseDraft[]
@@ -1792,6 +1801,53 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+/// Escritura que el agente PROPUSO y que todavia no ha ocurrido.
+///
+/// El bucle del agente no escribe nunca: cuando el modelo pide una accion de
+/// escritura, queda aqui en PENDING y la ejecuta el endpoint de confirmacion
+/// despues de que una persona le de al boton. Por eso `args` se guarda tal
+/// cual lo propuso el modelo y se vuelve a validar contra el esquema de la
+/// herramienta en el momento de confirmar: lo guardado no se considera de
+/// fiar.
+///
+/// `userId` no es solo trazabilidad — es la barrera que impide que otra
+/// persona confirme una propuesta que no vio. Y como la ejecucion pasa otra
+/// vez por los `requireX()` de la aplicacion con la sesion de quien confirma,
+/// una propuesta obsoleta o fuera de alcance falla ahi.
+model AgentProposal {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Pantalla desde la que se propuso. Acota que herramientas eran validas.
+  surface  String
+  toolName String @map("tool_name")
+  args     Json
+
+  status AgentProposalStatus @default(PENDING)
+
+  /// Vida corta a proposito: una propuesta vieja se apoya en datos que ya
+  /// pueden haber cambiado.
+  expiresAt   DateTime  @map("expires_at")
+  committedAt DateTime? @map("committed_at")
+  rejectedAt  DateTime? @map("rejected_at")
+
+  /// Modelo que la propuso, para poder auditar por version.
+  model String?
+  /// Mensaje del fallo si la confirmacion no salio adelante.
+  error String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@map("agent_proposals")
 }
 
 /// Tracks async AI generation jobs for content creation.
