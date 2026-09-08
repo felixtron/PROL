@@ -120,17 +120,33 @@ Resolvers disponibles: `letsencrypt` (HTTP-01, suficiente para un host suelto) y
 Internet (HTTPS)
     |
     v
-Cloudflare/DNS (prol.prosuite.pro → 195.26.255.71)
+Cloudflare/DNS (ibizaonline.ibizaconsultores.mx → 195.26.255.71)
+Cloudflare/DNS (prol.prosuite.pro y *.prol.prosuite.pro → 195.26.255.71)
     |
     v
 Traefik v3 (puerto 443, SSL Let's Encrypt automatico, red `traefik`)
-    |
-    v
-prol-web-1 (Next.js 16 standalone, puerto 3000, red prol_prol-internal)
-    |
-    v
-prol-db-1 (PostgreSQL 16 + pgvector, puerto 5432 solo interno)
+  routers en /opt/traefik/dynamic/: ibiza.yml → ibiza, routes.yml → prol
+    |                                     |
+    v                                     v
+ibiza-web                             prol-web
+  (localhost/prol-web:ibiza,            (localhost/prol-web:prol,
+   red ibiza-internal, puerto 3000)      red prol-internal, puerto 3000)
+    |                                     |
+    v                                     v
+ibiza-db                              prol-db
+  (PostgreSQL 16 + pgvector, solo interno en cada red)
 ```
+
+> **Un solo stack por instancia.** Hasta el 2026-09-08 sobrevivia en el host un
+> segundo par `prol-web-1` / `prol-db-1` en la red `prol_prol-internal`,
+> heredado de la epoca de compose/Dokploy. No lo apuntaba ningun router de
+> Traefik desde que el 2026-09-04 el servicio `prol` paso a `prol-web:3000`, y
+> su healthcheck daba 503 permanente porque su volumen de datos es el cluster
+> viejo de Ibiza (rol y base `ibiza`), mientras el quadlet lo interrogaba como
+> `prol`. Se elimino: unidades, contenedores y red. Los volumenes se conservan
+> (`prol_prol_db_data`, `prol_prol_uploads`) junto con el respaldo en
+> `/opt/backups/prol-stack-duplicado-20260908/`. Todo lo que este documento
+> menciona mas abajo con el sufijo `-1` es historia, no el estado actual.
 
 > **Host actual: `panel-prosuite-2` (195.26.255.71).** El setup inicial de mas
 > abajo se hizo en `panel-prosuite` (66.29.152.229), que ya no sirve el sitio;
@@ -213,6 +229,10 @@ RESEND_API_KEY=""
 RESEND_DOMAIN="prosuite.pro"
 ANTHROPIC_API_KEY=""
 ASSEMBLYAI_API_KEY=""
+# Agente interno (copiloto de profesores y administradores). Gemini Developer
+# API: una sola clave, sin proyecto de GCP. Sin ella el agente devuelve error
+# de infraestructura; el resto de la plataforma no se entera.
+GEMINI_API_KEY=""
 TRIGGER_SECRET_KEY=""
 EOF
 

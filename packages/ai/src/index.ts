@@ -13,3 +13,7 @@ export type {
 
 export { SYSTEM_PROMPTS } from "./prompts";
 export type { SystemPromptKey } from "./prompts";
+
+// Harness de agente: registro de herramientas, frontera de confianza y
+// politica de permisos por paso. Ver src/agent/index.ts.
+export * from "./agent";
