@@ -6,6 +6,7 @@ import { UserMenu } from "@/components/user-menu";
 import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
+import { AgentLauncher } from "@/components/agent/agent-launcher";
 
 const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/tenant-admin", icon: "LayoutDashboard" },
@@ -48,6 +49,7 @@ export default async function TenantAdminLayout({
           accentColor: true,
           surveysEnabled: true,
           documentsEnabled: true,
+      aiEnabled: true,
           documentsMenuLabel: true,
         },
       })
@@ -115,6 +117,9 @@ export default async function TenantAdminLayout({
     >
       {children}
     </SidebarShell>
+      {/* Copiloto: solo si el tenant tiene la IA activada, el mismo
+          gating que aplica `requireAIEnabled` en la API. */}
+      {tenant?.aiEnabled && <AgentLauncher surface="dashboard" />}
     </>
   );
 }

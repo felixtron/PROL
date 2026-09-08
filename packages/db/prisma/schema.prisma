@@ -562,6 +562,7 @@ model Tenant {
   notifications       Notification[]
   aiGenerationJobs    AIGenerationJob[]
   agentProposals      AgentProposal[]
+  agentConversations  AgentConversation[]
   companies           Company[]
   certificateCounters CertificateCounter[]
   courseDrafts        CourseDraft[]
@@ -641,6 +642,7 @@ model User {
   auditLogs                   AuditLog[]
   aiGenerationJobs            AIGenerationJob[]
   agentProposals              AgentProposal[]
+  agentConversations          AgentConversation[]
   invitationsSent             CompanyInvitation[]          @relation("InvitationsSent")
   assignmentsMade             CompanyCourseAssignment[]    @relation("AssignmentsMade")
   courseDrafts                CourseDraft[]
@@ -1801,6 +1803,41 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+/// Historial del copiloto, por cuenta.
+///
+/// Los mensajes van como JSON y SOLO TEXTO: ni llamadas a herramienta, ni sus
+/// resultados, ni adjuntos. Dos motivos. Uno, que el historial viaja al
+/// navegador y de vuelta, y reinyectar desde ahi contenido de terceros seria
+/// saltarse la valla. Dos, que la forma de un turno va a cambiar y no quiero
+/// migrar una tabla por cada cambio.
+///
+/// Se poda a las ultimas conversaciones de cada usuario: esto es comodidad de
+/// uso, no un archivo documental. Lo que si es archivo —quien hizo que— vive
+/// en `AuditLog`.
+model AgentConversation {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Primeras palabras del primer mensaje. Es lo que se ve en la lista.
+  title String
+  /// Pantalla desde la que se abrio.
+  surface String
+
+  /// [{ rol: "usuario" | "asistente", texto: string }]
+  messages Json
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, updatedAt])
+  @@index([tenantId])
+  @@map("agent_conversations")
 }
 
 /// Escritura que el agente PROPUSO y que todavia no ha ocurrido.

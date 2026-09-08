@@ -27,6 +27,11 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { createLogger } from "@/lib/logger";
 import { agentRegistry } from "@/lib/agent/tools";
 import { buildSystemInstruction } from "@/lib/agent/system-prompt";
+import {
+  appendTurn,
+  getConversation,
+  HISTORY_WINDOW,
+} from "@/lib/agent/conversations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +48,20 @@ const RATE_WINDOW_MS = 60_000;
  */
 const PROPOSAL_TTL_MS = 30 * 60_000;
 
+/** Tope por adjunto y en total. Van en base64 al modelo, no a disco. */
+const MAX_FILE_BYTES = 6 * 1024 * 1024;
+const MAX_FILES = 3;
+
+const MIME_PERMITIDOS = [
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+] as const;
+
 const BodySchema = z.object({
   mensaje: z.string().trim().min(1).max(2_000),
   superficie: z
@@ -56,20 +75,21 @@ const BodySchema = z.object({
     ])
     .default("dashboard"),
   /**
-   * Historial de la conversación. Viaja desde el cliente porque todavía no hay
-   * persistencia de conversaciones; cuando la haya, se cargará por id y este
-   * campo desaparecerá. Sólo lleva texto: ni llamadas a herramienta ni sus
-   * resultados, para que contenido de terceros no pueda reinyectarse desde el
-   * navegador saltándose la valla.
+   * Conversación a continuar. El historial se carga del servidor a partir de
+   * este id — NO viaja desde el cliente. Que el navegador pudiera dictar el
+   * contexto permitiría reinyectar contenido de terceros saltándose la valla.
    */
-  historial: z
+  conversacionId: z.string().max(40).nullish(),
+  adjuntos: z
     .array(
       z.object({
-        rol: z.enum(["usuario", "asistente"]),
-        texto: z.string().max(4_000),
+        nombre: z.string().max(200),
+        mimeType: z.enum(MIME_PERMITIDOS),
+        /** base64 sin el prefijo `data:`. */
+        datos: z.string().max(Math.ceil(MAX_FILE_BYTES * 1.4)),
       }),
     )
-    .max(20)
+    .max(MAX_FILES)
     .default([]),
 });
 
@@ -103,7 +123,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     return NextResponse.json({ error: "Petición inválida" }, { status: 400 });
   }
-  const { mensaje, superficie, historial } = parsed.data;
+  const { mensaje, superficie, conversacionId, adjuntos } = parsed.data;
+
+  // El historial sale de la base y sólo si la conversación es suya.
+  const conversation = conversacionId
+    ? await getConversation(user.id, conversacionId)
+    : null;
+  const historial = (conversation?.messages ?? []).slice(-HISTORY_WINDOW);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -127,6 +153,10 @@ export async function POST(request: Request): Promise<Response> {
             parts: [{ text: m.texto }],
           })),
           userMessage: mensaje,
+          attachments: adjuntos.map((a) => ({
+            mimeType: a.mimeType,
+            data: a.datos,
+          })),
           context: { role, surface: superficie, tainted: false },
           // Si el usuario cierra la pestana, Next aborta `request.signal` y el
           // turno deja de gastar en el paso siguiente.
@@ -152,11 +182,26 @@ export async function POST(request: Request): Promise<Response> {
           });
         }
 
+        // Sólo se guarda lo que llegó a ser una respuesta. Un turno cortado
+        // por incidente o cancelado no deja rastro en el historial.
+        let savedConversationId = conversation?.id ?? null;
+        if (outcome.finish === "completo") {
+          savedConversationId = await appendTurn({
+            userId: user.id,
+            tenantId: user.tenantId,
+            surface: superficie,
+            conversationId: conversation?.id ?? null,
+            userMessage: mensaje,
+            assistantMessage: outcome.text,
+          });
+        }
+
         send("fin", {
           finish: outcome.finish,
           texto: outcome.text,
           propuestas: outcome.finish === "completo" ? outcome.proposals : [],
           contaminado: outcome.tainted,
+          conversacionId: savedConversationId,
         });
       } catch (error) {
         // Fallo de infraestructura: red, clave ausente, Gemini caído. Al
@@ -180,6 +225,7 @@ export async function POST(request: Request): Promise<Response> {
           userId: user.id,
           role,
           surface: superficie,
+          adjuntos: adjuntos.length,
           finish: outcome?.finish ?? "error",
           // Dos magnitudes distintas: pasos de modelo (lo que se cobra por
           // ida y vuelta) y llamadas a herramienta. Etiquetarlas igual hacia

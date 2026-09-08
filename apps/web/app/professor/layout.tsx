@@ -9,6 +9,7 @@ import { SidebarShell, type SidebarNavItem } from "@/components/sidebar-shell";
 import { TenantBrand } from "@/components/tenant-brand";
 import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
+import { AgentLauncher } from "@/components/agent/agent-launcher";
 
 const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/professor", icon: "LayoutDashboard" },
@@ -45,6 +46,7 @@ export default async function ProfessorLayout({
       evaluationsEnabled: true,
       advisoryEnabled: true,
       documentsEnabled: true,
+      aiEnabled: true,
       documentsMenuLabel: true,
       primaryColor: true,
       accentColor: true,
@@ -113,6 +115,9 @@ export default async function ProfessorLayout({
     >
       {children}
     </SidebarShell>
+      {/* Copiloto: solo si el tenant tiene la IA activada, el mismo
+          gating que aplica `requireAIEnabled` en la API. */}
+      {tenant?.aiEnabled && <AgentLauncher surface="dashboard" />}
     </>
   );
 }

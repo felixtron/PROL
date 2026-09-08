@@ -60,6 +60,21 @@ export interface ToolCallRecord {
   durationMs: number;
 }
 
+/**
+ * Documento que adjunta la persona al preguntar. Va al modelo como parte
+ * `inlineData` del mismo turno.
+ *
+ * Adjuntar CONTAMINA el turno desde el primer paso, sin excepción: un PDF que
+ * sube un consultor casi siempre lo escribió su empresa cliente, y dentro
+ * puede ir cualquier cosa. Con el turno contaminado el agente puede leerlo,
+ * resumirlo y redactar a partir de él, pero no proponer ninguna escritura.
+ */
+export interface Attachment {
+  mimeType: string;
+  /** Contenido en base64, sin el prefijo `data:`. */
+  data: string;
+}
+
 /** Escritura pedida por el modelo y NO ejecutada. Espera confirmación humana. */
 export interface WriteProposal {
   id: string;
@@ -102,7 +117,9 @@ export interface RunTurnInput {
   /** Turnos anteriores de la conversación, ya en formato Gemini. */
   history: Content[];
   userMessage: string;
-  /** Rol, superficie y contaminación inicial (siempre `false` al empezar). */
+  /** Documentos adjuntos. Contaminan el turno desde el primer paso. */
+  attachments?: Attachment[];
+  /** Rol, superficie y contaminación inicial. */
   context: TurnContext;
   tier?: ModelTier;
   budget?: Partial<Budget>;
@@ -163,11 +180,17 @@ export async function runTurn(input: RunTurnInput): Promise<TurnOutcome> {
   const emit = input.onEvent ?? (() => {});
   const startedAt = now();
 
-  let ctx: TurnContext = { ...input.context, tainted: input.context.tainted };
-  const contents: Content[] = [
-    ...input.history,
-    { role: "user", parts: [{ text: input.userMessage }] },
-  ];
+  const hasAttachments = (input.attachments?.length ?? 0) > 0;
+  let ctx: TurnContext = {
+    ...input.context,
+    tainted: input.context.tainted || hasAttachments,
+  };
+
+  const userParts: Part[] = [{ text: input.userMessage }];
+  for (const file of input.attachments ?? []) {
+    userParts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
+  }
+  const contents: Content[] = [...input.history, { role: "user", parts: userParts }];
 
   const toolCalls: ToolCallRecord[] = [];
   let modelSteps = 0;

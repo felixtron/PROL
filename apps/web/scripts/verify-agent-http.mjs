@@ -101,6 +101,9 @@ async function main() {
 
     const reject = await call("DELETE", `/api/agent/proposal/${FAKE_ID}`);
     check("DELETE /proposal sin sesión -> 403", reject.status === 403, `dio ${reject.status}`);
+
+    const hist = await call("GET", "/api/agent/conversations");
+    check("GET /conversations sin sesión -> 403", hist.status === 403, `dio ${hist.status}`);
   }
 
   console.log("\nSesión de STUDENT (el agente es sólo de profesores y admins)");
@@ -117,6 +120,9 @@ async function main() {
 
     const reject = await call("DELETE", `/api/agent/proposal/${FAKE_ID}`, { cookie });
     check("DELETE /proposal como STUDENT -> 403", reject.status === 403, `dio ${reject.status}`);
+
+    const hist = await call("GET", "/api/agent/conversations", { cookie });
+    check("GET /conversations como STUDENT -> 403", hist.status === 403, `dio ${hist.status}`);
   }
 
   console.log("\nSesión de ADMIN");
@@ -169,6 +175,30 @@ async function main() {
       "DELETE /proposal inexistente -> 404",
       reject.status === 404,
       `dio ${reject.status}`,
+    );
+
+    const lista = await call("GET", "/api/agent/conversations", { cookie });
+    check(
+      "GET /conversations como ADMIN -> 200 con lista",
+      lista.status === 200 && Array.isArray(lista.payload?.conversaciones),
+      `dio ${lista.status}: ${JSON.stringify(lista.payload)?.slice(0, 80)}`,
+    );
+
+    const ajena = await call("GET", "/api/agent/conversations?id=noexiste", { cookie });
+    check(
+      "una conversación que no es suya no existe -> 404",
+      ajena.status === 404,
+      `dio ${ajena.status}`,
+    );
+
+    const sinId = await call("DELETE", "/api/agent/conversations", { cookie });
+    check("DELETE /conversations sin id -> 400", sinId.status === 400, `dio ${sinId.status}`);
+
+    const borrarAjena = await call("DELETE", "/api/agent/conversations?id=noexiste", { cookie });
+    check(
+      "DELETE de una conversación ajena -> 404",
+      borrarAjena.status === 404,
+      `dio ${borrarAjena.status}`,
     );
 
     const wrongMethod = await call("GET", `/api/agent/proposal/${FAKE_ID}`, { cookie });

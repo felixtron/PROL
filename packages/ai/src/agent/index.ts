@@ -67,6 +67,7 @@ export type {
 export { DEFAULT_BUDGET, runTurn } from "./loop";
 export type {
   AgentEvent,
+  Attachment,
   Budget,
   RunTurnInput,
   ToolCallRecord,
