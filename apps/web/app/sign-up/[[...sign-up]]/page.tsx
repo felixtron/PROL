@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentUser } from "@/lib/auth";
 import { SignUpForm } from "./sign-up-form";
 import { BRAND_NAME, POWERED_BY } from "@/lib/brand";
 
@@ -26,6 +28,13 @@ export async function generateMetadata(): Promise<Metadata> {
  * que llega de bmb.mx termina como STUDENT del tenant Ibiza sin pasos extra.
  */
 export default async function SignUpPage() {
+  // Ver el comentario de sign-in: el rebote se decide contra la sesión real,
+  // no contra la mera presencia de la cookie.
+  const user = await getCurrentUser();
+  if (user) {
+    redirect("/dashboard");
+  }
+
   const tenant = await getCurrentTenant();
   return (
     <SignUpForm

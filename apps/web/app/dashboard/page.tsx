@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   BookOpen,
   CheckCircle,
@@ -23,6 +24,16 @@ import { ProgressBar } from "@/components/progress-bar";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+
+  // El layout ya redirige cuando no hay sesión, pero layout y page se renderizan
+  // EN PARALELO: sin esta guarda, las consultas de abajo llegaban a `requireUser()`
+  // y lanzaban `UnauthenticatedError` antes de que el redirect del layout llegara
+  // a nada. Sin frontera de error que lo recogiera, el usuario veía la página en
+  // blanco en vez de volver al login.
+  if (!user) {
+    redirect("/sign-in?callbackUrl=/dashboard");
+  }
+
   const [stats, courses, lastActive, evaluations, notifications] =
     await Promise.all([
       getStudentDashboardStats(),

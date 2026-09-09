@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentUser } from "@/lib/auth";
 import { SignInForm } from "./sign-in-form";
 import { BRAND_NAME, POWERED_BY } from "@/lib/brand";
 
@@ -26,6 +28,16 @@ export async function generateMetadata(): Promise<Metadata> {
  * the apex `prol.prosuite.pro/sign-in` falls back to plain PROL branding.
  */
 export default async function SignInPage() {
+  // El rebote al panel de quien ya está dentro se decide aquí y no en el
+  // middleware: `getCurrentUser()` va a la base, así que distingue una sesión
+  // viva de una cookie caducada. Quien llega con la cookie muerta ve el
+  // formulario y puede volver a entrar, que es justo lo que el middleware le
+  // impedía.
+  const user = await getCurrentUser();
+  if (user) {
+    redirect("/dashboard");
+  }
+
   const tenant = await getCurrentTenant();
   return (
     <SignInForm

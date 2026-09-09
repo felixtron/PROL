@@ -61,12 +61,17 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Redirect authenticated users away from auth pages
-  const isAuthPage =
-    pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
-  if (isAuthPage && hasSession) {
-    return NextResponse.redirect(new URL("/dashboard", url.origin));
-  }
+  // Aquí NO se rebota al panel a quien ya tenga sesión, aunque sea lo natural:
+  // `hasSession` sólo mira si la cookie EXISTE, y una cookie caducada existe
+  // igual que una buena. Con el rebote puesto aquí, quien llegaba con la sesión
+  // vencida quedaba encerrado — `/dashboard` reventaba al pedir el usuario, y
+  // `/sign-in`, su única salida, lo devolvía a `/dashboard` por esta cookie
+  // muerta. No había forma de volver a entrar sin borrarla a mano.
+  //
+  // El rebote vive ahora en las propias páginas de sign-in y sign-up, que son
+  // Server Components y sí pueden preguntar por la sesión de verdad. El
+  // middleware se queda sólo con lo que puede afirmar sin la base: que sin
+  // cookie no hay sesión posible.
 
   // --- Tenant resolution ---
   // Extract tenant slug from subdomain
