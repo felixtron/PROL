@@ -23,7 +23,8 @@
     "db:bootstrap": "tsx prisma/bootstrap.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "@prol/shared": "workspace:*"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

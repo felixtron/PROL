@@ -2,6 +2,7 @@
   "name": "@prol/shared",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -11,7 +12,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint .",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test platform-fee.test.ts"
   },
   "dependencies": {
     "zod": "^3.24.0"

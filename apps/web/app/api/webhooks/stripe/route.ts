@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@prol/db";
-import { sendEmail, paymentConfirmation, enrollmentConfirmation } from "@prol/email";
+import {
+  sendEmail,
+  paymentConfirmation,
+  enrollmentConfirmation,
+} from "@prol/email";
+import {
+  computePlatformFee,
+  readFeeSnapshot,
+  reconcileChargedApplicationFee,
+} from "@prol/shared";
 import { getStripe } from "@/lib/stripe";
 import { createLogger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
@@ -30,25 +39,21 @@ export async function POST(request: NextRequest) {
   if (!signature) {
     return NextResponse.json(
       { error: "Falta la firma de Stripe" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   let event: Stripe.Event;
 
   try {
-    event = getStripe().webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret,
-    );
+    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Error de verificación de firma";
     log.error("Signature verification failed", { error: message });
     return NextResponse.json(
       { error: "Firma de webhook invalida" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
         // Cards: paid immediately. Non-card methods still emit this event
         // but the payment may still be in "processing" state — handled below.
         await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session
+          event.data.object as Stripe.Checkout.Session,
         );
         break;
       }
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
       case "checkout.session.async_payment_succeeded": {
         // OXXO/SPEI: the customer paid at OXXO or wired via SPEI.
         await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session
+          event.data.object as Stripe.Checkout.Session,
         );
         break;
       }
@@ -74,14 +79,14 @@ export async function POST(request: NextRequest) {
       case "checkout.session.async_payment_failed": {
         // OXXO voucher expired / SPEI bounce
         await handleCheckoutAsyncFailed(
-          event.data.object as Stripe.Checkout.Session
+          event.data.object as Stripe.Checkout.Session,
         );
         break;
       }
 
       case "checkout.session.expired": {
         await handleCheckoutExpired(
-          event.data.object as Stripe.Checkout.Session
+          event.data.object as Stripe.Checkout.Session,
         );
         break;
       }
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
     log.error("Webhook handler error", { type: event.type, error: message });
     return NextResponse.json(
       { error: "Error procesando el evento" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -113,19 +118,24 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const tenantId = session.metadata?.tenantId;
 
   if (!courseId || !studentId || !tenantId) {
-    log.error("Missing metadata on checkout session", { sessionId: session.id });
+    log.error("Missing metadata on checkout session", {
+      sessionId: session.id,
+    });
     return;
   }
 
   // Validate payment_intent exists
   if (!session.payment_intent) {
-    log.error("payment_intent missing on checkout session", { sessionId: session.id });
+    log.error("payment_intent missing on checkout session", {
+      sessionId: session.id,
+    });
     return;
   }
 
-  const paymentIntentId = typeof session.payment_intent === "string"
-    ? session.payment_intent
-    : session.payment_intent.id;
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent.id;
 
   // Detect the real payment method used (could be card/oxxo/customer_balance)
   const pmTypes = session.payment_method_types ?? [];
@@ -143,27 +153,49 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const paymentStatus = session.payment_status;
   const isPaid = paymentStatus === "paid";
 
-  // Get the tenant's revenue share rate at payment time
+  // La tasa y el desglose quedan en la sesión al crear el checkout, para
+  // que un cambio posterior del revenue share no reescriba un cobro ya
+  // armado. Si la metadata no está (checkout anterior al cambio), se
+  // recalcula y se contrasta con el application fee que Stripe cobró.
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId },
     select: { revenueShareRate: true },
   });
 
-  const revenueShareRate = tenant?.revenueShareRate ?? 0.3;
+  const fallbackRate = tenant?.revenueShareRate ?? 0.3;
+  const rateFromSession = Number(session.metadata?.revenueShareRate);
+  const revenueShareRate =
+    Number.isFinite(rateFromSession) &&
+    rateFromSession >= 0 &&
+    rateFromSession <= 1
+      ? rateFromSession
+      : fallbackRate;
   const amount = session.amount_total ?? 0;
-  const prolFee = Math.round(amount * revenueShareRate);
-  const creatorReceives = amount - prolFee;
-  const stripeFee = Math.round(amount * 0.036 + 300);
+  const snapshot = readFeeSnapshot(session.metadata, amount);
+  let fee =
+    snapshot ??
+    computePlatformFee({
+      amountCentavos: amount,
+      revenueShareRate,
+      passThroughStripeFee: true,
+    });
 
   // Voucher URL for OXXO/SPEI (available in payment_intent.next_action).
   // Reading it requires expanding payment_intent — do it lazily if missing.
+  // El mismo PaymentIntent dice cuánto application fee se cobró de verdad.
   let voucherUrl: string | null = null;
   let voucherExpiresAt: Date | null = null;
-  if (!isPaid && (paymentMethod === "OXXO" || paymentMethod === "SPEI")) {
+  const needsPaymentIntent =
+    !snapshot ||
+    (!isPaid && (paymentMethod === "OXXO" || paymentMethod === "SPEI"));
+  if (needsPaymentIntent) {
     try {
       const pi = await getStripe().paymentIntents.retrieve(paymentIntentId, {
         expand: ["latest_charge"],
       });
+      if (!snapshot && typeof pi.application_fee_amount === "number") {
+        fee = reconcileChargedApplicationFee(fee, pi.application_fee_amount);
+      }
       const na = pi.next_action;
       if (paymentMethod === "OXXO" && na?.oxxo_display_details) {
         voucherUrl = na.oxxo_display_details.hosted_voucher_url ?? null;
@@ -174,7 +206,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         na?.display_bank_transfer_instructions
       ) {
         // SPEI instructions page — Stripe hosts a page with CLABE details
-        voucherUrl = na.display_bank_transfer_instructions.hosted_instructions_url ?? null;
+        voucherUrl =
+          na.display_bank_transfer_instructions.hosted_instructions_url ?? null;
       }
     } catch (err) {
       log.error("Failed to fetch PaymentIntent next_action", {
@@ -223,9 +256,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         amount,
         currency: session.currency?.toUpperCase() ?? "MXN",
         revenueShareRate,
-        prolFee,
-        creatorReceives,
-        stripeFee,
+        prolFee: fee.prolFeeCentavos,
+        creatorReceives: fee.creatorReceivesCentavos,
+        stripeFee: fee.stripeFeeCentavos,
         stripePaymentId: paymentIntentId,
         paymentMethod,
         status: isPaid ? "COMPLETED" : "PROCESSING",
@@ -294,12 +327,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       });
 
       await Promise.allSettled([
-        sendEmail({ to: student.email, subject: paymentEmail.subject, html: paymentEmail.html }),
-        sendEmail({ to: student.email, subject: enrollEmail.subject, html: enrollEmail.html }),
+        sendEmail({
+          to: student.email,
+          subject: paymentEmail.subject,
+          html: paymentEmail.html,
+        }),
+        sendEmail({
+          to: student.email,
+          subject: enrollEmail.subject,
+          html: enrollEmail.html,
+        }),
       ]);
     }
   } catch (emailError) {
-    log.error("Failed to send confirmation emails", { error: String(emailError) });
+    log.error("Failed to send confirmation emails", {
+      error: String(emailError),
+    });
   }
 }
 

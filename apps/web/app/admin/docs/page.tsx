@@ -107,7 +107,7 @@ const articles: DocsArticle[] = [
       "Guarda los cambios.",
     ],
     notes:
-      "El porcentaje aplica tanto a los cobros por Stripe como a los pagos manuales registrados por la academia. Sólo afecta a pagos futuros: los ya procesados no se recalculan.",
+      "El porcentaje es la comisión comercial y aplica a cobros Stripe y a pagos manuales. En Stripe, además, cada cobro repercute al tenant el costo de procesamiento: el 4% del importe más $3 MXN, con IVA. Sólo afecta a pagos futuros: los ya procesados no se recalculan.",
     keywords: ["revenue share", "comisión", "porcentaje", "reparto"],
   },
 
@@ -275,7 +275,7 @@ const articles: DocsArticle[] = [
       "Consulta la tabla de ingresos por academia: ventas, total, comisión y pago al creador.",
     ],
     notes:
-      "La comisión de cada fila depende del revenue share configurado en esa academia. Los profesores ya no ven importes en su panel: la información monetaria la consulta la administración de cada academia y este panel.",
+      "La comisión de cada fila es el revenue share de esa academia, no el costo de Stripe. El pago al creador en cobros Stripe ya viene neto del procesamiento con IVA. Los profesores ya no ven importes en su panel: la información monetaria la consulta la administración de cada academia y este panel.",
     badge: "actualizado",
     keywords: [
       "ingresos",

@@ -61,7 +61,8 @@ export default async function DashboardLayout({
     redirect("/admin");
   }
   if (user.role === "ADMIN") {
-    redirect(user.tenantId ? "/tenant-admin" : "/admin");
+    // Sin tenant no hay panel de academia, y /admin es sólo de SUPER_ADMIN.
+    redirect(user.tenantId ? "/tenant-admin" : "/");
   }
   if (user.role === "PROFESSOR") {
     redirect(user.onboardingCompleted ? "/professor" : "/onboarding");

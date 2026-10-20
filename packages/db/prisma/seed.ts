@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { computePlatformFee } from "@prol/shared";
 import { hashPassword } from "./seed-password";
 import { seedDocumentFixture } from "./seed-documents";
 
@@ -833,13 +834,19 @@ async function main() {
   // ── 7. Payments ────────────────────────────────────────────────────────
   console.log("💳 Creating payments…");
 
-  // Revenue share: 30% PROL fee. Stripe fee estimated ~3.6% + $3 MXN.
+  // 30% de revenue share más el costo de Stripe con IVA, igual que el checkout.
   function computePayment(amountCents: number) {
     const revenueShareRate = 0.30;
-    const prolFee = Math.round(amountCents * revenueShareRate);
-    const stripeFee = Math.round(amountCents * 0.036 + 300); // ~3.6% + $3 MXN
-    const creatorReceives = amountCents - prolFee - stripeFee;
-    return { revenueShareRate, prolFee, stripeFee, creatorReceives };
+    const fee = computePlatformFee({
+      amountCentavos: amountCents,
+      revenueShareRate,
+    });
+    return {
+      revenueShareRate,
+      prolFee: fee.prolFeeCentavos,
+      stripeFee: fee.stripeFeeCentavos,
+      creatorReceives: fee.creatorReceivesCentavos,
+    };
   }
 
   const paymentDefs = [
