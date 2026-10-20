@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
+import { computePlatformFee } from "@prol/shared";
 import { sendEmail, enrollmentConfirmation } from "@prol/email";
 import { requireUser, requireTenantAdmin, assertSameTenant } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
@@ -152,7 +153,8 @@ export async function manualEnrollStudent(input: {
 
   if (!student) throw new Error("Alumno no encontrado");
   if (!course) throw new Error("Curso no encontrado");
-  if (!student.tenantId) throw new Error("El usuario no pertenece a ningún tenant");
+  if (!student.tenantId)
+    throw new Error("El usuario no pertenece a ningún tenant");
   if (student.tenantId !== course.tenantId) {
     throw new Error("Alumno y curso pertenecen a tenants distintos");
   }
@@ -168,21 +170,28 @@ export async function manualEnrollStudent(input: {
   }
 
   const existing = await db.enrollment.findUnique({
-    where: { studentId_courseId: { studentId: student.id, courseId: course.id } },
+    where: {
+      studentId_courseId: { studentId: student.id, courseId: course.id },
+    },
     select: { id: true },
   });
 
   const amount = input.recordPayment
-    ? Math.max(0, input.amountInCents ?? course.priceInCents)
+    ? Math.max(0, Math.round(input.amountInCents ?? course.priceInCents))
     : 0;
   const paymentMethod = input.paymentMethod ?? "SPEI";
 
   let paymentId: string | null = null;
 
   if (input.recordPayment) {
+    // El pago no pasó por Stripe: no hay comisión de procesamiento que
+    // repercutir. La plataforma sólo registra su revenue share.
     const revenueShareRate = course.tenant.revenueShareRate;
-    const prolFee = Math.round(amount * revenueShareRate);
-    const creatorReceives = amount - prolFee;
+    const fee = computePlatformFee({
+      amountCentavos: amount,
+      revenueShareRate,
+      passThroughStripeFee: false,
+    });
 
     const payment = await db.coursePayment.create({
       data: {
@@ -192,9 +201,9 @@ export async function manualEnrollStudent(input: {
         amount,
         currency: course.currency,
         revenueShareRate,
-        prolFee,
-        creatorReceives,
-        stripeFee: 0,
+        prolFee: fee.prolFeeCentavos,
+        creatorReceives: fee.creatorReceivesCentavos,
+        stripeFee: fee.stripeFeeCentavos,
         stripePaymentId: `manual-${crypto.randomBytes(12).toString("base64url")}`,
         paymentMethod,
         status: "COMPLETED",
@@ -206,7 +215,9 @@ export async function manualEnrollStudent(input: {
 
   // Upsert para que dos clicks del admin no fallen con violation de unique.
   const enrollment = await db.enrollment.upsert({
-    where: { studentId_courseId: { studentId: student.id, courseId: course.id } },
+    where: {
+      studentId_courseId: { studentId: student.id, courseId: course.id },
+    },
     create: {
       studentId: student.id,
       courseId: course.id,
@@ -264,7 +275,7 @@ export async function manualEnrollStudent(input: {
 export async function updateLessonProgress(
   enrollmentId: string,
   lessonId: string,
-  data: { status?: "IN_PROGRESS" | "COMPLETED"; videoPositionSeconds?: number }
+  data: { status?: "IN_PROGRESS" | "COMPLETED"; videoPositionSeconds?: number },
 ) {
   // Preview mode: the synthetic enrollment id used by professors/admins
   // viewing their own course doesn't correspond to a real DB row. We
@@ -397,7 +408,10 @@ export async function updateLessonProgress(
               link: `/verify/${result.folio}`,
             });
           } catch (notifError) {
-            console.error("Error creando notificación de certificado:", notifError);
+            console.error(
+              "Error creando notificación de certificado:",
+              notifError,
+            );
           }
         }
       }

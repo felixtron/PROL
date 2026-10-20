@@ -167,7 +167,7 @@ export default async function RevenuePage() {
                     Monto Total
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-                    Tu Comisión (70%)
+                    Recibes
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-tertiary">
                     Estado

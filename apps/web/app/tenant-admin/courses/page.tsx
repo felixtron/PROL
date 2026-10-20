@@ -62,13 +62,10 @@ export default async function TenantAdminCoursesPage() {
   const revenueByCourse = await db.coursePayment.groupBy({
     by: ["courseId"],
     where: { tenantId: admin.tenantId, status: "COMPLETED" },
-    _sum: { creatorReceives: true, prolFee: true },
+    _sum: { amount: true },
   });
   const revenueMap = new Map(
-    revenueByCourse.map((r) => [
-      r.courseId,
-      ((r._sum.creatorReceives ?? 0) + (r._sum.prolFee ?? 0)) / 100,
-    ])
+    revenueByCourse.map((r) => [r.courseId, (r._sum.amount ?? 0) / 100])
   );
 
   const totalEnrollments = courses.reduce((s, c) => s + c._count.enrollments, 0);

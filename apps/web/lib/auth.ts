@@ -241,9 +241,16 @@ export const requireUser = cache(async () => {
   return user;
 });
 
+/**
+ * Panel de plataforma y acciones que cruzan academias: crear tenants,
+ * editarlos, cambiar el revenue share y cambiar roles. Un ADMIN de
+ * academia no pasa: ese rol opera en /tenant-admin con requireTenantAdmin.
+ * Antes esta guarda también dejaba entrar al ADMIN, y desde ahí podía
+ * subirse el revenue share o promoverse a SUPER_ADMIN.
+ */
 export const requireAdmin = cache(async () => {
   const user = await requireUser();
-  if (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+  if (user.role !== "SUPER_ADMIN") {
     throw new Error("No autorizado");
   }
   return user;
@@ -323,7 +330,7 @@ export const requireAIEnabled = cache(
  */
 export function assertSameTenant(
   user: { role: string; tenantId: string | null },
-  resourceTenantId: string
+  resourceTenantId: string,
 ): void {
   if (user.role === "SUPER_ADMIN") return;
   if (!user.tenantId || user.tenantId !== resourceTenantId) {

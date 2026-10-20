@@ -21,11 +21,19 @@ export default async function AdminLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
-    redirect("/");
+  if (!user) {
+    redirect("/sign-in?callbackUrl=/admin");
   }
   if (user.mustResetPassword) {
     redirect("/force-reset-password");
+  }
+  // El administrador de una academia no administra la plataforma. Su panel
+  // es /tenant-admin; dejarlo aquí le abría el revenue share y los roles.
+  if (user.role === "ADMIN") {
+    redirect(user.tenantId ? "/tenant-admin" : "/");
+  }
+  if (user.role !== "SUPER_ADMIN") {
+    redirect("/");
   }
 
   const displayName = user.name ?? "Admin";
@@ -49,7 +57,7 @@ export default async function AdminLayout({
           name={displayName}
           email={user.email}
           avatar={user.avatar}
-          roleLabel={user.role === "SUPER_ADMIN" ? "Super Admin" : "Administrador"}
+          roleLabel="Super Admin"
           settingsHref="/admin/settings"
         />
       }

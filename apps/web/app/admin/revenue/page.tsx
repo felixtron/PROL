@@ -32,7 +32,9 @@ export default async function AdminRevenuePage() {
           Ingresos
         </h1>
         <p className="mt-1 text-text-secondary">
-          Resumen de ingresos de toda la plataforma.
+          Resumen de ingresos de toda la plataforma. La comisión PROL es el
+          revenue share. En cobros con Stripe, el pago al creador ya descuenta
+          el costo de procesamiento con IVA que la plataforma repercute.
         </p>
       </div>
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type Stripe from "stripe";
 import { db } from "@prol/db";
+import { computePlatformFee } from "@prol/shared";
 import { requireUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { APP_URL } from "@/lib/brand";
@@ -15,7 +16,7 @@ export type StripePaymentMethod = "card" | "oxxo" | "spei";
 
 export async function createCheckoutSession(
   courseId: string,
-  paymentMethod: StripePaymentMethod = "card"
+  paymentMethod: StripePaymentMethod = "card",
 ) {
   const user = await requireUser();
 
@@ -87,10 +88,13 @@ export async function createCheckoutSession(
     throw new Error("El creador no ha configurado pagos");
   }
 
-  // 5. Calculate the platform fee (PROL cut)
-  const applicationFeeAmount = Math.round(
-    course.priceInCents * tenant.revenueShareRate
-  );
+  // 5. Tarifa de plataforma. Con destination charges Prosuite paga a
+  // Stripe, así que el application fee es el revenue share más el costo
+  // de procesamiento con IVA. Nunca supera el precio del curso.
+  const fee = computePlatformFee({
+    amountCentavos: course.priceInCents,
+    revenueShareRate: tenant.revenueShareRate,
+  });
 
   // 6. Stripe Checkout session. Method-specific configuration:
   //    - card: instant, synchronous confirmation
@@ -118,9 +122,13 @@ export async function createCheckoutSession(
       studentId: user.id,
       tenantId: course.tenantId,
       paymentMethod,
+      revenueShareRate: String(tenant.revenueShareRate),
+      prolFee: String(fee.prolFeeCentavos),
+      stripeFee: String(fee.stripeFeeCentavos),
+      applicationFee: String(fee.applicationFeeCentavos),
     },
     payment_intent_data: {
-      application_fee_amount: applicationFeeAmount,
+      application_fee_amount: fee.applicationFeeCentavos,
       transfer_data: { destination: tenant.stripeAccountId },
     },
   };

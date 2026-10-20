@@ -5,3 +5,4 @@ export * from "./schemas";
 export * from "./video";
 export * from "./lesson-blocks";
 export * from "./evidence-snapshot";
+export * from "./platform-fee";
