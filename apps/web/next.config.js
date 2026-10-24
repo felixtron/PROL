@@ -41,10 +41,17 @@ const nextConfig = {
     proxyClientMaxBodySize: "30mb",
   },
   images: {
+    // GHSA-2464 (SVG/librsvg) y GHSA-2xp9 (AVIF/libheif): no optimizar SVG
+    // ni AVIF. Los defaults de Next ya son estos; se fijan para que un
+    // merge no los reactive.
+    dangerouslyAllowSVG: false,
+    formats: ["image/webp"],
     remotePatterns: [
-      { protocol: "https", hostname: "**.cloudflarestream.com" },
+      // Un solo nivel: customer-<code>.cloudflarestream.com.
+      // `**` también aceptaba hosts anidados.
+      { protocol: "https", hostname: "*.cloudflarestream.com" },
+      // Host real de miniaturas de Vimeo. `**.vimeocdn.com` sobraba.
       { protocol: "https", hostname: "i.vimeocdn.com" },
-      { protocol: "https", hostname: "**.vimeocdn.com" },
     ],
   },
 };
