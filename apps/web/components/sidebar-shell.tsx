@@ -105,7 +105,7 @@ export function SidebarShell({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg p-2 text-text-secondary hover:bg-surface-secondary"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
                 aria-label="Cerrar menú"
               >
                 <X className="h-5 w-5" />
@@ -123,12 +123,12 @@ export function SidebarShell({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="rounded-lg p-2 text-text-secondary hover:bg-surface-secondary"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-secondary"
             aria-label="Abrir menú"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="font-heading text-base font-semibold text-text-primary">
+          <span className="min-w-0 truncate font-heading text-base font-semibold text-text-primary">
             {mobileTitle}
           </span>
         </header>

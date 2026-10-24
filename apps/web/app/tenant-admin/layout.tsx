@@ -8,6 +8,7 @@ import { TenantBrand } from "@/components/tenant-brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import { AgentLauncher } from "@/components/agent/agent-launcher";
 import { isAgentAvailable } from "@/lib/agent/availability";
+import { canUseProfessorTools } from "@prol/shared";
 
 const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/tenant-admin", icon: "LayoutDashboard" },
@@ -55,6 +56,11 @@ export default async function TenantAdminLayout({
         },
       })
     : null;
+  const showProfessorPanel = canUseProfessorTools({
+    role: user.role,
+    professorModeEnabled: user.professorModeEnabled,
+    tenantId: user.tenantId,
+  });
   const tenantName = tenant?.name ?? user.tenant?.name ?? "Plataforma";
 
   // Encuestas es un módulo de administración: sólo aparece aquí, y sólo si el
@@ -85,6 +91,15 @@ export default async function TenantAdminLayout({
       : []),
     ...(showSurveys
       ? [{ label: "Encuestas", href: "/tenant-admin/surveys", icon: "ListChecks" as const }]
+      : []),
+    ...(showProfessorPanel
+      ? [
+          {
+            label: "Panel de profesor",
+            href: "/professor",
+            icon: "GraduationCap" as const,
+          },
+        ]
       : []),
     ...tailNavItems,
   ];

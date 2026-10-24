@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools } from "@/lib/auth";
 import {
   assertCourseOwnerAccess,
   courseAccessWhere,
@@ -21,11 +21,7 @@ function slugify(text: string): string {
 }
 
 export async function createCourse(formData: FormData) {
-  const user = await requireUser();
-
-  if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
-    throw new Error("No autorizado");
-  }
+  const user = await requireProfessorTools();
 
   const raw = {
     title: formData.get("title"),
@@ -52,7 +48,7 @@ export async function createCourse(formData: FormData) {
 }
 
 export async function updateCourse(courseId: string, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const existing = await db.course.findFirst({
     where: { id: courseId, ...courseAccessWhere(user.id) },
@@ -171,7 +167,7 @@ export async function archiveCourse(courseId: string) {
 }
 
 export async function updateCourseThumbnail(courseId: string, thumbnailUrl: string) {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const existing = await db.course.findFirst({
     where: { id: courseId, ...courseAccessWhere(user.id) },

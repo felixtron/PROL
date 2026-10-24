@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { db, Prisma } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools, requireUser } from "@/lib/auth";
 import {
   assertCourseEditAccess,
   courseAccessWhere,
 } from "@/lib/course-access";
 
 export async function createModule(courseId: string, formData: FormData) {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const course = await db.course.findFirst({
     where: { id: courseId, ...courseAccessWhere(user.id) },
@@ -414,7 +414,7 @@ export async function deleteLesson(lessonId: string) {
 }
 
 export async function publishCourse(courseId: string) {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const course = await db.course.findFirst({
     where: { id: courseId, ...courseAccessWhere(user.id) },

@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@prol/db";
-import { requireAIEnabled, requireUser } from "@/lib/auth";
+import { requireAIEnabled, requireProfessorTools, requireUser } from "@/lib/auth";
 import { assertCourseEditAccess } from "@/lib/course-access";
 
 export async function startCourseOutlineGeneration(formData: FormData) {
+  await requireProfessorTools();
   const user = await requireAIEnabled();
 
   const topic = formData.get("topic") as string;

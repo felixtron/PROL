@@ -1,5 +1,5 @@
 import { db, Prisma } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools, requireUser } from "@/lib/auth";
 
 /**
  * Autorización de cursos en un solo lugar.
@@ -40,6 +40,8 @@ export async function assertCourseEditAccess(
   courseId: string,
   userId: string,
 ): Promise<void> {
+  const user = await requireProfessorTools();
+  if (user.id !== userId) throw new Error("No autorizado");
   if (!(await canEditCourse(courseId, userId))) {
     throw new Error("No autorizado");
   }

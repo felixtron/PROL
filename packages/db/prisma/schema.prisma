@@ -526,6 +526,10 @@ model Tenant {
   /// vive en `apps/web/lib/tenant-labels.ts`, no en la base, para que cambiar ese
   /// texto no exija un backfill.
   documentsMenuLabel String? @map("documents_menu_label")
+  /// Visibilidad del panel del alumno. Objeto `{ [toolId]: boolean }`.
+  /// Una clave ausente significa visible, que es lo que la academia muestra
+  /// hoy. Null equivale a no haber tocado nada.
+  studentTools       Json?   @map("student_tools")
 
   // AI billing — plan and credit balance (prices defined later, structure ready)
   aiPlan             String    @default("none") @map("ai_plan")
@@ -604,6 +608,9 @@ model User {
   stripeCustomerId String? @unique @map("stripe_customer_id")
 
   onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  /// El administrador de la academia puede crear y gestionar cursos como un
+  /// profesor, sin otra cuenta. Apagado por defecto y reversible.
+  professorModeEnabled Boolean  @default(false) @map("professor_mode_enabled")
   mustResetPassword   Boolean   @default(false) @map("must_reset_password")
   disabledAt          DateTime? @map("disabled_at")
   lastLoginAt         DateTime? @map("last_login_at")

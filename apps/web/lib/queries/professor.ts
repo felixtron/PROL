@@ -1,11 +1,11 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools } from "@/lib/auth";
 import { courseAccessWhere } from "@/lib/course-access";
 
 // Get professor dashboard stats
 export const getProfessorDashboardStats = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   // Los ingresos no se muestran al profesor: el dinero del curso lo ve el
   // admin del tenant en /tenant-admin/courses.
@@ -49,7 +49,7 @@ export const getProfessorDashboardStats = cache(async () => {
 // Get professor's courses with enrollment counts and revenue
 export const getProfessorCourses = cache(
   async (filter?: "all" | "published" | "draft") => {
-    const user = await requireUser();
+    const user = await requireProfessorTools();
 
     const statusFilter =
       filter === "published"
@@ -93,7 +93,7 @@ export const getProfessorCourses = cache(
 
 // Get recent activity for professor's courses
 export const getProfessorRecentActivity = cache(async (limit = 10) => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   // Inscripciones y finalizaciones. Los pagos quedaron fuera del feed: el
   // profesor no ve dinero en ninguna vista.

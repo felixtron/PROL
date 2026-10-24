@@ -34,7 +34,7 @@ export function NavLinkItem({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`${LINK_CLASS_BASE} ${nested ? "pl-9 pr-3 py-2.5" : "px-3 py-2.5"} ${
+      className={`${LINK_CLASS_BASE} min-h-11 ${nested ? "pl-9 pr-3 py-2.5" : "px-3 py-2.5"} ${
         active ? LINK_CLASS_ACTIVE : LINK_CLASS_INACTIVE
       }`}
     >
@@ -75,7 +75,7 @@ export function NavGroup({
         onClick={() => setOverride(!open)}
         aria-expanded={open}
         aria-controls={headerId}
-        className={`${LINK_CLASS_BASE} w-full px-3 py-2.5 ${
+        className={`${LINK_CLASS_BASE} min-h-11 w-full px-3 py-2.5 ${
           contains && !open ? LINK_CLASS_ACTIVE : LINK_CLASS_INACTIVE
         }`}
       >

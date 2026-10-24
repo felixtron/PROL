@@ -129,6 +129,11 @@ export function middleware(req: NextRequest) {
   if (tenantSlug) {
     requestHeaders.set("x-tenant-slug", tenantSlug);
   }
+  // La ruta real, para que el layout del alumno pueda cerrar una sección
+  // apagada. Se borra primero: si se confiara en la cabecera del cliente,
+  // bastaría enviarla para saltarse ese cierre.
+  requestHeaders.delete("x-pathname");
+  requestHeaders.set("x-pathname", pathname);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },

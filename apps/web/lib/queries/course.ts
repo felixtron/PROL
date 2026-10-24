@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools } from "@/lib/auth";
 import { courseAccessWhere } from "@/lib/course-access";
 
 // Shape de lección para el editor; reutilizado en lecciones directas del
@@ -29,7 +29,7 @@ const lessonEditSelect = {
 } as const;
 
 export const getCourseForEdit = cache(async (courseId: string) => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const course = await db.course.findFirst({
     where: {

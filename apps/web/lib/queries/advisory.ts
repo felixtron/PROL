@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools, requireUser } from "@/lib/auth";
 
 /**
  * Consultas del módulo de Sesiones de Asesoría.
@@ -13,7 +13,7 @@ import { requireUser } from "@/lib/auth";
 // ─── Asesor (profesor / admin) ────────────────────────────────────────────────
 
 export const getAdvisorSessions = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const sessions = await db.advisorySession.findMany({
     where: { advisorId: user.id },
@@ -44,7 +44,7 @@ export const getAdvisorSessions = cache(async () => {
 });
 
 export const getAdvisorSessionDetail = cache(async (sessionId: string) => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const session = await db.advisorySession.findFirst({
     where: { id: sessionId, advisorId: user.id },
@@ -100,7 +100,7 @@ export const getAdvisorSessionDetail = cache(async (sessionId: string) => {
 
 /** Empresas y usuarios del tenant, para elegir audiencia al crear. */
 export const getAdvisoryAudienceOptions = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
   if (!user.tenantId) return { companies: [], users: [] };
 
   const [companies, users] = await Promise.all([

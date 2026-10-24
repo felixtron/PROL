@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { canUseProfessorTools } from "@prol/shared";
 import { createMeetLink } from "@/lib/google-calendar";
 import { courseAccessWhere } from "@/lib/course-access";
 import { parseZonedInput } from "@/lib/timezone";
@@ -50,7 +51,13 @@ export async function createWorkshop(
   formData: FormData,
 ): Promise<CreateWorkshopResult> {
   const user = await requireUser();
-  if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
     return { success: false, error: "No tienes permiso para crear sesiones." };
   }
   if (!user.tenantId) {
@@ -115,7 +122,7 @@ export async function createWorkshop(
     where: {
       id: courseId,
       tenantId: user.tenantId,
-      ...(user.role === "PROFESSOR" ? courseAccessWhere(user.id) : {}),
+      ...courseAccessWhere(user.id),
     },
     select: { id: true },
   });
@@ -211,6 +218,15 @@ export async function createWorkshop(
 
 export async function updateWorkshop(workshopId: string, formData: FormData) {
   const user = await requireUser();
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
+    throw new Error("No autorizado");
+  }
 
   const existing = await db.workshop.findFirst({
     where: { id: workshopId, professorId: user.id },
@@ -270,6 +286,15 @@ export async function updateWorkshop(workshopId: string, formData: FormData) {
 
 export async function cancelWorkshop(workshopId: string) {
   const user = await requireUser();
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
+    throw new Error("No autorizado");
+  }
 
   const existing = await db.workshop.findFirst({
     where: { id: workshopId, professorId: user.id },
@@ -288,6 +313,15 @@ export async function cancelWorkshop(workshopId: string) {
 
 export async function checkInStudent(workshopId: string, studentId: string) {
   const user = await requireUser();
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
+    throw new Error("No autorizado");
+  }
 
   const workshop = await db.workshop.findFirst({
     where: { id: workshopId, professorId: user.id },
@@ -336,6 +370,15 @@ export async function bulkMarkAttendance(
   entries: { studentId: string; attended: boolean }[]
 ) {
   const user = await requireUser();
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
+    throw new Error("No autorizado");
+  }
 
   const workshop = await db.workshop.findFirst({
     where: { id: workshopId, professorId: user.id },
@@ -387,6 +430,15 @@ export async function bulkMarkAttendance(
 
 export async function markNoShow(workshopId: string, studentId: string) {
   const user = await requireUser();
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
+    throw new Error("No autorizado");
+  }
 
   const workshop = await db.workshop.findFirst({
     where: { id: workshopId, professorId: user.id },

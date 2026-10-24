@@ -29,34 +29,45 @@ const PRIMARY = [
   { href: "/dashboard/certificates", label: "Diplomas", icon: Award },
 ];
 
-const PRIMARY_HREFS = PRIMARY.map((i) => i.href);
-
 export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   // Todo lo que no cabe en la barra. Conserva el orden del sidebar. Un grupo
   // no tiene `href` propio, así que siempre pasa el filtro de overflow.
+  const availableHrefs = useMemo(
+    () => new Set(flattenNavHrefs(navItems)),
+    [navItems],
+  );
+  const primary = useMemo(
+    () => PRIMARY.filter((item) => availableHrefs.has(item.href)),
+    [availableHrefs],
+  );
+  const primaryHrefs = useMemo(
+    () => primary.map((item) => item.href),
+    [primary],
+  );
+
   const overflowItems = useMemo(
     () =>
       navItems.filter(
-        (item) => isNavGroup(item) || !PRIMARY_HREFS.includes(item.href),
+        (item) => isNavGroup(item) || !primaryHrefs.includes(item.href),
       ),
-    [navItems],
+    [navItems, primaryHrefs],
   );
 
   const activeHref = useMemo(
     () =>
       resolveActiveHref(pathname, [
-        ...PRIMARY_HREFS,
+        ...primaryHrefs,
         ...flattenNavHrefs(overflowItems),
       ]),
-    [pathname, overflowItems],
+    [pathname, primaryHrefs, overflowItems],
   );
 
   // La sección actual vive en el panel "Más": se marca el propio botón.
   const overflowActive =
-    activeHref !== null && !PRIMARY_HREFS.includes(activeHref);
+    activeHref !== null && !primaryHrefs.includes(activeHref);
 
   useEffect(() => {
     setOpen(false);
@@ -99,7 +110,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar menú"
-                className="rounded-lg p-2 text-text-secondary active:bg-surface-secondary"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary active:bg-surface-secondary"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -163,7 +174,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md md:hidden">
         <div className="mx-auto flex h-16 max-w-lg items-stretch justify-around pb-[env(safe-area-inset-bottom)]">
-          {PRIMARY.map((item) => {
+          {primary.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === activeHref;
             return (
