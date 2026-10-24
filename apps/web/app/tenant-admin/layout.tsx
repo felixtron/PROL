@@ -113,6 +113,15 @@ export default async function TenantAdminLayout({
       <SidebarShell
       navItems={navItems}
       mobileTitle={tenantName}
+      mobileAccount={{
+        name: displayName,
+        avatar: user.avatar,
+        settingsHref: "/tenant-admin/settings",
+      }}
+      mobilePrimary={[
+        { href: "/tenant-admin", label: "Inicio", icon: "Home" },
+        { href: "/tenant-admin/courses", label: "Cursos", icon: "GraduationCap" },
+      ]}
       brand={
         <TenantBrand
           name={tenantName}
@@ -136,7 +145,9 @@ export default async function TenantAdminLayout({
       {/* Copiloto: el tenant lo tiene contratado Y la instancia tiene clave.
           Sin la segunda condición, un despliegue sin configurar la clave
           enseñaría un botón que falla en cada intento. */}
-      {isAgentAvailable(tenant?.aiEnabled) && <AgentLauncher surface="dashboard" />}
+      {isAgentAvailable(tenant?.aiEnabled) && (
+        <AgentLauncher surface="dashboard" liftForMobileBar />
+      )}
     </>
   );
 }

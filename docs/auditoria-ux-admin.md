@@ -55,18 +55,48 @@ Estos tocan las pantallas nuevas o eran de bajo riesgo. Quedaron aplicados en es
 5. **El texto auxiliar no se leía.** `--color-text-tertiary` era `#94a3b8`, por debajo de 4.5:1 sobre blanco. Las pistas de las herramientas del alumno usan ese color. Pasó a `#64748b`. El texto secundario (`#475569`) ya cumplía.
 6. **Foco del interruptor.** Los switches nuevos tienen anillo al navegar con teclado.
 
-## Hallazgos altos que quedan como recomendación
+## Hallazgos altos aplicados después de la revisión
 
-No los apliqué: cambian la estructura de una pantalla entera, no sólo el detalle.
+Félix aprobó la barra inferior y la identidad del cajón. La lista de cursos en tabla queda pendiente.
+
+1. **Barra inferior en admin de academia y super admin.** El teléfono muestra Inicio, Cursos y Más. En la academia, Cursos abre `/tenant-admin/courses`. En la plataforma, el segundo destino es Tenants (`/admin/tenants`), que es el equivalente: el super admin no gestiona cursos. Más abre el resto del menú, grupos incluidos. Si el modo profesor está encendido, Panel de profesor sale en Más. El contenido deja sitio debajo (`4.5rem` más el área segura) y el asistente sube para no quedar bajo la barra. Cada destino mide al menos 44px.
+
+Inicio del admin de academia, a 390px, antes sin barra y después con ella.
+
+![Inicio del admin antes, sin barra, a 390px](auditoria-ux/antes-barra-admin-inicio-390.png)
+
+![Inicio del admin después, con Inicio, Cursos y Más, a 390px](auditoria-ux/despues-barra-admin-inicio-390.png)
+
+Más, con el modo profesor encendido: Panel de profesor está en la hoja.
+
+![Más del admin, con Panel de profesor, a 390px](auditoria-ux/despues-barra-admin-mas-390.png)
+
+El super admin, antes y después.
+
+![Inicio del super admin antes, a 390px](auditoria-ux/antes-barra-superadmin-inicio-390.png)
+
+![Inicio del super admin después, con Inicio, Tenants y Más, a 390px](auditoria-ux/despues-barra-superadmin-inicio-390.png)
+
+2. **La persona ya no se repite en el cajón.** En el teléfono, la marca queda arriba del menú y la persona pasa a la barra superior (avatar de 44px que abre su configuración), igual que el alumno. En escritorio la tarjeta sigue en el lateral, porque ahí no hay barra inferior: es el mismo criterio que el panel del alumno en pantalla grande.
+
+Cajón del admin, antes (persona y marca) y después (sólo la marca).
+
+![Cajón del admin antes, a 390px](auditoria-ux/antes-barra-admin-cajon-390.png)
+
+![Cajón del admin después, a 390px](auditoria-ux/despues-barra-admin-cajon-390.png)
+
+![Cajón del super admin después, a 390px](auditoria-ux/despues-barra-superadmin-cajon-390.png)
+
+## Hallazgo alto que queda pendiente
+
+Félix no lo eligió en esta pasada.
 
 1. **La lista de cursos del admin de academia sigue siendo una tabla ancha.** En `/tenant-admin/courses`, a 390px hay que desplazar de lado para ver precio, alumnos e ingresos. En el teléfono conviene una tarjeta por curso (título, estado, alumnos) y dejar la tabla para escritorio. Si el admin tiene el modo profesor y el curso es suyo, ya aparece el enlace Editar contenido.
-2. **El admin y el super admin no tienen barra inferior.** El alumno sí: cuatro destinos y Más. El admin abre un cajón largo desde arriba a la izquierda, que es el lado difícil para el pulgar derecho. Pasar esos dos paneles al mismo patrón (Inicio, Empresas, Cursos, Más) es un cambio de navegación de todo el producto. Hace falta que Félix lo decida antes de hacerlo.
-3. **El cajón duplica la identidad.** Arriba del todo está la tarjeta de la persona y, debajo, otra vez la marca de la academia. En un teléfono se comen la primera pantalla del menú. Recomendación: marca arriba, persona en la fila de la barra, como ya hace el alumno.
 
 ## Hallazgos medios
 
 1. **Ajustes es una página larga.** Marca, Stripe, Meet, perfil y sesión siguen debajo. Los dos controles nuevos están los primeros para no tener que bajar a buscarlos. Aun así, en el teléfono la página pide bastante scroll. Se podría partir en «Academia», «Alumnos» y «Cuenta».
-2. **La misma sección no se llama igual en todos los paneles.** El alumno ve «Mis Cursos» en el lateral y «Cursos» en la barra. El profesor ve «Cursos» y «Gestión de Cursos». Unificar el nombre corto en el móvil («Cursos») y dejar el largo sólo en el título de la página.
+2. **La misma sección no se llama igual en todos los paneles.** El alumno ve «Mis Cursos» en el lateral y «Cursos» en la barra. El admin ve «Dashboard» en el cajón y «Inicio» en la barra. El profesor ve «Cursos» y «Gestión de Cursos». Unificar el nombre corto en el móvil y dejar el largo sólo en el título de la página.
 3. **El guardado del interruptor casi no se anuncia.** Mientras guarda, el control baja de opacidad. Si la red va lenta no queda claro si pulsó. Un texto «Guardando…» y el error que ya existe bastarían.
 4. **El grupo documental del alumno puede quedar vacío de hijos y aun así no explicar por qué.** Si la academia no tiene el módulo, o el alumno no tiene empresa, la sección no sale aunque el interruptor esté encendido. La pantalla de ajustes lo dice en una pista. En el panel del alumno no hay un estado vacío que lo explique, porque la sección directamente no está. Es coherente con cómo funcionaba antes, y conviene no cambiarlo sin avisar.
 5. **Estados vacíos desiguales.** Cursos del admin, talleres del alumno y encuestas tienen un vacío con icono y una frase. Varias listas del profesor y del super admin arrancan en seco cuando no hay datos. Conviene el mismo bloque: qué falta y cuál es el siguiente paso.

@@ -42,6 +42,15 @@ export default async function AdminLayout({
     <SidebarShell
       navItems={navItems}
       mobileTitle={`${BRAND_NAME} · Admin`}
+      mobileAccount={{
+        name: displayName,
+        avatar: user.avatar,
+        settingsHref: "/admin/settings",
+      }}
+      mobilePrimary={[
+        { href: "/admin", label: "Inicio", icon: "Home" },
+        { href: "/admin/tenants", label: "Tenants", icon: "Building2" },
+      ]}
       brand={
         <>
           <span className="font-heading text-xl font-bold text-primary-700">

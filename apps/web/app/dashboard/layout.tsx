@@ -20,7 +20,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import type { SidebarIcon, SidebarNavItem, SidebarNavLink } from "@/components/nav-icons";
 import { SidebarNav } from "./sidebar-nav";
-import { MobileNav } from "./mobile-nav";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 function toolLink(id: StudentToolId): SidebarNavLink {
   const tool = STUDENT_TOOLS.find((item) => item.id === id);
@@ -209,7 +209,7 @@ export default async function DashboardLayout({
       </div>
 
       {/* ─── Mobile bottom navigation ─── */}
-      <MobileNav navItems={navItems} />
+      <MobileBottomNav navItems={navItems} />
     </div>
   );
 }
