@@ -1,6 +1,15 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@prol/db";
+import {
+  STUDENT_TOOLS,
+  firstAllowedStudentHref,
+  isStudentPathAllowed,
+  isStudentToolVisible,
+  type StudentPanelContext,
+  type StudentToolId,
+} from "@prol/shared";
 import { getCurrentUser } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/queries/notifications";
 import { resolveDocumentsMenuLabel } from "@/lib/tenant-labels";
@@ -9,32 +18,19 @@ import { UserMenu } from "@/components/user-menu";
 import { TenantBrand } from "@/components/tenant-brand";
 import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
-import type { SidebarNavItem } from "@/components/nav-icons";
+import type { SidebarIcon, SidebarNavItem, SidebarNavLink } from "@/components/nav-icons";
 import { SidebarNav } from "./sidebar-nav";
-import { MobileNav } from "./mobile-nav";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
-// Los iconos viajan como string: este layout es Server Component y no puede
-// pasar componentes React al nav, que es de cliente (ver components/nav-icons).
-const navItemsBefore: SidebarNavItem[] = [
-  { href: "/dashboard", label: "Inicio", icon: "Home" },
-  { href: "/dashboard/courses", label: "Mis Cursos", icon: "BookOpen" },
-  { href: "/dashboard/company", label: "Mi Empresa", icon: "Building2" },
-  { href: "/dashboard/workshops", label: "Talleres", icon: "Calendar" },
-];
-
-const navItemsAfter: SidebarNavItem[] = [
-  { href: "/dashboard/certificates", label: "Diplomas", icon: "Award" },
-  { href: "/dashboard/settings", label: "Configuración", icon: "Settings" },
-  { href: "/dashboard/docs", label: "Ayuda", icon: "HelpCircle" },
-];
-
-// La constancia DC-3 la emite el patrón: sin empresa asociada la entrada no
-// aparece, porque el documento no le corresponde a esa cuenta.
-const dc3NavItem: SidebarNavItem = {
-  href: "/dashboard/dc3",
-  label: "Constancias DC-3",
-  icon: "FileText",
-};
+function toolLink(id: StudentToolId): SidebarNavLink {
+  const tool = STUDENT_TOOLS.find((item) => item.id === id);
+  if (!tool) throw new Error(`Herramienta desconocida: ${id}`);
+  return {
+    href: tool.href,
+    label: tool.label,
+    icon: tool.icon as SidebarIcon,
+  };
+}
 
 export default async function DashboardLayout({
   children,
@@ -83,57 +79,58 @@ export default async function DashboardLayout({
           surveysEnabled: true,
           documentsEnabled: true,
           documentsMenuLabel: true,
+          studentTools: true,
         },
       })
     : null;
 
-  // Los manuales son de la empresa: sin empresa asociada no hay nada que
-  // mostrar, igual que con el DC-3.
-  const showDocuments = Boolean(tenant?.documentsEnabled) && Boolean(user.companyId);
+  const panel: StudentPanelContext = {
+    preferences: tenant?.studentTools ?? null,
+    documentsEnabled: Boolean(tenant?.documentsEnabled),
+    advisoryEnabled: Boolean(tenant?.advisoryEnabled),
+    surveysEnabled: Boolean(tenant?.surveysEnabled),
+    hasCompany: Boolean(user.companyId),
+  };
+  const show = (id: StudentToolId) => isStudentToolVisible(panel, id);
 
-  // Consultoría Online y Encuestas sólo aparecen si el tenant las habilitó.
-  // En Encuestas el alumno sólo responde y consulta lo publicado: la gestión
-  // vive en el panel del administrador.
+  const pathname = (await headers()).get("x-pathname");
+  if (pathname && !isStudentPathAllowed(pathname, panel)) {
+    const dest = firstAllowedStudentHref(panel);
+    if (dest !== pathname.replace(/\/$/, "") && dest !== pathname) {
+      redirect(dest);
+    }
+  }
+  const homeHref = firstAllowedStudentHref(panel);
+
+  const documentChildren = (
+    ["manuals", "documents", "agenda"] as const
+  )
+    .filter((id) => show(id))
+    .map((id) => toolLink(id));
+
+  // Consultoría Online y Encuestas sólo aparecen si el tenant las habilitó
+  // y el administrador no las ocultó. En Encuestas el alumno sólo responde
+  // y consulta lo publicado: la gestión vive en el panel del administrador.
   const navItems: SidebarNavItem[] = [
-    ...navItemsBefore,
-    ...(showDocuments
+    ...(["home", "courses", "company", "workshops"] as const)
+      .filter((id) => show(id))
+      .map((id) => toolLink(id)),
+    ...(documentChildren.length > 0
       ? [
           {
             id: "documents",
             label: resolveDocumentsMenuLabel(tenant?.documentsMenuLabel),
             icon: "FolderOpen" as const,
-            children: [
-              // Plural deliberado: la ruta lista las N activaciones de la
-              // empresa (listMyManuals()), igual que "Proyectos" en el panel
-              // de staff apunta al mismo modelo. El singular queda para la
-              // ficha de una sola.
-              { href: "/dashboard/manuals", label: "Proyectos", icon: "Building2" as const },
-              { href: "/dashboard/documents", label: "Documentos", icon: "FileCheck2" as const },
-              { href: "/dashboard/agenda", label: "Agenda", icon: "CalendarClock" as const },
-            ],
+            children: documentChildren,
           },
         ]
       : []),
-    ...(tenant?.advisoryEnabled
-      ? [
-          {
-            href: "/dashboard/advisory",
-            label: "Consultoría Online",
-            icon: "Laptop" as const,
-          },
-        ]
-      : []),
-    ...(tenant?.surveysEnabled
-      ? [
-          {
-            href: "/dashboard/surveys",
-            label: "Encuestas",
-            icon: "ListChecks" as const,
-          },
-        ]
-      : []),
-    ...navItemsAfter,
-    ...(user.companyId ? [dc3NavItem] : []),
+    ...(["advisory", "surveys", "certificates"] as const)
+      .filter((id) => show(id))
+      .map((id) => toolLink(id)),
+    { href: "/dashboard/settings", label: "Configuración", icon: "Settings" as const },
+    ...(show("help") ? [toolLink("help")] : []),
+    ...(show("dc3") ? [toolLink("dc3")] : []),
   ];
 
   return (
@@ -160,7 +157,7 @@ export default async function DashboardLayout({
 
         {/* Brand */}
         <Link
-          href="/dashboard"
+          href={homeHref}
           className="flex items-center gap-2 px-6 py-4"
         >
           <TenantBrand
@@ -177,7 +174,7 @@ export default async function DashboardLayout({
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
           <Link
-            href="/dashboard"
+            href={homeHref}
             className="font-heading text-xl font-bold text-primary-600"
           >
             PROL
@@ -186,7 +183,7 @@ export default async function DashboardLayout({
             <NotificationBell initialUnreadCount={unreadCount} />
             <Link
               href="/dashboard/settings"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700"
               aria-label="Mi perfil"
             >
               {user.avatar ? (
@@ -212,7 +209,7 @@ export default async function DashboardLayout({
       </div>
 
       {/* ─── Mobile bottom navigation ─── */}
-      <MobileNav navItems={navItems} />
+      <MobileBottomNav navItems={navItems} />
     </div>
   );
 }

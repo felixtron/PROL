@@ -32,13 +32,13 @@ export default async function ProfessorCoursesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-heading text-2xl font-bold text-text-primary">
           Gestión de Cursos
         </h1>
         <Link
           href="/professor/courses/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
         >
           <Plus className="h-4 w-4" />
           Nuevo Curso
@@ -84,7 +84,7 @@ export default async function ProfessorCoursesPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="truncate font-heading text-base font-semibold text-text-primary">
                         {course.title}
                       </h3>
@@ -112,8 +112,8 @@ export default async function ProfessorCoursesPage() {
                 </div>
 
                 {/* Stats + Actions */}
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-5">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-1.5 text-sm text-text-tertiary">
                       <Users className="h-4 w-4" />
                       <span>{course.students} alumnos</span>
@@ -124,17 +124,17 @@ export default async function ProfessorCoursesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/professor/courses/${course.id}/edit`}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                       Editar
                     </Link>
                     <Link
                       href={`/professor/courses/${course.id}/results`}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
                       title="Resultados de quizzes y examen final"
                     >
                       <ClipboardCheck className="h-3.5 w-3.5" />
@@ -144,7 +144,7 @@ export default async function ProfessorCoursesPage() {
                       href={`/preview/courses/${course.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
                       title="Ver el curso como un alumno (modo previa)"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -161,7 +161,7 @@ export default async function ProfessorCoursesPage() {
                       >
                         <button
                           type="submit"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-tertiary"
                         >
                           <Archive className="h-3.5 w-3.5" />
                           Archivar

@@ -50,7 +50,7 @@ export function CourseActionsMenu({
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-tertiary hover:text-text-primary"
+        className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-surface-tertiary hover:text-text-primary"
         title="Acciones del curso"
         aria-haspopup="menu"
         aria-expanded={menuOpen}

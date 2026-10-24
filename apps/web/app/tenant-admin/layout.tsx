@@ -8,6 +8,7 @@ import { TenantBrand } from "@/components/tenant-brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import { AgentLauncher } from "@/components/agent/agent-launcher";
 import { isAgentAvailable } from "@/lib/agent/availability";
+import { canUseProfessorTools } from "@prol/shared";
 
 const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/tenant-admin", icon: "LayoutDashboard" },
@@ -55,6 +56,11 @@ export default async function TenantAdminLayout({
         },
       })
     : null;
+  const showProfessorPanel = canUseProfessorTools({
+    role: user.role,
+    professorModeEnabled: user.professorModeEnabled,
+    tenantId: user.tenantId,
+  });
   const tenantName = tenant?.name ?? user.tenant?.name ?? "Plataforma";
 
   // Encuestas es un módulo de administración: sólo aparece aquí, y sólo si el
@@ -86,6 +92,15 @@ export default async function TenantAdminLayout({
     ...(showSurveys
       ? [{ label: "Encuestas", href: "/tenant-admin/surveys", icon: "ListChecks" as const }]
       : []),
+    ...(showProfessorPanel
+      ? [
+          {
+            label: "Panel de profesor",
+            href: "/professor",
+            icon: "GraduationCap" as const,
+          },
+        ]
+      : []),
     ...tailNavItems,
   ];
 
@@ -98,6 +113,15 @@ export default async function TenantAdminLayout({
       <SidebarShell
       navItems={navItems}
       mobileTitle={tenantName}
+      mobileAccount={{
+        name: displayName,
+        avatar: user.avatar,
+        settingsHref: "/tenant-admin/settings",
+      }}
+      mobilePrimary={[
+        { href: "/tenant-admin", label: "Inicio", icon: "Home" },
+        { href: "/tenant-admin/courses", label: "Cursos", icon: "GraduationCap" },
+      ]}
       brand={
         <TenantBrand
           name={tenantName}
@@ -121,7 +145,9 @@ export default async function TenantAdminLayout({
       {/* Copiloto: el tenant lo tiene contratado Y la instancia tiene clave.
           Sin la segunda condición, un despliegue sin configurar la clave
           enseñaría un botón que falla en cada intento. */}
-      {isAgentAvailable(tenant?.aiEnabled) && <AgentLauncher surface="dashboard" />}
+      {isAgentAvailable(tenant?.aiEnabled) && (
+        <AgentLauncher surface="dashboard" liftForMobileBar />
+      )}
     </>
   );
 }

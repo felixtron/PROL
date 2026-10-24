@@ -3,60 +3,75 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home,
-  BookOpen,
-  Calendar,
-  Award,
-  MoreHorizontal,
-  X,
-  LayoutDashboard,
-} from "lucide-react";
+import { MoreHorizontal, X, LayoutDashboard } from "lucide-react";
 import { NAV_ICONS, flattenNavHrefs, isNavGroup } from "@/components/nav-icons";
 import { resolveActiveHref } from "@/components/nav-active";
-import type { SidebarNavItem } from "@/components/nav-icons";
+import type { SidebarIcon, SidebarNavItem } from "@/components/nav-icons";
 
 /**
- * Los cuatro destinos que viven en la barra; el resto de las secciones del
- * alumno (que dependen de los flags del tenant) van al panel "Más". Antes la
- * barra tenía cinco entradas fijas y hasta cinco secciones quedaban
- * inalcanzables desde el móvil.
+ * Destinos fijos de la barra del alumno. El resto (lo que depende de los
+ * flags del tenant) va al panel "Más".
  */
-const PRIMARY = [
-  { href: "/dashboard", label: "Inicio", icon: Home },
-  { href: "/dashboard/courses", label: "Cursos", icon: BookOpen },
-  { href: "/dashboard/workshops", label: "Talleres", icon: Calendar },
-  { href: "/dashboard/certificates", label: "Diplomas", icon: Award },
+export const STUDENT_MOBILE_PRIMARY: MobilePrimaryItem[] = [
+  { href: "/dashboard", label: "Inicio", icon: "Home" },
+  { href: "/dashboard/courses", label: "Cursos", icon: "BookOpen" },
+  { href: "/dashboard/workshops", label: "Talleres", icon: "Calendar" },
+  { href: "/dashboard/certificates", label: "Diplomas", icon: "Award" },
 ];
 
-const PRIMARY_HREFS = PRIMARY.map((i) => i.href);
+export interface MobilePrimaryItem {
+  href: string;
+  label: string;
+  icon: SidebarIcon;
+}
 
-export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
+/**
+ * Barra inferior móvil. `primary` son los destinos que se ven siempre; lo que
+ * no esté ahí, y los grupos, se abren desde "Más". Si un destino primario no
+ * está en `navItems` (herramienta apagada), se omite.
+ */
+export function MobileBottomNav({
+  navItems,
+  primary = STUDENT_MOBILE_PRIMARY,
+}: {
+  navItems: SidebarNavItem[];
+  primary?: MobilePrimaryItem[];
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Todo lo que no cabe en la barra. Conserva el orden del sidebar. Un grupo
-  // no tiene `href` propio, así que siempre pasa el filtro de overflow.
+  const availableHrefs = useMemo(
+    () => new Set(flattenNavHrefs(navItems)),
+    [navItems],
+  );
+  const visiblePrimary = useMemo(
+    () => primary.filter((item) => availableHrefs.has(item.href)),
+    [primary, availableHrefs],
+  );
+  const primaryHrefs = useMemo(
+    () => visiblePrimary.map((item) => item.href),
+    [visiblePrimary],
+  );
+
   const overflowItems = useMemo(
     () =>
       navItems.filter(
-        (item) => isNavGroup(item) || !PRIMARY_HREFS.includes(item.href),
+        (item) => isNavGroup(item) || !primaryHrefs.includes(item.href),
       ),
-    [navItems],
+    [navItems, primaryHrefs],
   );
 
   const activeHref = useMemo(
     () =>
       resolveActiveHref(pathname, [
-        ...PRIMARY_HREFS,
+        ...primaryHrefs,
         ...flattenNavHrefs(overflowItems),
       ]),
-    [pathname, overflowItems],
+    [pathname, primaryHrefs, overflowItems],
   );
 
-  // La sección actual vive en el panel "Más": se marca el propio botón.
   const overflowActive =
-    activeHref !== null && !PRIMARY_HREFS.includes(activeHref);
+    activeHref !== null && !primaryHrefs.includes(activeHref);
 
   useEffect(() => {
     setOpen(false);
@@ -74,6 +89,13 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  const itemClass = (active: boolean) =>
+    `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 overflow-hidden text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+      active
+        ? "text-primary-600"
+        : "text-text-tertiary active:text-text-primary"
+    }`;
 
   return (
     <>
@@ -99,7 +121,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar menú"
-                className="rounded-lg p-2 text-text-secondary active:bg-surface-secondary"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 active:bg-surface-secondary"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -107,9 +129,6 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
             <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {overflowItems.map((item) => {
                 if (isNavGroup(item)) {
-                  // La hoja ya es un contenedor bajo demanda: un grupo se
-                  // pinta como encabezado de sección con sus hijos debajo,
-                  // sin un acordeón dentro de otro desplegable.
                   return (
                     <div key={item.id}>
                       <p className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-text-tertiary">
@@ -123,7 +142,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
                             key={child.href}
                             href={child.href}
                             aria-current={childActive ? "page" : undefined}
-                            className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                            className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                               childActive
                                 ? "bg-primary-50 text-primary-700"
                                 : "text-text-secondary active:bg-surface-secondary"
@@ -145,7 +164,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
                     key={item.href}
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                    className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                       active
                         ? "bg-primary-50 text-primary-700"
                         : "text-text-secondary active:bg-surface-secondary"
@@ -161,21 +180,20 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md md:hidden">
-        <div className="mx-auto flex h-16 max-w-lg items-stretch justify-around pb-[env(safe-area-inset-bottom)]">
-          {PRIMARY.map((item) => {
-            const Icon = item.icon;
+      <nav
+        aria-label="Navegación principal"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 backdrop-blur-md md:hidden"
+      >
+        <div className="mx-auto flex min-h-16 max-w-lg items-stretch justify-around pb-[env(safe-area-inset-bottom)]">
+          {visiblePrimary.map((item) => {
+            const Icon = NAV_ICONS[item.icon] ?? LayoutDashboard;
             const isActive = item.href === activeHref;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
-                  isActive
-                    ? "text-primary-600"
-                    : "text-text-tertiary active:text-text-primary"
-                }`}
+                className={itemClass(isActive)}
               >
                 <Icon
                   className={`h-5 w-5 ${isActive ? "text-primary-600" : ""}`}
@@ -192,11 +210,7 @@ export function MobileNav({ navItems }: { navItems: SidebarNavItem[] }) {
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-haspopup="dialog"
-              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
-                overflowActive || open
-                  ? "text-primary-600"
-                  : "text-text-tertiary active:text-text-primary"
-              }`}
+              className={itemClass(overflowActive || open)}
             >
               <MoreHorizontal
                 className="h-5 w-5"

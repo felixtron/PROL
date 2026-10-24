@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { captcha } from "better-auth/plugins";
 import { db } from "@prol/db";
+import { canUseProfessorTools } from "@prol/shared";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { assertCriticalServerEnv } from "@/lib/env";
@@ -277,16 +278,42 @@ export const requireTenantAdmin = cache(async () => {
 });
 
 /**
+ * Profesor de oficio, o administrador de academia con el modo profesor
+ * encendido. El interruptor es reversible: apagado, estas acciones rechazan
+ * al admin aunque conozca la URL.
+ */
+export const requireProfessorTools = cache(async () => {
+  const user = await requireUser();
+  if (
+    !canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    })
+  ) {
+    throw new Error("No autorizado");
+  }
+  if (!user.tenantId) {
+    throw new Error("No autorizado: tenant requerido");
+  }
+  return user as typeof user & { tenantId: string };
+});
+
+/**
  * Requires the current user to be allowed to author evaluations: a
- * PROFESSOR, ADMIN or SUPER_ADMIN with a tenant (SUPER_ADMIN bypasses).
+ * PROFESSOR, an ADMIN with professor mode, or SUPER_ADMIN (SUPER_ADMIN
+ * bypasses the tenant check).
  */
 export const requireEvaluationAuthor = cache(async () => {
   const user = await requireUser();
-  if (
-    user.role !== "PROFESSOR" &&
-    user.role !== "ADMIN" &&
-    user.role !== "SUPER_ADMIN"
-  ) {
+  const allowed =
+    user.role === "SUPER_ADMIN" ||
+    canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    });
+  if (!allowed) {
     throw new Error("No autorizado");
   }
   if (user.role !== "SUPER_ADMIN" && !user.tenantId) {

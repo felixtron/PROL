@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, type RecurrenceFrequency } from "@prol/db";
 import { requireUser } from "@/lib/auth";
+import { canUseProfessorTools } from "@prol/shared";
 import {
   ADVISORY_DISABLED_ERROR,
   isAdvisoryEnabled,
@@ -131,11 +132,23 @@ export type AdvisoryActionResult =
   | { success: true; sessionId: string; notified: number }
   | { success: false; error: string };
 
+function professorToolsDenied(user: {
+  role: string;
+  professorModeEnabled: boolean;
+  tenantId: string | null;
+}): boolean {
+  return !canUseProfessorTools({
+    role: user.role,
+    professorModeEnabled: user.professorModeEnabled,
+    tenantId: user.tenantId,
+  });
+}
+
 export async function createAdvisorySession(
   formData: FormData,
 ): Promise<AdvisoryActionResult> {
   const user = await requireUser();
-  if (user.role !== "PROFESSOR" && user.role !== "ADMIN") {
+  if (professorToolsDenied(user)) {
     return { success: false, error: "No tienes permiso para agendar asesorías." };
   }
   if (!user.tenantId) {
@@ -315,6 +328,9 @@ export async function updateAdvisorySession(
   formData: FormData,
 ): Promise<AdvisoryActionResult> {
   const user = await requireUser();
+  if (professorToolsDenied(user)) {
+    return { success: false, error: "No tienes permiso para agendar asesorías." };
+  }
   if (!(await isAdvisoryEnabled(user))) {
     return { success: false, error: ADVISORY_DISABLED_ERROR };
   }
@@ -455,6 +471,9 @@ export async function cancelAdvisorySession(
   sessionId: string,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const user = await requireUser();
+  if (professorToolsDenied(user)) {
+    return { success: false, error: "No tienes permiso para agendar asesorías." };
+  }
   if (!(await isAdvisoryEnabled(user))) {
     return { success: false, error: ADVISORY_DISABLED_ERROR };
   }
@@ -491,6 +510,9 @@ export async function resendAdvisoryInvitations(
   sessionId: string,
 ): Promise<{ success: true; notified: number } | { success: false; error: string }> {
   const user = await requireUser();
+  if (professorToolsDenied(user)) {
+    return { success: false, error: "No tienes permiso para agendar asesorías." };
+  }
   if (!(await isAdvisoryEnabled(user))) {
     return { success: false, error: ADVISORY_DISABLED_ERROR };
   }

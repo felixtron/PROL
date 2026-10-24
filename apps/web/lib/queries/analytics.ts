@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser, requireAdmin } from "@/lib/auth";
+import { requireProfessorTools, requireAdmin } from "@/lib/auth";
 import { courseAccessWhere } from "@/lib/course-access";
 
 // Spanish month abbreviations
@@ -27,7 +27,7 @@ const MONTH_NAMES: string[] = [
  * Get monthly enrollment counts for the professor
  */
 export const getEnrollmentsByMonth = cache(async (monthsBack = 6) => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
   const now = new Date();
 
   const monthlyData = [];
@@ -82,7 +82,7 @@ export const getEnrollmentsByMonth = cache(async (monthsBack = 6) => {
  * distintas.
  */
 export const getRevenueByMonth = cache(async (monthsBack = 6) => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
   const now = new Date();
 
   const monthlyData = [];
@@ -121,7 +121,7 @@ export const getRevenueByMonth = cache(async (monthsBack = 6) => {
  * Get student distribution by course for donut chart
  */
 export const getCourseDistribution = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const courses = await db.course.findMany({
     where: {

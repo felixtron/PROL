@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
+import { canUseProfessorTools } from "@prol/shared";
 
 // Max 10 MB upload.
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -36,11 +37,14 @@ function classify(file: File): (typeof ACCEPTED)[number] | null {
 
 export async function POST(req: Request) {
   const user = await requireUser();
-  if (
-    user.role !== "PROFESSOR" &&
-    user.role !== "ADMIN" &&
-    user.role !== "SUPER_ADMIN"
-  ) {
+  const mayUpload =
+    user.role === "SUPER_ADMIN" ||
+    canUseProfessorTools({
+      role: user.role,
+      professorModeEnabled: user.professorModeEnabled,
+      tenantId: user.tenantId,
+    });
+  if (!mayUpload) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools } from "@/lib/auth";
 import { courseAccessWhere } from "@/lib/course-access";
 
 export interface ProfessorStudentEnrollment {
@@ -34,7 +34,7 @@ export interface ProfessorStudentRow {
 
 export const getProfessorStudents = cache(
   async (): Promise<ProfessorStudentRow[]> => {
-    const user = await requireUser();
+    const user = await requireProfessorTools();
 
     const [enrollments, pastWorkshops] = await Promise.all([
       db.enrollment.findMany({

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { GraduationCap, Users, DollarSign, BookOpen } from "lucide-react";
 import { db } from "@prol/db";
+import { canUseProfessorTools } from "@prol/shared";
 import { requireTenantAdmin } from "@/lib/auth";
 import { CourseActionsMenu } from "./course-actions-menu";
 
@@ -22,6 +24,11 @@ const statusStyles: Record<string, { label: string; color: string }> = {
 
 export default async function TenantAdminCoursesPage() {
   const admin = await requireTenantAdmin();
+  const canTeach = canUseProfessorTools({
+    role: admin.role,
+    professorModeEnabled: admin.professorModeEnabled,
+    tenantId: admin.tenantId,
+  });
   if (!admin.tenantId) {
     return (
       <div>
@@ -115,8 +122,18 @@ export default async function TenantAdminCoursesPage() {
               Aún no hay cursos
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
-              Cuando tus profesores creen cursos, aparecerán aquí.
+              {canTeach
+                ? "Crea el primero desde el panel de profesor."
+                : "Cuando tus profesores creen cursos, aparecerán aquí."}
             </p>
+            {canTeach ? (
+              <Link
+                href="/professor/courses/new"
+                className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white"
+              >
+                Crear curso
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -174,6 +191,14 @@ export default async function TenantAdminCoursesPage() {
                             <p className="truncate text-xs text-text-tertiary">
                               {c._count.modules} módulos · {c.totalLessons} lecciones
                             </p>
+                            {canTeach && c.professor.id === admin.id ? (
+                              <Link
+                                href={`/professor/courses/${c.id}/edit`}
+                                className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-primary-700"
+                              >
+                                Editar contenido
+                              </Link>
+                            ) : null}
                           </div>
                         </div>
                       </td>

@@ -7,7 +7,7 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "test": "node --experimental-strip-types --test packages/shared/platform-fee.test.ts"
+    "test": "node --experimental-strip-types --test packages/shared/platform-fee.test.ts packages/shared/professor-mode.test.ts packages/shared/student-tools.test.ts"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

@@ -11,12 +11,13 @@ import { BRAND_NAME } from "@/lib/brand";
 import { TenantThemeStyle } from "@/components/tenant-theme";
 import { AgentLauncher } from "@/components/agent/agent-launcher";
 import { isAgentAvailable } from "@/lib/agent/availability";
+import { canUseProfessorTools } from "@prol/shared";
 
 const baseNavItems: SidebarNavItem[] = [
   { label: "Dashboard", href: "/professor", icon: "LayoutDashboard" },
   { label: "Cursos", href: "/professor/courses", icon: "BookOpen" },
   { label: "Alumnos", href: "/professor/students", icon: "Users" },
-  { label: "Workshop", href: "/professor/workshops", icon: "Calendar" },
+  { label: "Talleres", href: "/professor/workshops", icon: "Calendar" },
 ];
 
 export default async function ProfessorLayout({
@@ -26,13 +27,24 @@ export default async function ProfessorLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user || user.role !== "PROFESSOR") {
-    redirect("/dashboard");
+  const teaching = user
+    ? canUseProfessorTools({
+        role: user.role,
+        professorModeEnabled: user.professorModeEnabled,
+        tenantId: user.tenantId,
+      })
+    : false;
+
+  if (!user || !teaching) {
+    redirect(user?.role === "ADMIN" ? "/tenant-admin" : "/dashboard");
   }
   if (user.mustResetPassword) {
     redirect("/force-reset-password");
   }
-  if (!user.onboardingCompleted || !user.tenantId) {
+  if (!user.tenantId) {
+    redirect(user.role === "PROFESSOR" ? "/onboarding" : "/tenant-admin");
+  }
+  if (user.role === "PROFESSOR" && !user.onboardingCompleted) {
     redirect("/onboarding");
   }
 
@@ -55,6 +67,15 @@ export default async function ProfessorLayout({
   });
 
   const navItems: SidebarNavItem[] = [
+    ...(user.role === "ADMIN"
+      ? [
+          {
+            label: "Administración",
+            href: "/tenant-admin",
+            icon: "LayoutDashboard" as const,
+          },
+        ]
+      : []),
     ...baseNavItems,
     ...(tenant?.advisoryEnabled
       ? [{ label: "Consultoría Online", href: "/professor/advisory", icon: "Laptop" as const }]
@@ -106,7 +127,9 @@ export default async function ProfessorLayout({
               name={displayName}
               email={user.email}
               avatar={user.avatar}
-              roleLabel="Profesor"
+              roleLabel={
+                user.role === "ADMIN" ? "Administrador · Profesor" : "Profesor"
+              }
               settingsHref="/professor/settings"
             />
           </div>

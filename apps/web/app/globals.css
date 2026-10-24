@@ -35,7 +35,8 @@
   --color-border-strong: #cbd5e1;
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
-  --color-text-tertiary: #94a3b8;
+  /* slate-500: el gris anterior (#94a3b8) no llegaba a 4.5:1 sobre blanco. */
+  --color-text-tertiary: #64748b;
   --color-text-inverse: #ffffff;
 
   /* Ink (used by public landing — neutral off-black scale) */

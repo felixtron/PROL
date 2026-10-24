@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { db } from "@prol/db";
-import { requireUser } from "@/lib/auth";
+import { requireProfessorTools, requireUser } from "@/lib/auth";
 import { courseAccessWhere } from "@/lib/course-access";
 import {
   getTenantMeetAccount,
@@ -10,7 +10,7 @@ import {
 // ─── Professor queries ────────────────────────────────────────────────────────
 
 export const getProfessorWorkshops = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const workshops = await db.workshop.findMany({
     where: { professorId: user.id },
@@ -40,7 +40,7 @@ export const getProfessorWorkshops = cache(async () => {
 });
 
 export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   const workshop = await db.workshop.findFirst({
     where: { id: workshopId, professorId: user.id },
@@ -145,7 +145,7 @@ export const getProfessorWorkshopDetail = cache(async (workshopId: string) => {
 });
 
 export const getProfessorCourseOptions = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
 
   // Incluye los cursos donde el profesor colabora, no sólo los propios: si
   // puede editar el curso, debería poder agendarle sesiones.
@@ -172,7 +172,7 @@ export const getProfessorCourseOptions = cache(async () => {
  * anfitriona. Se usa para mostrar (o no) la opción en el formulario.
  */
 export const getMeetAutoGenerationAvailable = cache(async () => {
-  const user = await requireUser();
+  const user = await requireProfessorTools();
   if (!user.tenantId || !isGoogleMeetConfigured()) return false;
   const host = await getTenantMeetAccount(user.tenantId);
   return host !== null;

@@ -3,6 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import crypto from "node:crypto";
 import { requireUser, UnauthenticatedError } from "@/lib/auth";
+import { canUseProfessorTools } from "@prol/shared";
 import { resolveUploadDir } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -22,7 +23,14 @@ function safeFilename(name: string): string {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
-    if (user.role !== "PROFESSOR" && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+    const mayUpload =
+      user.role === "SUPER_ADMIN" ||
+      canUseProfessorTools({
+        role: user.role,
+        professorModeEnabled: user.professorModeEnabled,
+        tenantId: user.tenantId,
+      });
+    if (!mayUpload) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 

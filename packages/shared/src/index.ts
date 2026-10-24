@@ -6,3 +6,5 @@ export * from "./video";
 export * from "./lesson-blocks";
 export * from "./evidence-snapshot";
 export * from "./platform-fee";
+export * from "./professor-mode";
+export * from "./student-tools";
