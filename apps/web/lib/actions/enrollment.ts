@@ -80,11 +80,21 @@ export async function enrollInCourse(courseId: string) {
     const courseUrl = `${appUrl}/dashboard/courses/${courseId}`;
     const tenantName = user.tenant?.name ?? BRAND_NAME;
 
+    const studentTools = user.tenantId
+      ? ((
+          await db.tenant.findUnique({
+            where: { id: user.tenantId },
+            select: { studentTools: true },
+          })
+        )?.studentTools ?? null)
+      : null;
+
     const emailData = enrollmentConfirmation({
       name: user.name ?? "Estudiante",
       courseName: course.title,
       courseUrl,
       tenantName,
+      studentTools,
     });
 
     await sendEmail({
@@ -134,7 +144,7 @@ export async function manualEnrollStudent(input: {
         role: true,
         tenantId: true,
         disabledAt: true,
-        tenant: { select: { name: true } },
+        tenant: { select: { name: true, studentTools: true } },
       },
     }),
     db.course.findUnique({
@@ -249,6 +259,7 @@ export async function manualEnrollStudent(input: {
         courseName: course.title,
         courseUrl,
         tenantName,
+        studentTools: student.tenant?.studentTools ?? null,
       });
       await sendEmail({
         to: student.email,

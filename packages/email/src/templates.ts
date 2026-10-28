@@ -1,3 +1,5 @@
+import { isStudentToolVisible } from "@prol/shared/student-tools";
+
 // ---------------------------------------------------------------------------
 // PROL - Email Templates (Spanish)
 // All templates return { subject, html } with inline styles.
@@ -149,6 +151,29 @@ export interface EnrollmentConfirmationParams {
   courseName: string;
   courseUrl: string;
   tenantName: string;
+  /**
+   * JSON `student_tools` del tenant. La nota del diploma sigue la misma
+   * regla que el panel del alumno (`isStudentToolVisible` sobre
+   * `certificates`): ausente o null significa visible.
+   */
+  studentTools: unknown;
+}
+
+/**
+ * Diplomas no exige módulo ni empresa. Esos campos quedan en falso y
+ * `isStudentToolVisible` responde la preferencia de `student_tools`.
+ */
+function enrollmentMentionsDiplomas(studentTools: unknown): boolean {
+  return isStudentToolVisible(
+    {
+      preferences: studentTools,
+      documentsEnabled: false,
+      advisoryEnabled: false,
+      surveysEnabled: false,
+      hasCompany: false,
+    },
+    "certificates",
+  );
 }
 
 export function enrollmentConfirmation({
@@ -156,7 +181,14 @@ export function enrollmentConfirmation({
   courseName,
   courseUrl,
   tenantName,
+  studentTools,
 }: EnrollmentConfirmationParams) {
+  const diplomaNote = enrollmentMentionsDiplomas(studentTools)
+    ? highlightNote(
+        `<strong>Nota:</strong> Debes asegurarte que TU NOMBRE en el PERFIL de nuestra plataforma est&aacute; COMPLETO y es CORRECTO ya que, as&iacute; se imprimir&aacute; en los DIPLOMAS de los cursos en los que est&eacute;s inscrito(a); y tales diplomas NO PUEDEN MODIFICARSE despu&eacute;s de su emisi&oacute;n.`,
+      )
+    : "";
+
   const body = `
     <h2 style="margin:0 0 16px;color:${C.ink};font-size:20px;font-weight:600;">
       Inscripci&oacute;n confirmada
@@ -167,9 +199,7 @@ export function enrollmentConfirmation({
     <p style="margin:0 0 8px;color:${C.body};font-size:16px;line-height:1.6;">
       Ya puedes acceder al contenido del curso y comenzar tu aprendizaje.
     </p>
-    ${highlightNote(
-      `<strong>Nota:</strong> Debes asegurarte que TU NOMBRE en el PERFIL de nuestra plataforma est&aacute; COMPLETO y es CORRECTO ya que, as&iacute; se imprimir&aacute; en los DIPLOMAS de los cursos en los que est&eacute;s inscrito(a); y tales diplomas NO PUEDEN MODIFICARSE despu&eacute;s de su emisi&oacute;n.`
-    )}
+    ${diplomaNote}
     ${ctaButton("Acceder al curso", courseUrl)}
     <p style="margin:0;color:${C.muted};font-size:14px;line-height:1.5;">
       &iexcl;Mucho &eacute;xito en tu aprendizaje!
