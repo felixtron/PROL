@@ -301,7 +301,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     const tenantData = await db.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, slug: true },
+      select: { name: true, slug: true, studentTools: true },
     });
 
     if (student?.email && course && tenantData) {
@@ -324,6 +324,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         courseName: course.title,
         courseUrl,
         tenantName: tenantData.name,
+        studentTools: tenantData.studentTools,
       });
 
       await Promise.allSettled([

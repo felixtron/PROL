@@ -247,6 +247,9 @@ importers:
 
   packages/email:
     dependencies:
+      '@prol/shared':
+        specifier: workspace:*
+        version: link:../shared
       resend:
         specifier: ^4.1.2
         version: 4.8.0(react-dom@19.2.9(react@19.2.9))(react@19.2.9)
